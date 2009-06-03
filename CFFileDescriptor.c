@@ -46,7 +46,7 @@
 #include <unistd.h>
 #elif DEPLOYMENT_TARGET_WINDOWS
 #include <io.h>
-#include <stdio.h>F
+#include <stdio.h>
 #define close _close
 #endif
 

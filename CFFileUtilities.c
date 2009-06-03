@@ -425,9 +425,17 @@ __private_extern__ SInt32 _CFGetFileProperties(CFAllocatorRef alloc, CFURLRef pa
     }
 
 #if DEPLOYMENT_TARGET_WINDOWS
-    HANDLE hFile = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+    SECURITY_ATTRIBUTES sa;
+    sa.nLength = sizeof(sa);
+    sa.bInheritHandle = TRUE;
+    sa.lpSecurityDescriptor = NULL;
+
+    HANDLE hFile = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, &sa, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
     if (INVALID_HANDLE_VALUE == hFile)
+    {
+       DWORD error = GetLastError ();
        return -1;
+    }
 
     fd = _open_osfhandle((intptr_t)hFile, _O_RDONLY|CF_OPENFLGS);
     if (fd < 0) {
@@ -442,7 +450,7 @@ __private_extern__ SInt32 _CFGetFileProperties(CFAllocatorRef alloc, CFURLRef pa
     {
         if (_fstati64(fd, &statBuf) != 0) {
             close(fd);
-            CloseHandle (hFile);
+
             // stat failed, but why?
             if (thread_errno() == ENOENT) {
                 fileExists = false;
@@ -450,9 +458,18 @@ __private_extern__ SInt32 _CFGetFileProperties(CFAllocatorRef alloc, CFURLRef pa
                 return thread_errno();
             }
        } else {
-            close(fd);
-            CloseHandle (hFile);
             fileExists = true;
+
+            // Hack to work around Windows strange stat behavior:
+            DWORD attributes = GetFileAttributesA (path);
+            close(fd);
+
+            if (attributes & FILE_ATTRIBUTE_DIRECTORY)
+            {
+               statBuf.st_mode &= ~S_IFREG;  // Don't claim it's a regular file.
+               statBuf.st_mode |= S_IFDIR;   // Properly mark it as a directory
+            }
+
             isDirectory = ((statBuf.st_mode & S_IFMT) == S_IFDIR);
        }
     }

@@ -6,8 +6,8 @@ refered to as Open CF-lite to distinguish it from the official
 Apple release, and to reflect the Open Source nature of this
 project.
 
-This CoreFoundation corresponds to the Mac OS X 10.5.6 version
-of CF (CF-476.17)
+This CoreFoundation corresponds to the Mac OS X 10.5.7 version
+of CF (CF-476.18)
 
 This distribution differs from the official Apple, Inc. release
 in that it is known to build and run on Mac OS X, Windows, and

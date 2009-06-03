@@ -229,9 +229,9 @@ static void __substituteFormatStringFromPrefsNF(CFNumberFormatterRef formatter) 
 			    CFStringReplace(formatString, result, pref);
 			    int32_t new_len = CFStringGetLength(formatString);
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
-             STACK_BUFFER_DECL(UChar, new_buffer, new_len);
+                STACK_BUFFER_DECL(UChar, new_buffer, new_len);
 #else
-             UChar new_buffer[BUFFER_SIZE];
+                UChar new_buffer[BUFFER_SIZE];
 #endif
 			    const UChar *new_ustr = (const UChar *)CFStringGetCharactersPtr(formatString);
 			    if (NULL == new_ustr) {

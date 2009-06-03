@@ -614,7 +614,7 @@ CF_INLINE void __CFRunLoopSourceUnlock(CFRunLoopSourceRef rls) {
 static void __CFRunLoopSourceSchedule(CFRunLoopSourceRef rls, CFRunLoopRef rl, CFRunLoopModeRef rlm) {	/* DOES CALLOUT */
     __CFRunLoopSourceLock(rls);
     if (NULL == rls->_runLoops) {
-	rls->_runLoops = CFBagCreateMutable(CFGetAllocator(rls), 0, NULL);
+	rls->_runLoops = CFBagCreateMutable(kCFAllocatorSystemDefault, 0, NULL);
     }
     CFBagAddValue(rls->_runLoops, rl);
     __CFRunLoopSourceUnlock(rls);	// have to unlock before the callout -- cannot help clients with safety
@@ -943,6 +943,32 @@ static CFRunLoopTimerRef __CFRunLoopModeFindTimerForMachPort(CFRunLoopModeRef rl
 }
 #endif
 
+// Remove backreferences the mode's sources have to the rl (context);
+// the primary purpose of rls->_runLoops is so that Invalidation can remove
+// the source from the run loops it is in, but during deallocation of a
+// run loop, we already know that the sources are going to be punted
+// from it, so invalidation of sources does not need to remove from a
+// deallocating run loop.
+static void __CFRunLoopCleanseSources(const void *value, void *context) {
+    CFRunLoopModeRef rlm = (CFRunLoopModeRef)value;
+    CFRunLoopRef rl = (CFRunLoopRef)context;
+    CFIndex idx, cnt;
+    const void **list, *buffer[256];
+    if (NULL == rlm->_sources) return;
+    cnt = CFSetGetCount(rlm->_sources);
+    list = (cnt <= 256) ? buffer : (void**)CFAllocatorAllocate(kCFAllocatorSystemDefault, cnt * sizeof(void *), 0);
+    CFSetGetValues(rlm->_sources, list);
+    for (idx = 0; idx < cnt; idx++) {
+	CFRunLoopSourceRef rls = (CFRunLoopSourceRef)list[idx];
+	__CFRunLoopSourceLock(rls);
+	if (NULL != rls->_runLoops) {
+	    CFBagRemoveValue(rls->_runLoops, rl);
+	}
+	__CFRunLoopSourceUnlock(rls);
+    }
+    if (list != buffer) CFAllocatorDeallocate(kCFAllocatorSystemDefault, list);
+}
+
 static void __CFRunLoopDeallocateSources(const void *value, void *context) {
     CFRunLoopModeRef rlm = (CFRunLoopModeRef)value;
     CFRunLoopRef rl = (CFRunLoopRef)context;
@@ -1015,6 +1041,7 @@ static void __CFRunLoopDeallocate(CFTypeRef cf) {
        three lines. */
     __CFRunLoopSetDeallocating(rl);
     if (NULL != rl->_modes) {
+	CFSetApplyFunction(rl->_modes, (__CFRunLoopCleanseSources), rl); // remove references to rl
 	CFSetApplyFunction(rl->_modes, (__CFRunLoopDeallocateSources), rl);
 	CFSetApplyFunction(rl->_modes, (__CFRunLoopDeallocateObservers), rl);
 	CFSetApplyFunction(rl->_modes, (__CFRunLoopDeallocateTimers), rl);
@@ -1133,7 +1160,9 @@ static CFRunLoopRef __CFRunLoopCreate(void) {
     return loop;
 }
 
-static CFMutableDictionaryRef runLoops = NULL;
+static void __CFRunLoopRemoveAllSources(CFRunLoopRef rl, CFStringRef modeName);
+
+static CFMutableDictionaryRef __CFRunLoops = NULL;
 static char setMainLoop = 0;
 static CFSpinLock_t loopsLock = CFSpinLockInit;
 
@@ -1144,43 +1173,41 @@ static CFSpinLock_t loopsLock = CFSpinLockInit;
 // fetch the main thread's pthread_t from the pthreads subsystem.
 
 // t==0 is a synonym for "main thread" that always works
-__private_extern__ CFRunLoopRef _CFRunLoop0(NativeThread t) {
+static CFRunLoopRef _CFRunLoop0(NativeThread t) {
     CFRunLoopRef loop = NULL;
     __CFSpinLock(&loopsLock);
-    if (!runLoops) {
+    if (!__CFRunLoops) {
         __CFSpinUnlock(&loopsLock);
-        CFMutableDictionaryRef dict = CFDictionaryCreateMutable(kCFAllocatorSystemDefault, 0, NULL, NULL);
+	CFMutableDictionaryRef dict = CFDictionaryCreateMutable(kCFAllocatorSystemDefault, 0, NULL, &kCFTypeDictionaryValueCallBacks);
         CFRunLoopRef mainLoop = __CFRunLoopCreate();
-        CFDictionarySetValue(dict, 0, mainLoop);
-    	 if (!_CFAtomicCompareAndSwapPtrBarrier(NULL, dict, (void * volatile *)&runLoops)) {
+        CFDictionarySetValue(dict, pthreadPointer(kNilThreadT), mainLoop);
+    	 if (!_CFAtomicCompareAndSwapPtrBarrier(NULL, dict, (void * volatile *)&__CFRunLoops)) {
 	        CFRelease(dict);
-	        CFRelease(mainLoop);
 	    }
+		CFRelease(mainLoop);
        __CFSpinLock(&loopsLock);
     }
     if (_CFThreadIsMain() && _CFThreadsAreEqual(t, _CFThreadSelf())) {
         t = kNilThreadT;
     }
-    loop = (CFRunLoopRef)CFDictionaryGetValue(runLoops, pthreadPointer(t));
+    loop = (CFRunLoopRef)CFDictionaryGetValue(__CFRunLoops, pthreadPointer(t));
     if (!loop) {
         __CFSpinUnlock(&loopsLock);
         CFRunLoopRef newLoop = __CFRunLoopCreate();
-        __CFGetThreadSpecificData();	// just cause the thread finalizer to be called as a side effect
         __CFSpinLock(&loopsLock);
-       loop = (CFRunLoopRef)CFDictionaryGetValue(runLoops, pthreadPointer(t));
-	    if (loop) {
-	        CFRelease(newLoop);
-       } else {
-           CFDictionarySetValue(runLoops, pthreadPointer(t), newLoop);
+       loop = (CFRunLoopRef)CFDictionaryGetValue(__CFRunLoops, pthreadPointer(t));
+       if (!loop) {
+           CFDictionarySetValue(__CFRunLoops, pthreadPointer(t), newLoop);
            loop = newLoop;
-        }
+       }
+       CFRelease(newLoop);
     }
     if (!setMainLoop && _CFThreadIsMain()) {
 		if (_CFThreadsAreEqual(t, kNilThreadT)) {
-			CFDictionarySetValue(runLoops, pthreadPointer(_CFThreadSelf()), loop);
+			CFDictionarySetValue(__CFRunLoops, pthreadPointer(_CFThreadSelf()), loop);
 	     } else {
-            CFRunLoopRef mainLoop = (CFRunLoopRef)CFDictionaryGetValue(runLoops, pthreadPointer(kNilThreadT));
-            CFDictionarySetValue(runLoops, pthreadPointer(_CFThreadSelf()), mainLoop);
+            CFRunLoopRef mainLoop = (CFRunLoopRef)CFDictionaryGetValue(__CFRunLoops, pthreadPointer(kNilThreadT));
+            CFDictionarySetValue(__CFRunLoops, pthreadPointer(_CFThreadSelf()), mainLoop);
         }
         setMainLoop = 1;
     }
@@ -1188,18 +1215,46 @@ __private_extern__ CFRunLoopRef _CFRunLoop0(NativeThread t) {
     return loop;
 }
 
-__private_extern__ void _CFRunLoop1(void) {
+// Called for each thread as it exits
+static void __CFFinalizeRunLoop(void *arg) {
+    CFRunLoopRef rl = NULL;
     __CFSpinLock(&loopsLock);
-    if (runLoops) {
-	NativeThread t = _CFThreadSelf();
-	CFRunLoopRef currentLoop = (CFRunLoopRef)CFDictionaryGetValue(runLoops, pthreadPointer(t));
-	CFRunLoopRef mainLoop = (CFRunLoopRef)CFDictionaryGetValue(runLoops, pthreadPointer(kNilThreadT));
-	if (currentLoop && mainLoop != currentLoop) {
-	    CFDictionaryRemoveValue(runLoops, pthreadPointer(t));
-	    CFRelease(currentLoop);
-	}
+    if (__CFRunLoops) {
+		rl = (CFRunLoopRef)CFDictionaryGetValue(__CFRunLoops, pthreadPointer(_CFThreadSelf()));
+		if (rl) CFRetain(rl);
+		CFDictionaryRemoveValue(__CFRunLoops, pthreadPointer(_CFThreadSelf()));
+
     }
     __CFSpinUnlock(&loopsLock);
+    if (rl && CFRunLoopGetMain() != rl) {
+        // purge all sources before deallocation
+        CFArrayRef array = CFRunLoopCopyAllModes(rl);
+        for (CFIndex idx = CFArrayGetCount(array); idx--;) {
+            CFStringRef modeName = (CFStringRef)CFArrayGetValueAtIndex(array, idx);
+            __CFRunLoopRemoveAllSources(rl, modeName);
+        }
+        __CFRunLoopRemoveAllSources(rl, kCFRunLoopCommonModes);
+        CFRelease(array);
+    }
+    if (rl) {
+	CFRelease(rl);
+}
+}
+
+__private_extern__ void _CFRunLoop1(void) { __CFFinalizeRunLoop(0); }
+
+void _CFRunLoopSetCurrent(CFRunLoopRef rl) {
+    CFRunLoopRef currentLoop = CFRunLoopGetCurrent();
+    if (rl != currentLoop) {
+        __CFSpinLock(&loopsLock);
+        if (rl) {
+	        CFDictionarySetValue(__CFRunLoops, pthreadPointer(_CFThreadSelf()), rl);
+        } else {
+	        CFDictionaryRemoveValue(__CFRunLoops, pthreadPointer(_CFThreadSelf()));
+
+        }
+        __CFSpinUnlock(&loopsLock);
+    }
 }
 
 CFRunLoopRef CFRunLoopGetMain(void) {
@@ -1210,27 +1265,6 @@ CFRunLoopRef CFRunLoopGetMain(void) {
 CFRunLoopRef CFRunLoopGetCurrent(void) {
     CHECK_FOR_FORK();
     return _CFRunLoop0(_CFThreadSelf());
-}
-
-void _CFRunLoopSetCurrent(CFRunLoopRef rl) {
-    __CFSpinLock(&loopsLock);
-    CFRunLoopRef currentLoop = runLoops ? (CFRunLoopRef)CFDictionaryGetValue(runLoops, pthreadPointer(_CFThreadSelf())) : NULL;
-    if (rl != currentLoop) {
-	// intentionally leak currentLoop so we don't kill any ports in the child
-	// if (currentLoop) CFRelease(currentLoop);
-	if (rl) {
-	    if (!runLoops) {
-		runLoops = CFDictionaryCreateMutable(kCFAllocatorSystemDefault, 0, NULL, NULL);
-		CFRunLoopRef mainLoop = __CFRunLoopCreate();
-		CFDictionarySetValue(runLoops, pthreadPointer(kNilThreadT), mainLoop);
-	    }
-	    CFRetain(rl);
-	    CFDictionarySetValue(runLoops, pthreadPointer(_CFThreadSelf()), rl);
-	} else {
-	    CFDictionaryRemoveValue(runLoops, pthreadPointer(_CFThreadSelf()));
-	}
-    }
-    __CFSpinUnlock(&loopsLock);
 }
 
 CFStringRef CFRunLoopCopyCurrentMode(CFRunLoopRef rl) {
@@ -1806,7 +1840,7 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
     if (seconds <= 0.0) {
         poll = true;
     }
-    if (rl == _CFRunLoop0(kNilThreadT)) _LastMainWaitSet = CFPORTSET_NULL;
+    if (rl == CFRunLoopGetMain()) _LastMainWaitSet = CFPORTSET_NULL;
     for (;;) {
         __CFPortSet waitSet = CFPORTSET_NULL;
         waitSet = CFPORTSET_NULL;
@@ -1859,7 +1893,7 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
             }
 #endif
         }
-        if (rl == _CFRunLoop0(kNilThreadT)) _LastMainWaitSet = waitSet;
+        if (rl == CFRunLoopGetMain()) _LastMainWaitSet = waitSet;
         __CFRunLoopModeUnlock(rlm);
 
 #if DEPLOYMENT_TARGET_MACOSX
@@ -1937,7 +1971,7 @@ try_receive:
 #endif
         if (destroyWaitSet) {
             __CFPortSetFree(waitSet);
-            if (rl == _CFRunLoop0(kNilThreadT)) _LastMainWaitSet = CFPORTSET_NULL;
+            if (rl == CFRunLoopGetMain()) _LastMainWaitSet = CFPORTSET_NULL;
         }
         __CFRunLoopLock(rl);
         __CFRunLoopModeLock(rlm);
@@ -2383,6 +2417,49 @@ void CFRunLoopRemoveSource(CFRunLoopRef rl, CFRunLoopSourceRef rls, CFStringRef 
 	    __CFRunLoopSourceCancel(rls, rl, rlm);	/* DOES CALLOUT */
 	    CFRelease(rls);
 	} else if (NULL != rlm) {
+	    __CFRunLoopModeUnlock(rlm);
+	}
+    }
+}
+
+static void __CFRunLoopRemoveSourcesFromCommonMode(const void *value, void *ctx) {
+    CFStringRef modeName = (CFStringRef)value;
+    CFRunLoopRef rl = (CFRunLoopRef)ctx;
+    __CFRunLoopRemoveAllSources(rl, modeName);
+}
+
+static void __CFRunLoopRemoveSourceFromMode(const void *value, void *ctx) {
+    CFRunLoopSourceRef rls = (CFRunLoopSourceRef)value;
+    CFRunLoopRef rl = (CFRunLoopRef)(((CFTypeRef *)ctx)[0]);
+    CFStringRef modeName = (CFStringRef)(((CFTypeRef *)ctx)[1]);
+    CFRunLoopRemoveSource(rl, rls, modeName);
+}
+
+static void __CFRunLoopRemoveAllSources(CFRunLoopRef rl, CFStringRef modeName) {
+    CHECK_FOR_FORK();
+    CFRunLoopModeRef rlm;
+    __CFRunLoopLock(rl);
+    if (modeName == kCFRunLoopCommonModes) {
+	if (NULL != rl->_commonModeItems) {
+	    CFSetRef set = rl->_commonModes ? CFSetCreateCopy(kCFAllocatorSystemDefault, rl->_commonModes) : NULL;
+	    __CFRunLoopUnlock(rl);
+	    if (NULL != set) {
+                CFSetApplyFunction(set, (__CFRunLoopRemoveSourcesFromCommonMode), (void *)rl);
+		CFRelease(set);
+	    }
+	} else {
+	    __CFRunLoopUnlock(rl);
+	}
+    } else {
+	rlm = __CFRunLoopFindMode(rl, modeName, false);
+	__CFRunLoopUnlock(rl);
+	if (NULL != rlm && NULL != rlm->_sources) {
+	    CFSetRef set = CFSetCreateCopy(kCFAllocatorSystemDefault, rlm->_sources);
+	    __CFRunLoopModeUnlock(rlm);
+            CFTypeRef context[2] = {rl, modeName};
+            CFSetApplyFunction(set, (__CFRunLoopRemoveSourceFromMode), (void *)context);
+            CFRelease(set);
+        } else if (NULL != rlm) {
 	    __CFRunLoopModeUnlock(rlm);
 	}
     }

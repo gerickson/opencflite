@@ -35,8 +35,8 @@
 	Responsibility: Chris Parker
 */
 
-#include "CFInternal.h"
 #include <CoreFoundation/CFPreferences.h>
+#include "CFInternal.h"
 #include <CoreFoundation/CFUniChar.h>
 #include <CoreFoundation/CFNumber.h>
 #include <CoreFoundation/CFString.h>

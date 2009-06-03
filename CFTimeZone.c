@@ -1003,9 +1003,17 @@ CFTimeZoneRef CFTimeZoneCreateWithName(CFAllocatorRef allocator, CFStringRef nam
  */
     {
         CFStringRef safeName = name;
+        struct {
+            LONG Bias;
+            LONG StandardBias;
+            LONG DaylightBias;
+            SYSTEMTIME StandardDate;
+            SYSTEMTIME DaylightDate;
+        } tzi;
         TIME_ZONE_INFORMATION tzi_system;
 
-        DWORD zoneID = TIME_ZONE_ID_INVALID,
+        HKEY hkResult;
+        DWORD dwType, dwSize=sizeof(tzi),
         dwSize_name1=sizeof(tzi_system.StandardName),
         dwSize_name2=sizeof(tzi_system.DaylightName);
 
@@ -1020,20 +1028,72 @@ CFTimeZoneRef CFTimeZoneCreateWithName(CFAllocatorRef allocator, CFStringRef nam
             CFRelease(abbrevs);
         }
 
+/* Open regestry and move down to the TimeZone information
+ */
+        if (RegOpenKey(HKEY_LOCAL_MACHINE,_T(TZZONEINFO),&hkResult) !=
+            ERROR_SUCCESS ) {
+            return NULL;
+        }
+/* Move down to specific TimeZone name
+ */
+#if defined(UNICODE)
+        UniChar *uniTimeZone = (UniChar*)CFStringGetCharactersPtr(name);
+        if (uniTimeZone == NULL) {
+            // We need to extract the bytes out of the CFStringRef and create our own
+            // UNICODE string to pass to the Win32 API - RegOpenKey.
+            UInt8 uniBuff[MAX_PATH+2]; // adding +2 to handle Unicode-null termination /0/0.
+            CFIndex usedBuff = 0;
+            CFIndex numChars = CFStringGetBytes(name, CFRangeMake(0, CFStringGetLength(name)), kCFStringEncodingUnicode, 0, FALSE, uniBuff, MAX_PATH, &usedBuff);
+            if (numChars == 0) {
+                return NULL;
+            } else {
+                // NULL-terminate the newly created Unicode string.
+                uniBuff[usedBuff] = '\0';
+                uniBuff[usedBuff+1] = '\0';                
+            }
+            
+            if (RegOpenKey(hkResult, (LPCWSTR)uniBuff ,&hkResult) != ERROR_SUCCESS ) {
+                return NULL;
+            }
+        } else {
+            if (RegOpenKey(hkResult, (LPCWSTR)uniTimeZone ,&hkResult) != ERROR_SUCCESS ) {
+                return NULL;
+            }
+        }
+#else
+        if (RegOpenKey(hkResult,CFStringGetCStringPtr(name, CFStringGetSystemEncoding()),&hkResult) != ERROR_SUCCESS ) {
+            return NULL;
+        }
+#endif
+
+/* TimeZone information(offsets, daylight flag, ...) assign to tzi structure
+ */
+        if ( RegQueryValueEx(hkResult,_T("TZI"),NULL,&dwType,(LPBYTE)&tzi,&dwSize) != ERROR_SUCCESS &&
+            RegQueryValueEx(hkResult,_T("Std"),NULL,&dwType,(LPBYTE)&tzi_system.StandardName,&dwSize_name1) != ERROR_SUCCESS &&
+            RegQueryValueEx(hkResult,_T("Dlt"),NULL,&dwType,(LPBYTE)&tzi_system.DaylightName,&dwSize_name2) != ERROR_SUCCESS )
+        {
+            return NULL;
+        }
+
+        tzi_system.Bias=tzi.Bias;
+        tzi_system.StandardBias=tzi.StandardBias;
+        tzi_system.DaylightBias=tzi.DaylightBias;
+        tzi_system.StandardDate=tzi.StandardDate;
+        tzi_system.DaylightDate=tzi.DaylightDate;
+
 /* CFTimeZoneRef->_data will contain TIME_ZONE_INFORMATION structure
  * to find current timezone
  * (Aleksey Dukhnyakov)
  */
-       zoneID = GetTimeZoneInformation(&tzi_system);
-       if (zoneID == TIME_ZONE_ID_INVALID) {
-           return(NULL);
-       }
        data = CFDataCreate(allocator,(UInt8 *)&tzi_system, sizeof(tzi_system));
 
+        RegCloseKey(hkResult);
        result = CFTimeZoneCreate(allocator, name, data);
         if (result) {
             if (tryAbbrev)
                 result->_periods->abbrev = (CFStringRef)CFStringCreateCopy(allocator,safeName);
+            else {
+        	}
         }
         CFRelease(data);
     }

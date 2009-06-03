@@ -1239,7 +1239,7 @@ __private_extern__ CFStringRef __CFStringCreateImmutableFunnel3(
     // First check to see if the data needs to be converted...
     // ??? We could be more efficient here and in some cases (Unicode data) eliminate a copy
 
-    if ((encoding == kCFStringEncodingUnicode && possiblyExternalFormat) || (encoding != kCFStringEncodingUnicode && !stringSupportsEightBitCFRepresentation)) {
+    if ((encoding == kCFStringEncodingUnicode && possiblyExternalFormat) || encoding != kCFStringEncodingUnicode && ! stringSupportsEightBitCFRepresentation) {
         const void *realBytes = (uint8_t *) bytes + (hasLengthByte ? 1 : 0);
         CFIndex realNumBytes = numBytes - (hasLengthByte ? 1 : 0);
         Boolean usingPassedInMemory = false;

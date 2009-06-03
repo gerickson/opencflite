@@ -250,8 +250,7 @@ CFTypeRef _CFRuntimeCreateInstance(CFAllocatorRef allocator, CFTypeID typeID, CF
 
     CFAssert1(typeID != _kCFRuntimeNotATypeID, __kCFLogAssertion, "%s(): Uninitialized type id", __PRETTY_FUNCTION__);
 
-    //XXXBS Check __CFRuntimeClasstable for NULL before trying to access elements in it
-    if ((NULL == __CFRuntimeClassTable) || (NULL == __CFRuntimeClassTable[typeID])) {
+    if (NULL == __CFRuntimeClassTable[typeID]) {
         return NULL;
     }
     allocator = (NULL == allocator) ? __CFGetDefaultAllocator() : allocator;

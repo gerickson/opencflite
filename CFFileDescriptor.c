@@ -27,7 +27,9 @@
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX
 // for kqueue
 #include <sys/types.h>
+#if DEPLOYMENT_TARGET_MACOSX
 #include <sys/event.h>
+#endif
 #include <sys/time.h>
 
 // for threads

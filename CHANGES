@@ -1,6 +1,13 @@
                       Changes and What's New in OpenCFLite
                       ------------------------------------
 
+2009-06-02 v476.18.0
+
+  * Synchronized against Apple's CoreFoundation-478.18.
+
+  * Added CFFileDescriptor and CFNotificationCenter support from Stuart Crook
+    <stuart@echus.demon.co.uk>.
+
 2009-03-11 v476.17.2
 
   * Fixed run loop timer support for Linux.

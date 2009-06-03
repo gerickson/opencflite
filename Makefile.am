@@ -75,10 +75,12 @@ CF_include_HEADERS		= CFArray.h				\
 				  CFDictionary.h			\
 				  CFError.h				\
 				  CFError_Private.h			\
+				  CFFileDescriptor.h			\
 				  CFLocale.h				\
 				  CFLogUtilities.h			\
 				  CFMachPort.h				\
 				  CFMessagePort.h			\
+				  CFNotificationCenter.h		\
 				  CFNumberFormatter.h			\
 				  CFNumber.h				\
 				  CFPlugInCOM.h				\
@@ -134,11 +136,13 @@ CF_COMMON_SOURCES		= CFApplicationPreferences.c		\
 				  CFDate.c				\
 				  CFDictionary.c			\
 				  CFError.c				\
+				  CFFileDescriptor.c			\
 				  CFFileUtilities.c			\
 				  CFLocaleIdentifier.c			\
 				  CFLocale.c				\
 				  CFMachPort.c				\
 				  CFMessagePort.c			\
+				  CFNotificationCenter.c		\
 				  CFNumberFormatter.c			\
 				  CFNumber.c				\
 				  CFPlatform.c				\

@@ -16,7 +16,7 @@
 
   * Minor updates to CFRunLoopTimerExample and StringExample examples.
 
-  * Merged in David Cotter's <me@davidcotter.com> CF-Lite project,
+  * Merged in David Cotter's <me@davecotter.com> CF-Lite project,
     including his additional CFTest example.
 
   * Fixed support for writing binary property lists with patch from Stuart

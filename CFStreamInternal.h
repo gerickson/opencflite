@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -37,6 +37,7 @@
 #include <CoreFoundation/CFStreamPriv.h>
 #include <CoreFoundation/CFBase.h>
 #include <CoreFoundation/CFRuntime.h>
+#include <CoreFoundation/CoreFoundation_Prefix.h>
 
 CF_EXTERN_C_BEGIN
 

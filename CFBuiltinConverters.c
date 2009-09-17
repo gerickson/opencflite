@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,7 +31,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*	CFBuiltinConverters.c
-	Copyright 1999-2002, Apple, Inc. All rights reserved.
+	Copyright (c) 1999-2009, Apple Inc. All rights reserved.
 	Responsibility: Aki Inoue
 */
 
@@ -88,7 +88,7 @@ UniChar CFStringEncodingPrecomposeLatinCharacter(const UniChar *character, CFInd
             ++usedCharLen;
         }
         if (usedChars) (*usedChars) = usedCharLen;
-        return ch;
+        if (usedCharLen > 1) return ch;
     }
     return 0xFFFD;
 }

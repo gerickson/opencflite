@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,38 +31,40 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*	CFConcreteStreams.c
-	Copyright 2000-2002, Apple, Inc. All rights reserved.
+	Copyright (c) 2000-2009, Apple Inc. All rights reserved.
 	Responsibility: Becky Willrich
 */
 
-#define _DARWIN_UNLIMITED_SELECT 1
-
 #include "CFStreamInternal.h"
 #include "CFInternal.h"
-#include "CFPriv.h"
+#include <CoreFoundation/CFPriv.h>
 #include <CoreFoundation/CFNumber.h>
 #include <sys/types.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
 #include <stdio.h>
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX
 #include <sys/time.h>
 #include <unistd.h>
 #elif DEPLOYMENT_TARGET_WINDOWS
-#include <io.h>
 #define lseek _lseek
 #define open _open
 #define read _read
 #define write _write
 #define close _close
+#else
+#error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
 
 // On Unix, you can schedule an fd with the RunLoop by creating a CFSocket around it.  On Win32
 // files and sockets are not interchangeable, and we do cheapo scheduling, where the file is
 // always readable and writable until we hit EOF (similar to the way CFData streams are scheduled).
-#if DEPLOYMENT_TARGET_MACOSX
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 #define REAL_FILE_SCHEDULING (1)
+#elif DEPLOYMENT_TARGET_WINDOWS
+#else
+#error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
 
 #define SCHEDULE_AFTER_WRITE  (0)
@@ -115,10 +117,18 @@ static void constructCFSocket(_CFFileStreamContext *fileStream, Boolean forRead,
 #endif
 
 static Boolean constructFD(_CFFileStreamContext *fileStream, CFStreamError *error, Boolean forRead, struct _CFStream *stream) {
-    UInt8 path[1024];
     int flags = forRead ? O_RDONLY : (O_CREAT | O_TRUNC | O_WRONLY);
-
-    if (CFURLGetFileSystemRepresentation(fileStream->url, TRUE, path, 1024) == FALSE) {
+#if DEPLOYMENT_TARGET_WINDOWS
+    wchar_t path[CFMaxPathSize];
+    flags |= (_O_BINARY|_O_NOINHERIT);
+    if (_CFURLGetWideFileSystemRepresentation(fileStream->url, TRUE, path, CFMaxPathSize) == FALSE)
+#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+    char path[CFMaxPathSize];
+    if (CFURLGetFileSystemRepresentation(fileStream->url, TRUE, (UInt8 *)path, CFMaxPathSize) == FALSE)
+#else
+#error Unknown or unspecified DEPLOYMENT_TARGET
+#endif
+     {
         error->error = ENOENT;
         error->domain = kCFStreamErrorDomainPOSIX;
         return FALSE;
@@ -129,8 +139,11 @@ static Boolean constructFD(_CFFileStreamContext *fileStream, CFStreamError *erro
     }
     
     do {
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
         fileStream->fd = open((const char *)path, flags, 0666);
-        
+#elif DEPLOYMENT_TARGET_WINDOWS
+	fileStream->fd = _wopen(path, flags, 0666);
+#endif
         if (fileStream->fd < 0)
             break;
         

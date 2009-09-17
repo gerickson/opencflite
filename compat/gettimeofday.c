@@ -50,6 +50,10 @@
  * Includes
  */
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
 /* If we're going to include 'windows.h', then it has to be included first, so
  * as to put off the defintion of timeval in sys/time.h. Regrettably, the
  * WinSock header defines it without any conception of sys/time.h. Thanks MS!

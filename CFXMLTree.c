@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,7 +31,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*	CFXMLTree.c
-	Copyright 1999-2002, Apple, Inc. All rights reserved.
+	Copyright (c) 1999-2009, Apple Inc. All rights reserved.
 	Responsibility: Chris Parker
 */
 
@@ -248,7 +248,7 @@ static void _CFAppendXMLProlog(CFMutableStringRef str, const CFXMLTreeRef tree) 
     }
 }
 
-static void _CFAppendXMLEpilog(CFMutableStringRef str, const CFXMLTreeRef tree) {
+static void _CFAppendXMLEpilog(CFMutableStringRef str, CFXMLTreeRef tree) {
     CFXMLNodeTypeCode typeID = CFXMLNodeGetTypeCode(CFXMLTreeGetNode(tree));
     if (typeID == kCFXMLNodeTypeElement) {
         if (((CFXMLElementInfo *)CFXMLNodeGetInfoPtr(CFXMLTreeGetNode(tree)))->isEmpty) return;

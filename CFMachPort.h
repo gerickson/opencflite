@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,13 +31,13 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*	CFMachPort.h
-	Copyright (c) 1998-2007, Apple Inc. All rights reserved.
+	Copyright (c) 1998-2009, Apple Inc. All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFMACHPORT__)
 #define __COREFOUNDATION_CFMACHPORT__ 1
 
-#if DEPLOYMENT_TARGET_MACOSX
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 
 #include <CoreFoundation/CFRunLoop.h>
 #include <mach/port.h>
@@ -73,6 +73,6 @@ CF_EXPORT CFRunLoopSourceRef	CFMachPortCreateRunLoopSource(CFAllocatorRef alloca
 
 CF_EXTERN_C_END
 
-#endif /* DEPLOYMENT_TARGET_MACOSX */
-#endif /* ! __COREFOUNDATION_CFMACHPORT__ */
+#endif
 
+#endif /* ! __COREFOUNDATION_CFMACHPORT__ */

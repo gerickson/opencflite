@@ -68,7 +68,7 @@
 
 static char* if_indextoname (DWORD ifIndex, char* nameBuff);
 
-#define usleep(X)  Sleep(((X)+999)/1000)
+#define usleep(X)   Sleep(((X)+999)/1000)
 #define ns_t_ptr    12
 #define ns_c_in 1
 #else

@@ -1,5 +1,15 @@
 /*
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ *
+ * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
+ * the terms of the APSL version 2.0 (see below).
+ *
+ * For information about changes from the original Apple source release can be found by reviewing the
+ * source control system for the project at https://sourceforge.net/svn/?group_id=246198.
+ *
+ * The original license information is as follows:
+ * 
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -21,7 +31,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*	CFWindowsMessageQueue.h
-	Copyright (c) 1999-2007, Apple Inc. All rights reserved.
+	Copyright (c) 1999-2009, Apple Inc. All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFWINDOWSMESSAGEQUEUE__)
@@ -31,26 +41,21 @@
 
 #include <CoreFoundation/CFString.h>
 #include <CoreFoundation/CFRunLoop.h>
-#include <windows.h>
 
-
-CF_EXTERN_C_BEGIN
 
 typedef struct __CFWindowsMessageQueue * CFWindowsMessageQueueRef;
 
 CF_EXPORT CFTypeID	CFWindowsMessageQueueGetTypeID(void);
 
-CF_EXPORT CFWindowsMessageQueueRef	CFWindowsMessageQueueCreate(CFAllocatorRef allocator, DWORD mask);
+CF_EXPORT CFWindowsMessageQueueRef	CFWindowsMessageQueueCreate(CFAllocatorRef allocator, uint32_t /* DWORD */ mask);
 
-CF_EXPORT DWORD   CFWindowsMessageQueueGetMask(CFWindowsMessageQueueRef wmq);
-CF_EXPORT void    CFWindowsMessageQueueInvalidate(CFWindowsMessageQueueRef wmq);
-CF_EXPORT Boolean CFWindowsMessageQueueIsValid(CFWindowsMessageQueueRef wmq);
+CF_EXPORT uint32_t	CFWindowsMessageQueueGetMask(CFWindowsMessageQueueRef wmq);
+CF_EXPORT void		CFWindowsMessageQueueInvalidate(CFWindowsMessageQueueRef wmq);
+CF_EXPORT Boolean	CFWindowsMessageQueueIsValid(CFWindowsMessageQueueRef wmq);
 
 CF_EXPORT CFRunLoopSourceRef	CFWindowsMessageQueueCreateRunLoopSource(CFAllocatorRef allocator, CFWindowsMessageQueueRef wmq, CFIndex order);
 
-CF_EXTERN_C_END
-
-#endif /* DEPLOYMENT_TARGET_WINDOWS */
+#endif
 
 #endif /* ! __COREFOUNDATION_CFWINDOWSMESSAGEQUEUE__ */
 

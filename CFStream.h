@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,7 +31,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*	CFStream.h
-	Copyright (c) 2000-2007, Apple Inc. All rights reserved.
+	Copyright (c) 2000-2009, Apple Inc. All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFSTREAM__)

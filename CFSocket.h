@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,15 +31,17 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*	CFSocket.h
-	Copyright (c) 1999-2007, Apple Inc.  All rights reserved.
+	Copyright (c) 1999-2009, Apple Inc.  All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFSOCKET__)
 #define __COREFOUNDATION_CFSOCKET__ 1
 
-#ifdef WIN32
-// Avoid actually including <winsock2.h>, as it can screw up lots of data type definitions
-typedef unsigned int CFSocketNativeHandle;
+#include <TargetConditionals.h>
+
+#if TARGET_OS_WIN32
+#include <stdint.h>
+typedef uintptr_t CFSocketNativeHandle;
 #else
 typedef int CFSocketNativeHandle;
 #endif
@@ -164,6 +166,9 @@ enum {
     kCFSocketAutomaticallyReenableAcceptCallBack = 2,
     kCFSocketAutomaticallyReenableDataCallBack = 3,
     kCFSocketAutomaticallyReenableWriteCallBack = 8,
+#if MAC_OS_X_VERSION_10_5 <= MAC_OS_X_VERSION_MAX_ALLOWED
+    kCFSocketLeaveErrors = 64,
+#endif
     kCFSocketCloseOnInvalidate = 128
 };
 #endif

@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,7 +31,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*	CFDate.c
-	Copyright 1998-2002, Apple, Inc. All rights reserved.
+	Copyright (c) 1998-2009, Apple Inc. All rights reserved.
 	Responsibility: Christopher Kane
 */
 
@@ -43,22 +43,22 @@
 #include <CoreFoundation/CFNumber.h>
 #include "CFInternal.h"
 #include <math.h>
-#if DEPLOYMENT_TARGET_LINUX
-#include <time.h>
-#endif
-#if DEPLOYMENT_TARGET_MACOSX
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 #include <sys/time.h>
+#elif DEPLOYMENT_TARGET_LINUX
+#include <time.h>
+#elif DEPLOYMENT_TARGET_WINDOWS
+#else
+#error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
 
-#if defined(_MSC_VER)
-extern void gettimeofday(struct timeval *tv, void *dummy);
-#endif
-
-const CFTimeInterval kCFAbsoluteTimeIntervalSince1970 = 978307200.0L;
-const CFTimeInterval kCFAbsoluteTimeIntervalSince1904 = 3061152000.0L;
 
 /* cjk: The Julian Date for the reference date is 2451910.5,
         I think, in case that's ever useful. */
+
+
+const CFTimeInterval kCFAbsoluteTimeIntervalSince1970 = 978307200.0L;
+const CFTimeInterval kCFAbsoluteTimeIntervalSince1904 = 3061152000.0L;
 
 __private_extern__ double __CFTSRRate = 0.0;
 static double __CF1_TSRRate = 0.0;
@@ -83,73 +83,39 @@ __private_extern__ CFTimeInterval __CFTSRToTimeInterval(int64_t tsr) {
     return (CFTimeInterval)((double)tsr * __CF1_TSRRate);
 }
 
-#ifdef DEPLOYMENT_TARGET_WINDOWS
-__private_extern__ CFAbsoluteTime __CFDateWindowsSystemTimeToAbsoluteTime(SYSTEMTIME *the_time) {
-   // this song and dance seems to be required to get enough precision
-   // and date offset that the OSX version returns - steps were culled
-   // from the remarks section of RtlTimeToSecondsSince1970 in the
-   // msdn documentation
-
-   SYSTEMTIME darwin_epoch;
-   FILETIME also_the_time, also_epoch;
-   ULARGE_INTEGER also_also_the_time, also_also_epoch;
-
-   memset(&darwin_epoch, 0, sizeof(SYSTEMTIME));
-   SystemTimeToFileTime(the_time, &also_the_time);
-
-   // MSDN says casting a pointer from FILETIME to ULARGE_INTEGER* or __int64* can cause alignment faults on WIN64
-   also_also_the_time.LowPart = also_the_time.dwLowDateTime;
-   also_also_the_time.HighPart = also_the_time.dwHighDateTime;
-
-   darwin_epoch.wYear = 2001;
-   darwin_epoch.wMonth = 1;
-   darwin_epoch.wDay = 1;
-   SystemTimeToFileTime(&darwin_epoch, &also_epoch);
-   also_also_epoch.LowPart = also_epoch.dwLowDateTime;
-   also_also_epoch.HighPart = also_epoch.dwHighDateTime;
-
-   return((double)(also_also_the_time.QuadPart - also_also_epoch.QuadPart) / 10000000.0);
-}
-#endif // DEPLOYMENT_TARGET_WINDOWS
-
 CFAbsoluteTime CFAbsoluteTimeGetCurrent(void) {
     CFAbsoluteTime ret;
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_IPHONE
     struct timeval tv;
     gettimeofday(&tv, NULL);
     ret = (CFTimeInterval)tv.tv_sec - kCFAbsoluteTimeIntervalSince1970;
     ret += (1.0E-6 * (CFTimeInterval)tv.tv_usec);
-#elif DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_WINDOWS_SYNC || DEPLOYMENT_TARGET_CODE011
     FILETIME ft;
     GetSystemTimeAsFileTime(&ft);
     ret = _CFAbsoluteTimeFromFileTime(&ft);
 #else
-#error CFAbsoluteTimeGetCurrent unimplemented for this platform
+#error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
-   return ret;
+    return ret;
 }
 
 __private_extern__ void __CFDateInitialize(void) {
-#if DEPLOYMENT_TARGET_MACOSX
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_IPHONE
     struct mach_timebase_info info;
     mach_timebase_info(&info);
     __CFTSRRate = (1.0E9 / (double)info.numer) * (double)info.denom;
-#elif DEPLOYMENT_TARGET_WINDOWS
+    __CF1_TSRRate = 1.0 / __CFTSRRate;
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_WINDOWS_SYNC || DEPLOYMENT_TARGET_CODE011
     LARGE_INTEGER freq;
     if (!QueryPerformanceFrequency(&freq)) {
         HALT;
     }
     __CFTSRRate = (double)freq.QuadPart;
-#elif DEPLOYMENT_TARGET_LINUX
-	// On Linux, __CFReadTSR (see ForFoundation.h) is implemented on
-	// the POSIX RT clock_* APIs which work at nanosecond granularity
-	// (though not necessarily nanosecond resolution). Simply set the
-	// TSRRate to 1 ns.
-	__CFTSRRate = 1.0E9;
+    __CF1_TSRRate = 1.0 / __CFTSRRate;
 #else
-#warning "__CFTSRRate not initialized for this platform!"
+#error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
-	__CF1_TSRRate = 1.0 / __CFTSRRate;
     CFDateGetTypeID(); // cause side-effects
 }
 
@@ -229,6 +195,7 @@ CFComparisonResult CFDateCompare(CFDateRef date, CFDateRef otherDate, void *cont
     return kCFCompareEqualTo;
 }
 #endif
+
 
 CF_INLINE int32_t __CFDoubleModToInt(double d, int32_t modulus) {
     int32_t result = (int32_t)(float)floor(d - floor(d / modulus) * modulus);

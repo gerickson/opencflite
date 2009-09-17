@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,7 +31,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*	CFStringEncodingConverterExt.h
-	Copyright (c) 1998-2007, Apple Inc. All rights reserved.
+	Copyright (c) 1998-2009, Apple Inc. All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFSTRINGENCODINGCONVERETEREXT__)
@@ -48,7 +48,8 @@ enum {
     kCFStringEncodingConverterCheapEightBit = 1,
     kCFStringEncodingConverterStandardEightBit = 2,
     kCFStringEncodingConverterCheapMultiByte = 3,
-    kCFStringEncodingConverterPlatformSpecific = 4 // Other fields are ignored
+    kCFStringEncodingConverterPlatformSpecific = 4, // Other fields are ignored
+    kCFStringEncodingConverterICU = 5 // Other fields are ignored
 };
 
 /* kCFStringEncodingConverterStandard */
@@ -85,7 +86,6 @@ typedef struct {
     CFStringEncodingIsValidCombiningCharacterProc isValidCombiningChar;
 } CFStringEncodingConverter;
 
-
 extern const CFStringEncodingConverter *CFStringEncodingGetConverter(uint32_t encoding);
 
 enum {
@@ -100,8 +100,6 @@ extern const void *CFStringEncodingGetAddressForSelector(uint32_t selector);
 
 #define BOOTSTRAPFUNC_NAME	CFStringEncodingBootstrap
 typedef const CFStringEncodingConverter* (*CFStringEncodingBootstrapProc)(uint32_t encoding, const void *getSelector);
-
-extern uint32_t CFStringEncodingGetScriptCodeForEncoding(CFStringEncoding encoding);
 
 /* Latin precomposition */
 /* This function does not precompose recursively nor to U+01E0 and U+01E1.

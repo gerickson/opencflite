@@ -42,8 +42,8 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(SolutionDir)\dist\include&quot;;&quot;$(SolutionDir)\dist\include\CoreFoundation\GNUCompatibility&quot;;&quot;$(SolutionDir)&quot;;&quot;$(SolutionDir)\icu&quot;"
-				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;CFLITELIB_EXPORTS;DEPLOYMENT_TARGET_WINDOWS;WIN32_LEAN_AND_MEAN;__STDC_LIMIT_MACROS;CF_BUILDING_CF;_WIN32_WINNT=0x0500;WINVER=0x0500;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE"
+				AdditionalIncludeDirectories="&quot;$(SolutionDir)\dist\include&quot;;&quot;$(SolutionDir)\dist\include\CoreFoundation\GNUCompatibility&quot;;&quot;$(SolutionDir)&quot;;&quot;$(SolutionDir)\icu&quot;;&quot;$(SolutionDir)\objc4&quot;;&quot;$(SolutionDir)\pthreads\include&quot;"
+				PreprocessorDefinitions="WIN32;DEBUG;_DEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;_USRDLL;CFLITELIB_EXPORTS;DEPLOYMENT_TARGET_WINDOWS;__STDC_LIMIT_MACROS;CF_BUILDING_CF;_WIN32_WINNT=0x0500;WINVER=0x0500;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -64,12 +64,14 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="netapi32.lib ole32.lib ws2_32.lib kernel32.lib icuuc.lib icuin.lib rpcrt4.lib msvcrt.lib"
+				AdditionalDependencies="netapi32.lib ole32.lib ws2_32.lib kernel32.lib icuuc.lib icuin.lib rpcrt4.lib msvcrt.lib pthreadVC2.lib"
 				OutputFile="$(OutDir)\$(ProjectName)_$(ConfigurationName).dll"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="$(SolutionDir)\icu\lib"
+				AdditionalLibraryDirectories="&quot;$(SolutionDir)\icu\lib&quot;;&quot;$(SolutionDir)\dist\lib&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="2"
+				OptimizeReferences="1"
+				EnableCOMDATFolding="0"
 				ImportLibrary="$(SolutionDir)\dist\lib\$(TargetName).lib"
 				TargetMachine="1"
 			/>
@@ -97,7 +99,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(SolutionDir)\icu\bin\*.dll&quot; &quot;$(SolutionDir)\dist\bin\&quot;&#x0D;&#x0A;"
+				CommandLine="copy &quot;$(SolutionDir)\icu\bin\*.dll&quot; &quot;$(SolutionDir)\dist\bin\&quot;&#x0D;&#x0A;copy &quot;$(SolutionDir)\pthreads\bin\*.dll&quot; &quot;$(SolutionDir)\dist\bin\&quot;&#x0D;&#x0A;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFBundlePriv.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFBundle_BinaryTypes.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFBundle_Internal.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFCharacterSetPriv.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFError_Private.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFPriv.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFInternal.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFPlugIn_Factory.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFRunLoopPriv.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFRuntime.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFStorage.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFStreamAbstract.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFStreamPriv.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFStreamInternal.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFStringDefaultEncoding.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFStringEncodingConverter.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFStringEncodingConverterExt.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFStringEncodingConverterPriv.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFUniChar.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFUniCharPriv.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFUnicodeDecomposition.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFUnicodePrecomposition.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\ForFoundationOnly.h&quot;&#x0D;&#x0A;"
 			/>
 		</Configuration>
 		<Configuration
@@ -127,8 +129,8 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="&quot;$(SolutionDir)\dist\include&quot;;&quot;$(SolutionDir)\dist\include\CoreFoundation\GNUCompatibility&quot;;&quot;$(SolutionDir)&quot;;&quot;$(SolutionDir)\icu&quot;"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;CFLITELIB_EXPORTS;DEPLOYMENT_TARGET_WINDOWS;WIN32_LEAN_AND_MEAN;__STDC_LIMIT_MACROS;CF_BUILDING_CF;_WIN32_WINNT=0x0500;WINVER=0x0500;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE"
+				AdditionalIncludeDirectories="&quot;$(SolutionDir)\dist\include&quot;;&quot;$(SolutionDir)\dist\include\CoreFoundation\GNUCompatibility&quot;;&quot;$(SolutionDir)&quot;;&quot;$(SolutionDir)\icu&quot;;&quot;$(SolutionDir)\objc4&quot;;&quot;$(SolutionDir)\pthreads\include&quot;"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;_USRDLL;CFLITELIB_EXPORTS;DEPLOYMENT_TARGET_WINDOWS;__STDC_LIMIT_MACROS;CF_BUILDING_CF;_WIN32_WINNT=0x0500;WINVER=0x0500;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
@@ -147,13 +149,13 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="netapi32.lib ole32.lib ws2_32.lib kernel32.lib icuuc.lib icuin.lib rpcrt4.lib msvcrt.lib"
+				AdditionalDependencies="netapi32.lib ole32.lib ws2_32.lib kernel32.lib icuuc.lib icuin.lib rpcrt4.lib msvcrt.lib pthreadVC2.lib"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="$(SolutionDir)\icu\lib"
+				AdditionalLibraryDirectories="&quot;$(SolutionDir)\icu\lib&quot;;&quot;$(SolutionDir)\dist\lib&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="2"
-				OptimizeReferences="2"
-				EnableCOMDATFolding="2"
+				OptimizeReferences="1"
+				EnableCOMDATFolding="0"
 				ImportLibrary="$(SolutionDir)\dist\lib\$(TargetName).lib"
 				TargetMachine="1"
 			/>
@@ -181,7 +183,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(SolutionDir)\icu\bin\*.dll&quot; &quot;$(SolutionDir)\dist\bin\&quot;&#x0D;&#x0A;"
+				CommandLine="copy &quot;$(SolutionDir)\icu\bin\*.dll&quot; &quot;$(SolutionDir)\dist\bin\&quot;&#x0D;&#x0A;copy &quot;$(SolutionDir)\pthreads\bin\*.dll&quot; &quot;$(SolutionDir)\dist\bin\&quot;&#x0D;&#x0A;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFBundlePriv.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFBundle_BinaryTypes.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFBundle_Internal.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFCharacterSetPriv.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFError_Private.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFPriv.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFInternal.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFPlugIn_Factory.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFRunLoopPriv.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFRuntime.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFStorage.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFStreamAbstract.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFStreamPriv.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFStreamInternal.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFStringDefaultEncoding.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFStringEncodingConverter.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFStringEncodingConverterExt.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFStringEncodingConverterPriv.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFUniChar.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFUniCharPriv.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFUnicodeDecomposition.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\CFUnicodePrecomposition.h&quot;&#x0D;&#x0A;del /F &quot;$(SolutionDir)\dist\include\CoreFoundation\ForFoundationOnly.h&quot;&#x0D;&#x0A;"
 			/>
 		</Configuration>
 	</Configurations>
@@ -270,6 +272,24 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						CompileAs="2"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\CFBasicHash.m"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
 					/>
 				</FileConfiguration>
 			</File>
@@ -594,6 +614,26 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\CFICUConverters.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
 				RelativePath="..\CFLocale.c"
 				>
 				<FileConfiguration
@@ -615,6 +655,26 @@
 			</File>
 			<File
 				RelativePath="..\CFLocaleIdentifier.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\CFLocaleKeys.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -735,6 +795,26 @@
 			</File>
 			<File
 				RelativePath="..\CFPlatform.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\CFPlatformConverters.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -1055,6 +1135,26 @@
 			</File>
 			<File
 				RelativePath="..\CFStringEncodingConverter.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\CFStringEncodingDatabase.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -1499,14 +1599,6 @@
 				<File
 					RelativePath="..\compat\dirent.c"
 					>
-				</File>
-				<File
-					RelativePath="..\compat\dirent.h"
-					>
-				</File>
-				<File
-					RelativePath="..\compat\flsl.c"
-					>
 					<FileConfiguration
 						Name="Debug|Win32"
 						>
@@ -1523,6 +1615,10 @@
 							CompileAs="2"
 						/>
 					</FileConfiguration>
+				</File>
+				<File
+					RelativePath="..\compat\dirent.h"
+					>
 				</File>
 				<File
 					RelativePath="..\compat\gettimeofday.c"
@@ -1608,6 +1704,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\CFBasicHash.h"
+				>
+			</File>
+			<File
 				RelativePath="..\CFBinaryHeap.h"
 				>
 			</File>
@@ -1673,6 +1773,10 @@
 			</File>
 			<File
 				RelativePath="..\CFFileDescriptor.h"
+				>
+			</File>
+			<File
+				RelativePath="..\CFICUConverters.h"
 				>
 			</File>
 			<File
@@ -1792,6 +1896,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\CFStringEncodingDatabase.h"
+				>
+			</File>
+			<File
 				RelativePath="..\CFStringEncodingExt.h"
 				>
 			</File>
@@ -1853,6 +1961,10 @@
 			</File>
 			<File
 				RelativePath="..\CoreFoundation.h"
+				>
+			</File>
+			<File
+				RelativePath="..\CoreFoundation_Prefix.h"
 				>
 			</File>
 			<File

@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,7 +31,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*	CFSystemDirectories.c
-	Copyright 1997-2002, Apple, Inc. All rights reserved.
+	Copyright (c) 1997-2009, Apple Inc. All rights reserved.
 	Responsibility: Ali Ozer
 */
 
@@ -45,12 +45,7 @@
 #include <CoreFoundation/CFPriv.h>
 #include "CFInternal.h"
 
-#if DEPLOYMENT_TARGET_WINDOWS
-extern size_t strlcpy(char *dst, const char *src, size_t siz);
-extern size_t strlcat(char *dst, const char *src, size_t siz);
-#endif
-
-#if DEPLOYMENT_TARGET_MACOSX
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 
 /* We use the System framework implementation on Mach.
 */
@@ -109,7 +104,7 @@ CFSearchPathEnumerationState __CFGetNextSearchPathEnumeration(CFSearchPathEnumer
 #endif
 
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC || DEPLOYMENT_TARGET_WINDOWS
 
 CFArrayRef CFCopySearchPathForDirectoriesInDomains(CFSearchPathDirectory directory, CFSearchPathDomainMask domainMask, Boolean expandTilde) {
     CFMutableArrayRef array;
@@ -120,28 +115,28 @@ CFArrayRef CFCopySearchPathForDirectoriesInDomains(CFSearchPathDirectory directo
     array = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, &kCFTypeArrayCallBacks);
     state = __CFStartSearchPathEnumeration(directory, domainMask);
     while ((state = __CFGetNextSearchPathEnumeration(state, (uint8_t *)cPath, sizeof(cPath)))) {
-        CFURLRef url = NULL;
-        if (expandTilde && (cPath[0] == '~')) {
-            if (homeLen < 0) {
-                CFURLRef homeURL = CFCopyHomeDirectoryURLForUser(NULL);
-                if (homeURL) {
-                    CFURLGetFileSystemRepresentation(homeURL, true, (uint8_t *)home, CFMaxPathSize);
-                    homeLen = (CFIndex)strlen(home);
-                    CFRelease(homeURL);
-                }
-            }
+	CFURLRef url = NULL;
+	if (expandTilde && (cPath[0] == '~')) {
+	    if (homeLen < 0) {
+		CFURLRef homeURL = CFCopyHomeDirectoryURLForUser(NULL);
+		if (homeURL) {
+		    CFURLGetFileSystemRepresentation(homeURL, true, (uint8_t *)home, CFMaxPathSize);
+		    homeLen = (CFIndex)strlen(home);
+		    CFRelease(homeURL);
+		}
+	    }
             if (homeLen + strlen(cPath) < CFMaxPathSize) {
-                home[homeLen] = '\0';
-                strlcat(home, &cPath[1], sizeof(home));
-                url = CFURLCreateFromFileSystemRepresentation(kCFAllocatorSystemDefault, (uint8_t *)home, (CFIndex)strlen(home), true);
-            }
-        } else {
-            url = CFURLCreateFromFileSystemRepresentation(kCFAllocatorSystemDefault, (uint8_t *)cPath, (CFIndex)strlen(cPath), true);
-        }
-        if (url) {
-            CFArrayAppendValue(array, url);
-            CFRelease(url);
-        }
+		home[homeLen] = '\0';
+		strlcat(home, &cPath[1], sizeof(home));
+		url = CFURLCreateFromFileSystemRepresentation(kCFAllocatorSystemDefault, (uint8_t *)home, strlen(home), true);
+	    }
+	} else {
+	    url = CFURLCreateFromFileSystemRepresentation(kCFAllocatorSystemDefault, (uint8_t *)cPath, strlen(cPath), true);
+	}
+	if (url) {
+	    CFArrayAppendValue(array, url);
+	    CFRelease(url);
+	}
     }
     return array;
 }

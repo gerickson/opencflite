@@ -701,12 +701,12 @@ private:
      * Create a ZoneStringFormat by locale if not yet availble
      */
     void initZoneStringFormat(void);
-    
+
     /**
      * Create zone strings array by locale if not yet available
      */
     void initZoneStringsArray(void);
-    
+
     /**
      * Delete just the zone strings.
      */

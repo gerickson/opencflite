@@ -598,7 +598,7 @@ void __CFDarwinAddNotification( CFStringRef name, CFHashCode hash, CFHashCode ig
 	CFIndex length = CFStringGetLength(name);
    STACK_BUFFER_DECL(char, buffer, ++length);
 	CFStringGetCString(name, buffer, length, kCFStringEncodingASCII);
-	int token;
+	int token = 0;
 #if DEPLOYMENT_TARGET_MACOSX
 	mach_port_t port = CFMachPortGetPort(__CFDarwinInfo.port);
 	

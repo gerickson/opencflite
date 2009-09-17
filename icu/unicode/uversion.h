@@ -74,7 +74,7 @@
  *  This value will change in the subsequent releases of ICU
  *  @stable ICU 2.4
  */
-#define U_ICU_VERSION_PATCHLEVEL_NUM 1
+#define U_ICU_VERSION_PATCHLEVEL_NUM 0
 
 /** The current ICU build level version as an integer.  
  *  This value is for use by ICU clients. It defaults to 0.
@@ -95,7 +95,7 @@
  *  This value will change in the subsequent releases of ICU
  *  @stable ICU 2.4
  */
-#define U_ICU_VERSION "4.0.1"
+#define U_ICU_VERSION "4.0"
 
 /** The current ICU library major/minor version as a string without dots, for library name suffixes. 
  *  This value will change in the subsequent releases of ICU
@@ -159,14 +159,14 @@ typedef uint8_t UVersionInfo[U_MAX_VERSION_LENGTH];
 
 /* Define namespace symbols if the compiler supports it. */
 #if U_HAVE_NAMESPACE && defined(XP_CPLUSPLUS)
-#  if U_DISABLE_RENAMING
+#   if U_DISABLE_RENAMING
 #       define U_ICU_NAMESPACE icu
         namespace U_ICU_NAMESPACE { }
-#  else
+#   else
 #       define U_ICU_NAMESPACE icu_4_0
         namespace U_ICU_NAMESPACE { }
         namespace icu = U_ICU_NAMESPACE;
-#  endif
+#   endif
 
 #   define U_NAMESPACE_BEGIN namespace U_ICU_NAMESPACE {
 #   define U_NAMESPACE_END  }

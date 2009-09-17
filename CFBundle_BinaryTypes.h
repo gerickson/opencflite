@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,7 +31,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*	CFBundle_BinaryTypes.h
-	Copyright (c) 1999-2007, Apple Inc.  All rights reserved.
+	Copyright (c) 1999-2009, Apple Inc.  All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFBUNDLE_BINARYTYPES__)
@@ -41,11 +41,14 @@ CF_EXTERN_C_BEGIN
 
 
 #if DEPLOYMENT_TARGET_MACOSX
-#if !defined(DISABLE_DYLD_USAGE)
 #define BINARY_SUPPORT_DYLD 1
-#endif
-#if !defined(DISABLE_DLFCN_USAGE)
 #define BINARY_SUPPORT_DLFCN 1
+#define USE_DYLD_PRIV 1
+#elif DEPLOYMENT_TARGET_EMBEDDED
+#define BINARY_SUPPORT_DYLD 1
+#define BINARY_SUPPORT_DLFCN 1
+#if !defined(TARGET_IPHONE_SIMULATOR)
+#define USE_DYLD_PRIV 1
 #endif
 #elif DEPLOYMENT_TARGET_WINDOWS
 #define BINARY_SUPPORT_DLL 1

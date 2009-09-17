@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,7 +31,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*	CFStream.c
-	Copyright 2000-2002, Apple, Inc. All rights reserved.
+	Copyright (c) 2000-2009, Apple Inc. All rights reserved.
 	Responsibility: Becky Willrich
 */
 
@@ -516,90 +516,103 @@ static void _signalEventSync(struct _CFStream* stream, CFOptionFlags whatToSigna
     CFOptionFlags eventMask;
 
     __CFBitSet(stream->flags, CALLING_CLIENT);
-    
+
+    void* info = NULL;
+    void (*release) (void*) = NULL;
+
+    if (stream->client->cbContext.retain == NULL)
+	info = stream->client->cbContext.info;
+    else {
+	info = stream->client->cbContext.retain(stream->client->cbContext.info);
+	release = stream->client->cbContext.release;
+    }
+
     for (eventMask = 1; eventMask <= whatToSignal; eventMask = eventMask << 1) {
 	if ((eventMask & whatToSignal) && (stream->client->when & eventMask)) {
-	    stream->client->cb(stream, eventMask, stream->client->cbContext.info);
+	    stream->client->cb(stream, eventMask, info);
 	    
 	    /* What happens if the callback sets the client to NULL?  We're in a loop here... Hmm. */
 	    /* After writing that comment, I see: <rdar://problem/6793636> CFReadStreamSetClient(..., NULL) unsafely releases info pointer immediately */
 	}
     }
-    
+
+    if (release)
+	(*release) (info);
+
     __CFBitClear(stream->flags, CALLING_CLIENT);
 }
 
 static void _cfstream_solo_signalEventSync(void* info)
 {
     CFTypeID typeID = CFGetTypeID((CFTypeRef) info);
-
+    
     if (typeID != CFReadStreamGetTypeID() && typeID != CFWriteStreamGetTypeID()) {
-        CFLog(__kCFLogAssertion, CFSTR("Expected an read or write stream for %p"), info);
+	CFLog(__kCFLogAssertion, CFSTR("Expected an read or write stream for %p"), info);
 #if defined(DEBUG)
-        abort();
+	abort();
 #endif
     } else {
-        struct _CFStream* stream = (struct _CFStream*) info;
-        CFOptionFlags whatToSignal = stream->client->whatToSignal;
-        stream->client->whatToSignal = 0;
-
+	struct _CFStream* stream = (struct _CFStream*) info;
+	CFOptionFlags whatToSignal = stream->client->whatToSignal;
+	stream->client->whatToSignal = 0;
+	
 	/* Since the array version holds a retain, we do it here as well, as opposed to taking a second retain in the client callback */
 	CFRetain(stream);
 	_signalEventSync(stream, whatToSignal);
 	CFRelease(stream);
     }
 }
-    
+
 static void _cfstream_shared_signalEventSync(void* info)
 {
     CFTypeID typeID = CFGetTypeID((CFTypeRef) info);
-
+    
     if (typeID != CFArrayGetTypeID()) {
-        CFLog(__kCFLogAssertion, CFSTR("Expected an array for %p"), info);
+	CFLog(__kCFLogAssertion, CFSTR("Expected an array for %p"), info);
 #if defined(DEBUG)
-        abort();
+	abort();
 #endif
     } else {
-        CFMutableArrayRef list = (CFMutableArrayRef)info;
-        CFIndex c, i;
-        CFOptionFlags whatToSignal = 0;
-        struct _CFStream* stream = NULL;
-
-        __CFSpinLock(&sSourceLock);
-
+	CFMutableArrayRef list = (CFMutableArrayRef) info;
+	CFIndex c, i;
+	CFOptionFlags whatToSignal = 0;
+	struct _CFStream* stream = NULL;
+	
+	__CFSpinLock(&sSourceLock);
+	
 	/* Looks like, we grab the first stream that wants an event... */
 	/* Note that I grab an extra retain when I pull out the stream here... */
-        c = CFArrayGetCount(list);
-        for (i = 0; i < c; i++) {
-            struct _CFStream* s = (struct _CFStream*)CFArrayGetValueAtIndex(list, i);
+	c = CFArrayGetCount(list);
+	for (i = 0; i < c; i++) {
+	    struct _CFStream* s = (struct _CFStream*)CFArrayGetValueAtIndex(list, i);
 	    
-            if (s->client->whatToSignal) {
-                stream = s;
-                CFRetain(stream);
-                whatToSignal = stream->client->whatToSignal;
-                s->client->whatToSignal = 0;
-                break;
-            }
-        }
-        
+	    if (s->client->whatToSignal) {
+		stream = s;
+		CFRetain(stream);
+		whatToSignal = stream->client->whatToSignal;
+		s->client->whatToSignal = 0;
+		break;
+	    }
+	}
+	
 	/* And then we also signal any other streams in this array so that we get them next go? */
 	for (; i < c;  i++) {
-            struct _CFStream* s = (struct _CFStream*)CFArrayGetValueAtIndex(list, i);
-            if (s->client->whatToSignal) {
-                CFRunLoopSourceSignal(s->client->rlSource);
-                break;
-            }
-        }
-
-        __CFSpinUnlock(&sSourceLock);
-
-        /* We're sitting here now, possibly with a stream that needs to be processed by the common routine */
-        if (stream) {
-            _signalEventSync(stream, whatToSignal);
-
-            /* Lose our extra retain */
-            CFRelease(stream);
-        }
+	    struct _CFStream* s = (struct _CFStream*)CFArrayGetValueAtIndex(list, i);
+	    if (s->client->whatToSignal) {
+		CFRunLoopSourceSignal(s->client->rlSource);
+		break;
+	    }
+	}
+	
+	__CFSpinUnlock(&sSourceLock);
+	
+	/* We're sitting here now, possibly with a stream that needs to be processed by the common routine */
+	if (stream) {
+	    _signalEventSync(stream, whatToSignal);
+	    
+	    /* Lose our extra retain */
+	    CFRelease(stream);
+	}
     }
 }
 
@@ -827,6 +840,9 @@ __private_extern__ Boolean _CFStreamOpen(struct _CFStream *stream) {
             }
             _CFStreamScheduleEvent(stream, kCFStreamEventOpenCompleted);
         } else {
+#if DEPLOYMENT_TARGET_WINDOWS
+            _CFStreamClose(stream);
+#endif
             _CFStreamSetStatusCode(stream, kCFStreamStatusError);
             _CFStreamScheduleEvent(stream, kCFStreamEventErrorOccurred);
         }
@@ -1222,10 +1238,10 @@ __private_extern__ void _CFStreamScheduleWithRunLoop(struct _CFStream *stream, C
                 0,
                 NULL,
                 CFRetain,
-                CFRelease,
+		CFRelease,
                 (CFStringRef(*)(const void *))CFCopyDescription,
-                NULL,
-                NULL,
+		NULL,
+		NULL,
                 NULL,
                 NULL,
                 (void(*)(void *))_cfstream_shared_signalEventSync
@@ -1253,7 +1269,7 @@ __private_extern__ void _CFStreamScheduleWithRunLoop(struct _CFStream *stream, C
     }
     else if (__CFBitIsSet(stream->flags, SHARED_SOURCE)) {
         /* We were sharing, but now we'll get our own source */
-        
+	
         CFArrayRef runLoopAndSourceKey;
         CFMutableArrayRef listOfStreamsSharingASource;
         CFIndex c, i;
@@ -1580,9 +1596,9 @@ CF_EXPORT CFIndex _CFStreamInstanceSize(void) {
     return sizeof(struct _CFStream);
 }
 
-#if DEPLOYMENT_TARGET_WINDOWS
-
-__private_extern__ void __CFStreamCleanup(void) {
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#elif DEPLOYMENT_TARGET_WINDOWS
+void __CFStreamCleanup(void) {
     __CFSpinLock(&sSourceLock);
     if (sSharedSources) {
         CFIndex count = CFDictionaryGetCount(sSharedSources);
@@ -1592,12 +1608,25 @@ __private_extern__ void __CFStreamCleanup(void) {
             // dict to remove themselves, which leads to a deadlock.
             CFRelease(sSharedSources);
             sSharedSources = NULL;
-        } else
-            fprintf(stderr, "*** CFNetwork is shutting down, but %ld streams are still scheduled.\n", count);
+        } else {
+            const void ** keys = (const void **)malloc(sizeof(const void *) * count);
+#if defined(DEBUG)
+            int i;
+#endif
+            CFDictionaryGetKeysAndValues(sSharedSources, keys, NULL);
+             fprintf(stderr, "*** CFNetwork is shutting down, but %ld streams are still scheduled.\n", count);
+#if defined(DEBUG)
+            for (i = 0; i < count;i ++) {
+                if ((CFGetTypeID(keys[i]) == __kCFReadStreamTypeID) || (CFGetTypeID(keys[i]) == __kCFWriteStreamTypeID)) {
+                    CFShow(keys[i]);
+                }
+            }
+#endif
+        }
     }
     __CFSpinUnlock(&sSourceLock);
 }
-
+#else
+#error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
-
 

@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -34,6 +34,8 @@
 	Copyright 2004-2004, Apple Computer, Inc. All rights reserved.
 	Responsibility: Christopher Kane
 */
+
+
 
 #include <CoreFoundation/CFCalendar.h>
 #include <CoreFoundation/CFRuntime.h>
@@ -973,11 +975,7 @@ Boolean CFCalendarComposeAbsoluteTime(CFCalendarRef calendar, /* out */ CFAbsolu
     CF_OBJC_FUNCDISPATCH3(CFCalendarGetTypeID(), Boolean, calendar, "_composeAbsoluteTime:::", atp, componentDesc, args);
     __CFGenericValidateType(calendar, CFCalendarGetTypeID());
     int idx, cnt = (int)strlen((char *)componentDesc);
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
     STACK_BUFFER_DECL(int, vector, cnt);
-#else
-    int vector[256]; // Dynamic stack allocation is GNU specific
-#endif
     for (idx = 0; idx < cnt; idx++) {
 	int arg = va_arg(args, int);
 	vector[idx] = arg;
@@ -992,14 +990,10 @@ Boolean CFCalendarDecomposeAbsoluteTime(CFCalendarRef calendar, CFAbsoluteTime a
     CF_OBJC_FUNCDISPATCH3(CFCalendarGetTypeID(), Boolean, calendar, "_decomposeAbsoluteTime:::", at, componentDesc, args);
     __CFGenericValidateType(calendar, CFCalendarGetTypeID());
     int idx, cnt = (int)strlen((char *)componentDesc);
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
     STACK_BUFFER_DECL(int *, vector, cnt);
-#else
-    int* vector[256]; // Dynamic stack allocation is GNU specific
-#endif
     for (idx = 0; idx < cnt; idx++) {
-        int *arg = va_arg(args, int *);
-        vector[idx] = arg;
+	int *arg = va_arg(args, int *);
+	vector[idx] = arg;
     }
     va_end(args);
     return _CFCalendarDecomposeAbsoluteTimeV(calendar, at, componentDesc, vector, cnt);
@@ -1011,14 +1005,10 @@ Boolean CFCalendarAddComponents(CFCalendarRef calendar, /* inout */ CFAbsoluteTi
     CF_OBJC_FUNCDISPATCH4(CFCalendarGetTypeID(), Boolean, calendar, "_addComponents::::", atp, options, componentDesc, args);
     __CFGenericValidateType(calendar, CFCalendarGetTypeID());
     int idx, cnt = (int)strlen((char *)componentDesc);
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
     STACK_BUFFER_DECL(int, vector, cnt);
-#else
-    int vector[256]; // Dynamic stack allocation is GNU specific
-#endif
     for (idx = 0; idx < cnt; idx++) {
-        int arg = va_arg(args, int);
-        vector[idx] = arg;
+	int arg = va_arg(args, int);
+	vector[idx] = arg;
     }
     va_end(args);
     return _CFCalendarAddComponentsV(calendar, atp, options, componentDesc, vector, cnt);    
@@ -1030,14 +1020,10 @@ Boolean CFCalendarGetComponentDifference(CFCalendarRef calendar, CFAbsoluteTime 
     CF_OBJC_FUNCDISPATCH5(CFCalendarGetTypeID(), Boolean, calendar, "_diffComponents:::::", startingAT, resultAT, options, componentDesc, args);
     __CFGenericValidateType(calendar, CFCalendarGetTypeID());
     int idx, cnt = (int)strlen((char *)componentDesc);
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
     STACK_BUFFER_DECL(int *, vector, cnt);
-#else
-    int* vector[256]; // Dynamic stack allocation is GNU specific
-#endif
     for (idx = 0; idx < cnt; idx++) {
-        int *arg = va_arg(args, int *);
-        vector[idx] = arg;
+	int *arg = va_arg(args, int *);
+	vector[idx] = arg;
     }
     va_end(args);
     Boolean ret = _CFCalendarGetComponentDifferenceV(calendar, startingAT, resultAT, options, componentDesc, vector, cnt);
@@ -1072,6 +1058,7 @@ Boolean CFCalendarGetTimeRangeOfUnit(CFCalendarRef calendar, CFCalendarUnit unit
 	    return true;
 	}
     }
+
     return false;
 }
 

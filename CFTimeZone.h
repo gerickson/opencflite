@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,7 +31,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*	CFTimeZone.h
-	Copyright (c) 1998-2007, Apple Inc. All rights reserved.
+	Copyright (c) 1998-2009, Apple Inc. All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFTIMEZONE__)
@@ -86,12 +86,6 @@ CF_EXPORT
 CFDataRef CFTimeZoneGetData(CFTimeZoneRef tz);
 
 CF_EXPORT
-CFTimeInterval CFTimeZoneGetDSTOffset(CFTimeZoneRef tz, CFAbsoluteTime at);
-
-CF_EXPORT
-CFAbsoluteTime CFTimeZoneGetNextDSTSwitch(CFTimeZoneRef tz, CFAbsoluteTime at);
-
-CF_EXPORT
 CFTimeInterval CFTimeZoneGetSecondsFromGMT(CFTimeZoneRef tz, CFAbsoluteTime at);
 
 CF_EXPORT
@@ -111,7 +105,9 @@ enum {
 	kCFTimeZoneNameStyleStandard,
 	kCFTimeZoneNameStyleShortStandard,
 	kCFTimeZoneNameStyleDaylightSaving,
-	kCFTimeZoneNameStyleShortDaylightSaving
+	kCFTimeZoneNameStyleShortDaylightSaving,
+	kCFTimeZoneNameStyleGeneric,
+	kCFTimeZoneNameStyleShortGeneric
 };
 typedef CFIndex CFTimeZoneNameStyle;
 

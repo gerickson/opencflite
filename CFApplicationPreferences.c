@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,7 +31,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*	CFApplicationPreferences.c
-	Copyright 1998-2002, Apple, Inc. All rights reserved.
+	Copyright (c) 1998-2009, Apple Inc. All rights reserved.
 	Responsibility: Chris Parker
 */
 
@@ -44,7 +44,7 @@
 #include <CoreFoundation/CFNumberFormatter.h>
 #include <CoreFoundation/CFDateFormatter.h>
 #include <sys/types.h>
-#if __MACH__
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 #include <unistd.h>
 #endif
 

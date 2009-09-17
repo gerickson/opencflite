@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,7 +31,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*	CFXMLPreferencesDomain.c
-	Copyright 1998-2002, Apple, Inc. All rights reserved.
+	Copyright (c) 1998-2009, Apple Inc. All rights reserved.
 	Responsibility: Chris Parker
 */
 
@@ -48,8 +48,6 @@
 #include <sys/stat.h>
 #include <mach/mach.h>
 #include <mach/mach_syscalls.h>
-#elif DEPLOYMENT_TARGET_WINDOWS
-#include <windows.h>
 #endif
 
 Boolean __CFPreferencesShouldWriteXML(void);
@@ -76,15 +74,15 @@ __private_extern__ const _CFPreferencesDomainCallBacks __kCFXMLPropertyListDomai
 
 // Directly ripped from Foundation....
 static void __CFMilliSleep(uint32_t msecs) {
-#if defined(__svr4__) || defined(__hpux__)
+#if DEPLOYMENT_TARGET_WINDOWS
+    SleepEx(msecs, false);
+#elif defined(__svr4__) || defined(__hpux__)
     sleep((msecs + 900) / 1000);
 #elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX
     struct timespec input;
     input.tv_sec = msecs / 1000;
     input.tv_nsec = (msecs - input.tv_sec * 1000) * 1000000;
     nanosleep(&input, NULL);
-#elif DEPLOYMENT_TARGET_WINDOWS
-    Sleep((msecs + 900) / 1000);
 #else
 #error Dont know how to define sleep for this platform
 #endif
@@ -148,7 +146,7 @@ static void *createXMLDomain(CFAllocatorRef allocator, CFTypeRef context) {
     domain->_lastReadTime = 0.0;
     domain->_domainDict = NULL;
     domain->_dirtyKeys = CFArrayCreateMutable(allocator, 0, & kCFTypeArrayCallBacks);
-    const CFSpinLock_t lock = CFSpinLockInit;
+	const CFSpinLock_t lock = CFSpinLockInit;
     domain->_lock = lock;
     domain->_isWorldReadable = false;
     return domain;

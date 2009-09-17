@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2008 Apple Inc. All rights reserved.
+ * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,7 +31,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 /*	CFXMLNode.c
-	Copyright 1998-2002, Apple, Inc. All rights reserved.
+	Copyright (c) 1998-2009, Apple Inc. All rights reserved.
 	Responsibility: Chris Parker
 */
 
@@ -139,7 +139,7 @@ static CFHashCode __CFXMLNodeHash(CFTypeRef  cf) {
     }
     if (node->dataTypeID == kCFXMLNodeTypeDocument) {
         CFURLRef url = ((CFXMLDocumentInfo *)node->additionalData)->sourceURL;
-        return url ? CFHash(url) : (CFHashCode)cf;
+        return url ? (CFHashCode)CFHash(url) : (CFHashCode)cf;
     } else {
         CFAssert2(false, __kCFLogAssertion, "%s(): Saw unexpected XML type code %d", __PRETTY_FUNCTION__, node->dataTypeID);
         return (CFHashCode)cf;

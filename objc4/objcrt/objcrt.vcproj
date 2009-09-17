@@ -23,7 +23,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="cl /nologo /c /MDd /D_DEBUG /Od /Zl /DYNAMICBASE /GS /I&quot;$(ProjectDir)\runtime&quot; /I&quot;$(SolutionDir)\include&quot; /I&quot;$(ProjectDir)\runtime&quot; /D&quot;_WINDOWS&quot; /Dnil=0 ..\runtime\objcrt.c /Fo&quot;$(OutDir)\objcrt_debug.obj"
+				CommandLine="cl /nologo /c /MDd /D_DEBUG /Od /Zl /DYNAMICBASE /GS /I&quot;$(ProjectDir)\runtime&quot; /I&quot;$(SolutionDir)\include&quot; /I&quot;$(SolutionDir)\dist\include&quot; /I&quot;$(ProjectDir)\runtime&quot; /D&quot;_WINDOWS&quot; /Dnil=0 ..\runtime\objcrt.c /Fo&quot;$(OutDir)\objcrt_debug.obj"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -46,7 +46,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="cl /nologo /c /MD /O1 /Zi /MP2 /DYNAMICBASE /GS /I&quot;$(ProjectDir)\runtime&quot; /I&quot;$(SolutionDir)\include&quot; /I&quot;$(ProjectDir)\..\runtime&quot; /D&quot;_WINDOWS&quot; /Dnil=0 ..\runtime\objcrt.c /Fo&quot;$(OutDir)\objcrt.obj"
+				CommandLine="cl /nologo /c /MD /O1 /Zi /MP2 /DYNAMICBASE /GS /I&quot;$(ProjectDir)\runtime&quot; /I&quot;$(SolutionDir)\include&quot; /I&quot;$(SolutionDir)\dist\include&quot; /I&quot;$(ProjectDir)\..\runtime&quot; /D&quot;_WINDOWS&quot; /Dnil=0 ..\runtime\objcrt.c /Fo&quot;$(OutDir)\objcrt.obj"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"

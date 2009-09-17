@@ -118,6 +118,7 @@
 #define DEPLOYMENT_TARGET_MACOSX 1
 #elif (defined (_WIN32) || defined(__WIN32__)) && defined(_MSC_VER) && !defined(DEPLOYMENT_TARGET_WINDOWS)
 #define DEPLOYMENT_TARGET_WINDOWS 1
+#define DEPLOYMENT_TARGET_WINDOWS_SYNC 1
 #elif (defined(linux) || defined(__linux) || defined (__linux__)) && !defined(DEPLOYMENT_TARGET_LINUX)
 #define DEPLOYMENT_TARGET_LINUX 1
 #endif

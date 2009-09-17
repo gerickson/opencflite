@@ -42,7 +42,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(ProjectDir)\runtime&quot;;&quot;$(SolutionDir)\include&quot;"
+				AdditionalIncludeDirectories="&quot;$(ProjectDir)\runtime&quot;;&quot;$(SolutionDir)\include&quot;;&quot;$(SolutionDir)\dist\include&quot;"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;OBJC_EXPORTS;BUILDING_OBJC;__WIN32__;_CRT_SECURE_NO_DEPRECATE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -126,7 +126,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="&quot;$(ProjectDir)\runtime&quot;;&quot;$(SolutionDir)\include&quot;"
+				AdditionalIncludeDirectories="&quot;$(ProjectDir)\runtime&quot;;&quot;$(SolutionDir)\include&quot;;&quot;$(SolutionDir)\dist\include&quot;"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;OBJC_EXPORTS;BUILDING_OBJC;__WIN32__;_CRT_SECURE_NO_DEPRECATE"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
@@ -207,7 +207,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(ProjectDir)\runtime&quot;;&quot;$(SolutionDir)\include&quot;"
+				AdditionalIncludeDirectories="&quot;$(ProjectDir)\runtime&quot;;&quot;$(SolutionDir)\include&quot;;&quot;$(SolutionDir)\dist\include&quot;"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;OBJC_EXPORTS;BUILDING_OBJC;__WIN32__;_CRT_SECURE_NO_DEPRECATE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"

@@ -537,6 +537,35 @@ void CFSetApplyFunction(CFHashRef hc, CFSetApplierFunction applier, any_pointer_
 #endif
             return (Boolean)true;
         });
+#else // blockless!
+
+#if CFDictionary
+    CFIndex cnt = CFDictionaryGetCount(hc);
+    STACK_BUFFER_DECL(any_t, keys, cnt);
+    STACK_BUFFER_DECL(any_t, values, cnt);
+    CFDictionaryGetKeysAndValues(hc, (const void **)keys, (const void **)values);
+#elif CFSet
+    CFIndex cnt = CFSetGetCount(hc);
+    STACK_BUFFER_DECL(any_t, values, cnt);
+    CFSetGetValues(hc, (const void **)values);
+#elif CFBag
+    CFIndex cnt = CFBagGetCount(hc);
+    STACK_BUFFER_DECL(any_t, values, cnt);
+    CFBagGetValues(hc, (const void **)values);
+#endif
+
+    for (CFIndex idx = 0; idx < cnt; idx++) {
+#if CFDictionary
+        INVOKE_CALLBACK3(applier, (const_any_pointer_t)keys[idx], (const_any_pointer_t)values[idx], context);
+#endif
+#if CFSet
+        INVOKE_CALLBACK2(applier, (const_any_pointer_t)values[idx], context);
+#elif CFBag
+        for (CFIndex cntVal = CFBagGetCountOfValue(hc, (const void*)values[idx]); cntVal--;) {
+            INVOKE_CALLBACK2(applier, (const_any_pointer_t)values[idx], context);
+        }
+#endif
+    }
 #endif
 }
 

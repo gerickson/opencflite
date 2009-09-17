@@ -1076,13 +1076,13 @@ void CFTimeZoneSetAbbreviationDictionary(CFDictionaryRef dict) {
 		CFDictionaryRemoveValue(__CFTimeZoneCache, (CFStringRef)key);
 	    }
 #else
-        CFIndex count, idx;
-        count = CFDictionaryGetCount(__CFTimeZoneAbbreviationDict);
-        CFTypeRef *keys = (CFTypeRef *)malloc(sizeof(CFTypeRef *) * count);
-        for (idx = 0; idx < count; idx++) {
+		CFIndex cnt = CFDictionaryGetCount(__CFTimeZoneAbbreviationDict);
+		STACK_BUFFER_DECL(CFStringRef, keys, cnt);
+		STACK_BUFFER_DECL(CFStringRef, values, cnt);
+		CFDictionaryGetKeysAndValues(__CFTimeZoneAbbreviationDict, (const void **)keys, (const void **)values);
+        for (CFIndex idx = 0; idx < cnt; idx++) {
             CFDictionaryRemoveValue(__CFTimeZoneCache, (CFStringRef)keys[idx]);
         }
-        free(keys);
 #endif
 	    CFRelease(__CFTimeZoneAbbreviationDict);
 	}

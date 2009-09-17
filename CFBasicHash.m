@@ -886,10 +886,13 @@ __private_extern__ CFIndex CFBasicHashGetCountOfValue(CFBasicHashRef ht, uintptr
         });
 #else
     CFIndex total = 0L;
-    CFIndex cnt = CFBasicHashGetNumBuckets(ht);
-    for (CFIndex idx = 0; idx < cnt; ++idx) {
+    CFIndex used = (CFIndex)ht->bits.used_buckets, cnt = (CFIndex)__CFBasicHashTableSizes[ht->bits.num_buckets_idx];
+    for (CFIndex idx = 0; 0 < used && idx < cnt; idx++) {
         CFBasicHashBucket bkt = CFBasicHashGetBucket(ht, idx);
-        if ((stack_value == bkt.weak_value) || __CFBasicHashTestEqualValue(ht, bkt.weak_value, stack_value)) total += bkt.count;
+        if (0 < bkt.count) {
+            if ((stack_value == bkt.weak_value) || __CFBasicHashTestEqualValue(ht, bkt.weak_value, stack_value)) total += bkt.count;
+            used--;
+        }
     }
 #endif
     return total;
@@ -916,19 +919,22 @@ __private_extern__ Boolean CFBasicHashesAreEqual(CFBasicHashRef ht1, CFBasicHash
 #else
     Boolean equal = true;
 
-    CFIndex cnt = CFBasicHashGetNumBuckets(ht1);
-    for (CFIndex idx = 0; idx < cnt; ++idx) {
+    CFIndex used = (CFIndex)ht1->bits.used_buckets, cnt = (CFIndex)__CFBasicHashTableSizes[ht1->bits.num_buckets_idx];
+    for (CFIndex idx = 0; 0 < used && idx < cnt; idx++) {
         CFBasicHashBucket bkt1 = CFBasicHashGetBucket(ht1, idx);
-        CFBasicHashBucket bkt2 = __CFBasicHashFindBucket(ht2, bkt1.weak_key);
-        if (bkt1.count != bkt2.count) {
-            equal = false;
-            break;
-        }
+        if (0 < bkt1.count) {        
+			CFBasicHashBucket bkt2 = __CFBasicHashFindBucket(ht2, bkt1.weak_key);
+			if (bkt1.count != bkt2.count) {
+				equal = false;
+				break;
+			}
 
-        if (equal && (0 != ht1->bits.keys_offset) && (bkt1.weak_value != bkt2.weak_value) && !__CFBasicHashTestEqualValue(ht1, bkt1.weak_value, bkt2.weak_value)) {
-            equal = false;
-            break;
-        }
+			if ((0 != ht1->bits.keys_offset) && (bkt1.weak_value != bkt2.weak_value) && !__CFBasicHashTestEqualValue(ht1, bkt1.weak_value, bkt2.weak_value)) {
+				equal = false;
+				break;
+			}
+			used--;
+		}
     }
 #endif
     return equal;
@@ -1546,27 +1552,30 @@ __private_extern__ CFStringRef CFBasicHashCopyDescription(CFBasicHashRef ht, Boo
             return (Boolean)true;
         });
 #else
-    CFIndex cnt = CFBasicHashGetNumBuckets(ht);
-    for (CFIndex idx = 0; idx < cnt; ++idx) {
+    CFIndex used = (CFIndex)ht->bits.used_buckets, cnt = (CFIndex)__CFBasicHashTableSizes[ht->bits.num_buckets_idx];
+    for (CFIndex idx = 0; 0 < used && idx < cnt; idx++) {
         CFBasicHashBucket bkt = CFBasicHashGetBucket(ht, idx);
-        CFStringRef vDesc = NULL, kDesc = NULL;
-        CFBasicHashCallbackType cb = ht->callbacks->func;
-        if (!describeElements) cb = __CFBasicHashNullCallback;
-        vDesc = (CFStringRef)cb(ht, kCFBasicHashCallbackOpDescribeValue, bkt.weak_value, 0, ht->callbacks);
-        if (0 != ht->bits.keys_offset) {
-            kDesc = (CFStringRef)cb(ht, kCFBasicHashCallbackOpDescribeKey, bkt.weak_key, 0, ht->callbacks);
-        }
-        if ((0 != ht->bits.keys_offset) && (0 != ht->bits.counts_offset)) {
-            CFStringAppendFormat(result, NULL, CFSTR("%@%ld : %@ = %@ (%ld)\n"), entryPrefix, bkt.idx, kDesc, vDesc, bkt.count);
-        } else if (0 != ht->bits.keys_offset) {
-            CFStringAppendFormat(result, NULL, CFSTR("%@%ld : %@ = %@\n"), entryPrefix, bkt.idx, kDesc, vDesc);
-        } else if (0 != ht->bits.counts_offset) {
-            CFStringAppendFormat(result, NULL, CFSTR("%@%ld : %@ (%ld)\n"), entryPrefix, bkt.idx, vDesc, bkt.count);
-        } else {
-            CFStringAppendFormat(result, NULL, CFSTR("%@%ld : %@\n"), entryPrefix, bkt.idx, vDesc);
-        }
-        if (kDesc) CFRelease(kDesc);
-        if (vDesc) CFRelease(vDesc);
+        if (0 < bkt.count) {
+			CFStringRef vDesc = NULL, kDesc = NULL;
+			CFBasicHashCallbackType cb = ht->callbacks->func;
+			if (!describeElements) cb = __CFBasicHashNullCallback;
+			vDesc = (CFStringRef)cb(ht, kCFBasicHashCallbackOpDescribeValue, bkt.weak_value, 0, ht->callbacks);
+			if (0 != ht->bits.keys_offset) {
+				kDesc = (CFStringRef)cb(ht, kCFBasicHashCallbackOpDescribeKey, bkt.weak_key, 0, ht->callbacks);
+			}
+			if ((0 != ht->bits.keys_offset) && (0 != ht->bits.counts_offset)) {
+				CFStringAppendFormat(result, NULL, CFSTR("%@%ld : %@ = %@ (%ld)\n"), entryPrefix, bkt.idx, kDesc, vDesc, bkt.count);
+			} else if (0 != ht->bits.keys_offset) {
+				CFStringAppendFormat(result, NULL, CFSTR("%@%ld : %@ = %@\n"), entryPrefix, bkt.idx, kDesc, vDesc);
+			} else if (0 != ht->bits.counts_offset) {
+				CFStringAppendFormat(result, NULL, CFSTR("%@%ld : %@ (%ld)\n"), entryPrefix, bkt.idx, vDesc, bkt.count);
+			} else {
+				CFStringAppendFormat(result, NULL, CFSTR("%@%ld : %@\n"), entryPrefix, bkt.idx, vDesc);
+			}
+			if (kDesc) CFRelease(kDesc);
+			if (vDesc) CFRelease(vDesc);
+            used--;
+		}
     }
 #endif
     CFStringAppendFormat(result, NULL, CFSTR("%@}\n"), prefix);

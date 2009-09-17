@@ -53,6 +53,8 @@ typedef CFIndex INDEX_TYPE;
 typedef CFComparisonResult CMP_RESULT_TYPE;
 #if __BLOCKS__
 typedef CMP_RESULT_TYPE (^COMPARATOR_BLOCK)(VALUE_TYPE, VALUE_TYPE);
+#else
+typedef CFComparisonResult (*Comparison_Func)(VALUE_TYPE, VALUE_TYPE);
 #endif
 
 /*
@@ -71,6 +73,10 @@ when the initial short-circuiting compare is not done.
 11	26.2857
 12	29.9524
 */
+
+CMP_RESULT_TYPE __CFNaturallyStableComparison (CFComparatorFunction comparator, void* context, void* list, CFIndex elementSize, CFIndex a, CFIndex b) {
+	return comparator((char *)list + a * elementSize, (char *)list + b * elementSize, context);
+}
 
 #if __BLOCKS__
 static void __CFSimpleMerge(VALUE_TYPE listp[], INDEX_TYPE cnt1, INDEX_TYPE cnt2, VALUE_TYPE tmp[], COMPARATOR_BLOCK cmp) {
@@ -106,7 +112,43 @@ static void __CFSimpleMerge(VALUE_TYPE listp[], INDEX_TYPE cnt1, INDEX_TYPE cnt2
         idx++;
     }
 }
+#else
+static void __CFSimpleMerge(VALUE_TYPE listp[], INDEX_TYPE cnt1, INDEX_TYPE cnt2, VALUE_TYPE tmp[], void* origList, CFIndex elementSize, CFComparatorFunction comparator, void* context) {
+    if (cnt1 <= 0 || cnt2 <= 0) return;
+    // if the last element of listp1 <= the first of listp2, lists are already ordered
+    if (16 < cnt1 + cnt2 && __CFNaturallyStableComparison(comparator, context, origList, elementSize, listp[cnt1 - 1], listp[cnt1]) <= 0) return;
 
+    INDEX_TYPE idx = 0, idx1 = 0, idx2 = cnt1;
+    for (;;) {
+        if (cnt1 <= idx1) {
+            while (idx--) {
+                listp[idx] = tmp[idx];
+            }
+            return;
+        }
+        if (cnt1 + cnt2 <= idx2) {
+            for (INDEX_TYPE t = cnt1 + cnt2 - 1; idx <= t; t--) {
+                listp[t] = listp[t - cnt2];
+            }
+            while (idx--) {
+                listp[idx] = tmp[idx];
+            }
+            return;
+        }
+        VALUE_TYPE v1 = listp[idx1], v2 = listp[idx2];
+        if (__CFNaturallyStableComparison(comparator, context, origList, elementSize, v1, v2) <= 0) {
+            tmp[idx] = v1;
+            idx1++;
+        } else {
+            tmp[idx] = v2;
+            idx2++;
+        }
+        idx++;
+    }
+}
+#endif
+
+#if __BLOCKS__
 static void __CFSimpleMergeSort(VALUE_TYPE listp[], INDEX_TYPE cnt, VALUE_TYPE tmp[], COMPARATOR_BLOCK cmp) {
     if (cnt < 2) {
         /* do nothing */
@@ -141,6 +183,43 @@ static void __CFSimpleMergeSort(VALUE_TYPE listp[], INDEX_TYPE cnt, VALUE_TYPE t
         __CFSimpleMergeSort(listp, half_cnt, tmp, cmp);
         __CFSimpleMergeSort(listp + half_cnt, cnt - half_cnt, tmp, cmp);
         __CFSimpleMerge(listp, half_cnt, cnt - half_cnt, tmp, cmp);
+    }
+}
+#else
+static void __CFSimpleMergeSort(VALUE_TYPE listp[], INDEX_TYPE cnt, VALUE_TYPE tmp[], void* origList, CFIndex elementSize, CFComparatorFunction comparator, void* context) {
+    if (cnt < 2) {
+        /* do nothing */
+    } else if (2 == cnt) {
+        VALUE_TYPE v0 = listp[0], v1 = listp[1];
+        if (0 < __CFNaturallyStableComparison(comparator, context, origList, elementSize, v0, v1)) {
+            listp[0] = v1;
+            listp[1] = v0;
+        }
+    } else if (3 == cnt) {
+        VALUE_TYPE v0 = listp[0], v1 = listp[1], v2 = listp[2], vt;
+        if (0 < __CFNaturallyStableComparison(comparator, context, origList, elementSize, v0, v1)) {
+            vt = v0;
+            v0 = v1;
+            v1 = vt;
+        }
+        if (0 < __CFNaturallyStableComparison(comparator, context, origList, elementSize, v1, v2)) {
+            vt = v1;
+            v1 = v2;
+            v2 = vt;
+            if (0 < __CFNaturallyStableComparison(comparator, context, origList, elementSize, v0, v1)) {
+                vt = v0;
+                v0 = v1;
+                v1 = vt;
+            }
+        }
+        listp[0] = v0;
+        listp[1] = v1;
+        listp[2] = v2;
+    } else {
+        INDEX_TYPE half_cnt = cnt / 2;
+        __CFSimpleMergeSort(listp, half_cnt, tmp, origList, elementSize, comparator, context);
+        __CFSimpleMergeSort(listp + half_cnt, cnt - half_cnt, tmp, origList, elementSize, comparator, context);
+        __CFSimpleMerge(listp, half_cnt, cnt - half_cnt, tmp, origList, elementSize, comparator, context);
     }
 }
 #endif
@@ -312,6 +391,20 @@ CFIndex *CFSortIndexes(CFIndex count, CFOptionFlags opts, CFComparisonResult (^c
     if (local != tmp) free(tmp);
     return idxs;
 }
+#else // No blocks
+// returns an array of indexes (of length count) giving the indexes 0 - count-1, as sorted by the comparator block
+CFIndex *CFSortIndexes(CFIndex count, CFOptionFlags opts, void *list, CFIndex elementSize, CFComparatorFunction comparator, void *context) {
+    if (count < 1) return NULL;
+    if (INTPTR_MAX / sizeof(CFIndex) < count) return NULL;
+    CFIndex *idxs = (CFIndex *)malloc(count * sizeof(CFIndex));
+    if (!idxs) return NULL;
+    for (CFIndex idx = 0; idx < count; idx++) idxs[idx] = idx;
+    STACK_BUFFER_DECL(VALUE_TYPE, local, count <= 16384 ? count : 1);
+    VALUE_TYPE *tmp = (count <= 16384) ? local : (VALUE_TYPE *)malloc(count * sizeof(VALUE_TYPE));
+    __CFSimpleMergeSort(idxs, count, tmp, list, elementSize, comparator, context);
+    if (local != tmp) free(tmp);
+    return idxs;
+}
 #endif
 
 /* Comparator is passed the address of the values. */
@@ -320,7 +413,7 @@ void CFQSortArray(void *list, CFIndex count, CFIndex elementSize, CFComparatorFu
 #if __BLOCKS__
     CFIndex *indexes = CFSortIndexes(count, 0, ^(CFIndex a, CFIndex b) { return comparator((char *)list + a * elementSize, (char *)list + b * elementSize, context); }); // naturally stable
 #else
-    CFIndex *indexes = 0; //CFSortIndexes(count, 0, ^(CFIndex a, CFIndex b) { return comparator((char *)list + a * elementSize, (char *)list + b * elementSize, context); }); // naturally stable
+    CFIndex *indexes = CFSortIndexes(count, 0, list, elementSize, comparator, context);
 #endif
     void *store = malloc(count * elementSize);
     for (CFIndex idx = 0; idx < count; idx++) {
@@ -344,7 +437,7 @@ void CFMergeSortArray(void *list, CFIndex count, CFIndex elementSize, CFComparat
 #if __BLOCKS__
     CFIndex *indexes = CFSortIndexes(count, kCFSortStable, ^(CFIndex a, CFIndex b) { return comparator((char *)list + a * elementSize, (char *)list + b * elementSize, context); }); // naturally stable
 #else
-    CFIndex *indexes = 0;
+    CFIndex *indexes = CFSortIndexes(count, kCFSortStable, list, elementSize, comparator, context);
 #endif
     void *store = malloc(count * elementSize);
     for (CFIndex idx = 0; idx < count; idx++) {

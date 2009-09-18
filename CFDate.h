@@ -126,6 +126,11 @@ SInt32 CFAbsoluteTimeGetDayOfYear(CFAbsoluteTime at, CFTimeZoneRef tz);
 CF_EXPORT
 SInt32 CFAbsoluteTimeGetWeekOfYear(CFAbsoluteTime at, CFTimeZoneRef tz);
 
+#if DEPLOYMENT_TARGET_WINDOWS
+CF_EXPORT
+uint64_t mach_absolute_time();
+#endif
+
 CF_EXTERN_C_END
 
 #endif /* ! __COREFOUNDATION_CFDATE__ */

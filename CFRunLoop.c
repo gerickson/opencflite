@@ -2376,8 +2376,12 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
         // If we're about to timeout, but we just did a zero-timeout poll that only found our own
         // internal wakeup signal on the first look at the portset, we'll go around the loop one
         // more time, so as not to starve a v1 source that was just added along with a runloop wakeup.
-        } else if (0 != returnValue || (uint64_t)termTSR <= __CFReadTSR()) {
-	    returnValue = kCFRunLoopRunTimedOut;
+    } else if (0 != returnValue || (uint64_t)termTSR <= (uint64_t)__CFReadTSR()) {
+
+	//termTSR = (int64_t)__CFReadTSR() + __CFTimeIntervalToTSR(seconds);
+        
+        
+        returnValue = kCFRunLoopRunTimedOut;
 	} else if (__CFRunLoopIsStopped(rl)) {
             __CFRunLoopUnsetStopped(rl);
 	    returnValue = kCFRunLoopRunStopped;

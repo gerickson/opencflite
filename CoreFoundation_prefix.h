@@ -227,7 +227,7 @@ CF_INLINE size_t malloc_size(void *memblock) {
     return _msize(memblock);
 }
 
-#define mach_absolute_time() ((uint64_t)(CFAbsoluteTimeGetCurrent() * 1000000000.0))
+//#define mach_absolute_time() ((uint64_t)(CFAbsoluteTimeGetCurrent() * 1000000000.0))
 
 extern int pthread_main_np();
 

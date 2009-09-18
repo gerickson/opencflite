@@ -72,6 +72,11 @@ CFAbsoluteTime _CFAbsoluteTimeFromFileTime(const FILETIME *ft) {
     /* seconds between 1601 and 1970, 1970 and 2001 */
     return ret;
 }
+
+uint64_t mach_absolute_time () {
+    CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
+    return __CFTimeIntervalToTSR((CFTimeInterval)now);
+}
 #endif
 
 __private_extern__ int64_t __CFTimeIntervalToTSR(CFTimeInterval ti) {

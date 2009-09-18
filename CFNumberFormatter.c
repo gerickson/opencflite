@@ -1040,6 +1040,7 @@ CFTypeRef CFNumberFormatterCopyProperty(CFNumberFormatterRef formatter, CFString
     return NULL;
 }
 
+
 Boolean CFNumberFormatterGetDecimalInfoForCurrencyCode(CFStringRef currencyCode, int32_t *defaultFractionDigits, double *roundingIncrement) {
     UChar ubuffer[4];
     __CFGenericValidateType(currencyCode, CFStringGetTypeID());

@@ -453,6 +453,7 @@ CF_EXPORT uintptr_t __CFDoExternRefOperation(uintptr_t op, id obj) {
     return 0;
 }
 
+
 CFTypeID __CFGenericTypeID(const void *cf) {
     return (*(uint32_t *)(((CFRuntimeBase *)cf)->_cfinfo) >> 8) & 0xFFFF;
 }
@@ -830,10 +831,13 @@ extern void __CFStringInitialize(void);
 extern void __CFArrayInitialize(void);
 extern void __CFBooleanInitialize(void);
 extern void __CFCharacterSetInitialize(void);
+extern void __CFLocaleInitialize(void);
 extern void __CFDataInitialize(void);
+extern void __CFDateInitialize(void);
 extern void __CFNumberInitialize(void);
 extern void __CFStorageInitialize(void);
 extern void __CFErrorInitialize(void);
+extern void __CFTimeZoneInitialize(void);
 extern void __CFTreeInitialize(void);
 extern void __CFURLInitialize(void);
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
@@ -856,6 +860,8 @@ extern void __CFWindowsNamedPipeInitialize(void);
 extern void __CFBaseCleanup(void);
 #endif
 extern void __CFStreamInitialize(void);
+extern void __CFPreferencesDomainInitialize(void);
+extern void __CFUserNotificationInitialize(void);
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 __private_extern__ uint8_t __CF120290 = false;
@@ -1064,9 +1070,16 @@ void __CFInitialize(void) {
         __CFBooleanInitialize();	// See above for hard-coding of this position
         __CFNumberInitialize();		// See above for hard-coding of this position
 
+        __CFDateInitialize();	// just initializes the time goo
+//	_CFRuntimeBridgeClasses(CFDateGetTypeID(), objc_lookUpClass("NSCFDate") ? "NSCFDate" : "__NSCFDate");
+        __CFTimeZoneInitialize();
+//	_CFRuntimeBridgeClasses(CFTimeZoneGetTypeID(), "NSCFTimeZone");
         __CFBinaryHeapInitialize();
         __CFBitVectorInitialize();
         __CFCharacterSetInitialize();
+#if DEPLOYMENT_TARGET_WINDOWS
+        __CFLocaleInitialize();
+#endif
         __CFStorageInitialize();
         __CFErrorInitialize();
         __CFTreeInitialize();
@@ -1082,6 +1095,7 @@ void __CFInitialize(void) {
         __CFMachPortInitialize();
 #endif
         __CFStreamInitialize();
+        __CFPreferencesDomainInitialize();
         __CFRunLoopInitialize();
         __CFRunLoopObserverInitialize();
         __CFRunLoopSourceInitialize();

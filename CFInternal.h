@@ -212,12 +212,14 @@ extern DWORD __CFTSDKey;
 /*
 // implemented in windowsSyncHelper.c
 __private_extern__ __CFThreadSpecificData *__CFGetThreadSpecificData_inline(void);
-*/
+
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 extern pthread_key_t __CFTSDKey;
 #elif DEPLOYMENT_TARGET_WINDOWS
+//extern pthread_key_t __CFTSDKey;
 extern DWORD __CFTSDKey;
 #endif
+*/
 
 //extern void *pthread_getspecific(pthread_key_t key);
 
@@ -593,7 +595,6 @@ extern __declspec(dllimport) id objc_msgSend(id, SEL, ...);
 #endif
 
 extern void * (*__CFSendObjCMsg)(const void *, SEL, ...);
-
 
 CF_INLINE Boolean CF_IS_OBJC(CFTypeID typeID, const void *obj) {
     return (typeID >= __CFRuntimeClassTableSize) || (((CFRuntimeBase *)obj)->_cfisa != __CFISAForTypeID(typeID) && ((CFRuntimeBase *)obj)->_cfisa > (uintptr_t)0xFFF);

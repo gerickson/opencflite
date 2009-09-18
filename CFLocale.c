@@ -248,7 +248,7 @@ static const CFRuntimeClass __CFLocaleClass = {
     __CFLocaleCopyDescription
 };
 
-static void __CFLocaleInitialize(void) {
+__private_extern__ void __CFLocaleInitialize(void) {
     CFIndex idx;
     __kCFLocaleTypeID = _CFRuntimeRegisterClass(&__CFLocaleClass);
     for (idx = 0; idx < __kCFLocaleKeyTableCount; idx++) {

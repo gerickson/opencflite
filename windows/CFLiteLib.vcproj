@@ -694,6 +694,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\CFLocaleKeys.m"
+				>
+			</File>
+			<File
 				RelativePath="..\CFMachPort.c"
 				>
 				<FileConfiguration

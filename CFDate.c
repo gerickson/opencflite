@@ -105,17 +105,22 @@ __private_extern__ void __CFDateInitialize(void) {
     struct mach_timebase_info info;
     mach_timebase_info(&info);
     __CFTSRRate = (1.0E9 / (double)info.numer) * (double)info.denom;
-    __CF1_TSRRate = 1.0 / __CFTSRRate;
 #elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_WINDOWS_SYNC || DEPLOYMENT_TARGET_CODE011
     LARGE_INTEGER freq;
     if (!QueryPerformanceFrequency(&freq)) {
         HALT;
     }
     __CFTSRRate = (double)freq.QuadPart;
-    __CF1_TSRRate = 1.0 / __CFTSRRate;
+#elif DEPLOYMENT_TARGET_LINUX
+	// On Linux, __CFReadTSR (see ForFoundation.h) is implemented on
+	// the POSIX RT clock_* APIs which work at nanosecond granularity
+	// (though not necessarily nanosecond resolution). Simply set the
+	// TSRRate to 1 ns.
+	__CFTSRRate = 1.0E9;
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
+    __CF1_TSRRate = 1.0 / __CFTSRRate;
     CFDateGetTypeID(); // cause side-effects
 }
 

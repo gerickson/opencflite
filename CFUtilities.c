@@ -627,7 +627,7 @@ static void _CFShowToFile(FILE *file, Boolean flush, const void *obj) {
          } else {
              fprintf_l(file, NULL, "\\u%04x", ch);
          }
-#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED|| DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 		 if (ch < 128) {
              _fprintf_l(file, "%c", NULL, ch);
 	     lastNL = (ch == '\n');
@@ -648,7 +648,7 @@ static void _CFShowToFile(FILE *file, Boolean flush, const void *obj) {
              OutputDebugStringA(outStr);
          } else {
 		 _fprintf_l(file, "\n", NULL);
-#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
          fprintf_l(file, NULL, "\n");
 #endif
 #if DEPLOYMENT_TARGET_WINDOWS

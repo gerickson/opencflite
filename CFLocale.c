@@ -52,13 +52,13 @@
 #include <unicode/uset.h>           // ICU Unicode sets
 #include <unicode/putil.h>          // ICU low-level utilities
 #include <unicode/umsg.h>           // ICU message formatting
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 #include <CoreFoundation/CFNumberFormatter.h>
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 #include <dispatch/dispatch.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unicode/ucol.h>
-#elif DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #include <stdio.h>
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
@@ -294,7 +294,7 @@ static CFLocaleRef __CFLocaleCurrent = NULL;
 #define FALLBACK_LOCALE_NAME CFSTR("")
 #elif DEPLOYMENT_TARGET_EMBEDDED
 #define FALLBACK_LOCALE_NAME CFSTR("en_US")
-#elif DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS  || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #define FALLBACK_LOCALE_NAME CFSTR("en_US")
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
@@ -952,7 +952,7 @@ static bool __CFLocaleCopyUsesMetric(CFLocaleRef locale, bool user, CFTypeRef *c
 	    }
 	}
     }
-#elif DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
@@ -986,11 +986,10 @@ static bool __CFLocaleCopyMeasurementSystem(CFLocaleRef locale, bool user, CFTyp
 
 static bool __CFLocaleCopyNumberFormat(CFLocaleRef locale, bool user, CFTypeRef *cf, CFStringRef context) {
     CFStringRef str = NULL;
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     CFNumberFormatterRef nf = CFNumberFormatterCreate(kCFAllocatorSystemDefault, locale, kCFNumberFormatterDecimalStyle);
-    str = nf ? CFNumberFormatterCopyProperty(nf, context) : NULL;
+    str = nf ? (CFStringRef)CFNumberFormatterCopyProperty(nf, context) : NULL;
     if (nf) CFRelease(nf);
-#elif DEPLOYMENT_TARGET_WINDOWS
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
@@ -1005,11 +1004,10 @@ static bool __CFLocaleCopyNumberFormat(CFLocaleRef locale, bool user, CFTypeRef 
 // so we have to have another routine here which creates a Currency number formatter.
 static bool __CFLocaleCopyNumberFormat2(CFLocaleRef locale, bool user, CFTypeRef *cf, CFStringRef context) {
     CFStringRef str = NULL;
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     CFNumberFormatterRef nf = CFNumberFormatterCreate(kCFAllocatorSystemDefault, locale, kCFNumberFormatterCurrencyStyle);
-    str = nf ? CFNumberFormatterCopyProperty(nf, context) : NULL;
+    str = nf ? (CFStringRef)CFNumberFormatterCopyProperty(nf, context) : NULL;
     if (nf) CFRelease(nf);
-#elif DEPLOYMENT_TARGET_WINDOWS
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif

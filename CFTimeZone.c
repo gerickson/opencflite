@@ -56,7 +56,6 @@
 #include <sys/fcntl.h>
 #include <tzfile.h>
 #elif DEPLOYMENT_TARGET_WINDOWS
-#include "runtime/objc-api.h"
 #include <objc/objc.h>
 #include <windows.h>
 #include <winreg.h>
@@ -161,7 +160,7 @@ static CFMutableArrayRef __CFCopyWindowsTimeZoneList() {
     RegCloseKey(hkResult);
     return result;
 }
-#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED  || DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED  || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
 static CFMutableArrayRef __CFCopyRecursiveDirectoryList() {
     CFMutableArrayRef result = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, &kCFTypeArrayCallBacks);
 #if DEPLOYMENT_TARGET_WINDOWS
@@ -741,7 +740,7 @@ void __InitTZStrings(void) {
 }
 #endif
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC || DEPLOYMENT_TARGET_LINUX
 static CFTimeZoneRef __CFTimeZoneCreateSystem(void) {
     CFTimeZoneRef result = NULL;
     
@@ -1132,7 +1131,7 @@ CFTimeZoneRef CFTimeZoneCreate(CFAllocatorRef allocator, CFStringRef name, CFDat
     return memory;
 }
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 static CFTimeZoneRef __CFTimeZoneCreateFixed(CFAllocatorRef allocator, int32_t seconds, CFStringRef name, int isDST) {
     CFTimeZoneRef result;
     CFDataRef data;
@@ -1195,7 +1194,7 @@ CFTimeZoneRef CFTimeZoneCreateWithTimeIntervalFromGMT(CFAllocatorRef allocator, 
     seconds -= ((ti < 0) ? -hour : hour) * 3600;
     minute = (ti < 0) ? (-seconds / 60) : (seconds / 60);
     if (fabs(ti) < 1.0) {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 	name = (CFStringRef)CFRetain(CFSTR("GMT"));
 #elif DEPLOYMENT_TARGET_WINDOWS_SAFARI || DEPLOYMENT_TARGET_WINDOWS
         name = (CFStringRef)CFRetain(CFSTR("Greenwich Standard Time"));
@@ -1253,7 +1252,7 @@ CFTimeZoneRef CFTimeZoneCreateWithName(CFAllocatorRef allocator, CFStringRef nam
 	    }
 	}
     }
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     CFURLRef baseURL, tempURL;
     void *bytes;
     CFIndex length;
@@ -1472,7 +1471,7 @@ BOOL __CFTimeZoneGetWin32SystemTime(SYSTEMTIME * sys_time, CFAbsoluteTime time)
 #endif
 
 CFTimeInterval CFTimeZoneGetSecondsFromGMT(CFTimeZoneRef tz, CFAbsoluteTime at) {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     CFIndex idx;
     CF_OBJC_FUNCDISPATCH1(CFTimeZoneGetTypeID(), CFTimeInterval, tz, "_secondsFromGMTForAbsoluteTime:", at);
     __CFGenericValidateType(tz, CFTimeZoneGetTypeID());
@@ -1563,7 +1562,7 @@ CFIndex __CFTimeZoneInitAbbrev(CFTimeZoneRef tz) {
 
     return 0;
 }
-#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC
+#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
@@ -1573,7 +1572,7 @@ CFStringRef CFTimeZoneCopyAbbreviation(CFTimeZoneRef tz, CFAbsoluteTime at) {
     CFIndex idx;
     CF_OBJC_FUNCDISPATCH1(CFTimeZoneGetTypeID(), CFStringRef, tz, "_abbreviationForAbsoluteTime:", at);
     __CFGenericValidateType(tz, CFTimeZoneGetTypeID());
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     idx = __CFBSearchTZPeriods(tz, at);
 #elif DEPLOYMENT_TARGET_WINDOWS_SAFARI || DEPLOYMENT_TARGET_WINDOWS
 /*
@@ -1589,7 +1588,7 @@ CFStringRef CFTimeZoneCopyAbbreviation(CFTimeZoneRef tz, CFAbsoluteTime at) {
 }
 
 Boolean CFTimeZoneIsDaylightSavingTime(CFTimeZoneRef tz, CFAbsoluteTime at) {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     CFIndex idx;
     CF_OBJC_FUNCDISPATCH1(CFTimeZoneGetTypeID(), Boolean, tz, "_isDaylightSavingTimeForAbsoluteTime:", at);
     __CFGenericValidateType(tz, CFTimeZoneGetTypeID());

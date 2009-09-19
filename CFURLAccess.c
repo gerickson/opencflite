@@ -49,7 +49,7 @@ CFData read/write routines
 #include <CoreFoundation/CFNumber.h>
 #include <string.h>
 #include <ctype.h>
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #include <stdlib.h>
 #include <unistd.h>
 #include <dirent.h>
@@ -80,7 +80,7 @@ DEFINE_WEAK_CFNETWORK_FUNC_FAIL(Boolean, _CFURLWriteDataAndPropertiesToResource,
 
 DEFINE_WEAK_CFNETWORK_FUNC_FAIL(Boolean, _CFURLDestroyResource, (CFURLRef A, SInt32 *B), (A, B), if(B) *B = kCFURLImproperArgumentsError, false)
 
-#elif DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
@@ -263,7 +263,7 @@ static Boolean _CFFileURLWritePropertiesToResource(CFURLRef url, CFDictionaryRef
                 CFNumberRef modeNum = (CFNumberRef)value;
                 CFNumberGetValue(modeNum, kCFNumberSInt32Type, &mode);
             } else {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #define MODE_TYPE mode_t
 #elif DEPLOYMENT_TARGET_WINDOWS
 #define MODE_TYPE uint16_t
@@ -744,7 +744,7 @@ Boolean CFURLCreateDataAndPropertiesFromResource(CFAllocatorRef alloc, CFURLRef 
 	} else {
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
             result = __CFNetwork__CFURLCreateDataAndPropertiesFromResource(alloc, url, fetchedData, fetchedProperties, desiredProperties, errorCode);
-#elif DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
             if (fetchedData) *fetchedData = NULL;
             if (fetchedProperties) *fetchedProperties = NULL;
             if (errorCode) *errorCode = kCFURLUnknownSchemeError;
@@ -826,7 +826,7 @@ Boolean CFURLWriteDataAndPropertiesToResource(CFURLRef url, CFDataRef data, CFDi
 	    if (errorCode) *errorCode = kCFURLUnknownSchemeError;
 	}
 	return result;
-#elif DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
         if (errorCode) *errorCode = kCFURLUnknownSchemeError;
         return false;
 #else
@@ -874,7 +874,7 @@ Boolean CFURLDestroyResource(CFURLRef url, SInt32 *errorCode) {
 	    if (errorCode) *errorCode = kCFURLUnknownSchemeError;
 	}
 	return result;
-#elif DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
         if (errorCode) *errorCode = kCFURLUnknownSchemeError;
         return false;
 #else

@@ -90,7 +90,7 @@ __private_extern__ CFTimeInterval __CFTSRToTimeInterval(int64_t tsr) {
 
 CFAbsoluteTime CFAbsoluteTimeGetCurrent(void) {
     CFAbsoluteTime ret;
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_IPHONE
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_IPHONE DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     struct timeval tv;
     gettimeofday(&tv, NULL);
     ret = (CFTimeInterval)tv.tv_sec - kCFAbsoluteTimeIntervalSince1970;

@@ -98,7 +98,7 @@
 #define open _NS_open
 #define stat(x,y) _NS_stat(x,y)
 
-#elif DEPLOYMENT_TARGET_LINUX
+#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #include <fcntl.h>
 #include <unistd.h>
 #else
@@ -572,7 +572,7 @@ static CFURLRef _CFBundleCopyBundleURLForExecutablePath(CFStringRef str) {
             CFRelease(outstr);
         }
     }
-#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
@@ -580,7 +580,7 @@ static CFURLRef _CFBundleCopyBundleURLForExecutablePath(CFStringRef str) {
     if (!url) {
         buffLen = _CFLengthAfterDeletingLastPathComponent(buff, buffLen);  // Remove exe name
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
         if (buffLen > 0) {
             // See if this is a new bundle.  If it is, we have to remove more path components.
             CFIndex startOfLastDir = _CFStartOfLastPathComponent(buff, buffLen);
@@ -630,7 +630,7 @@ static CFURLRef _CFBundleCopyBundleURLForExecutablePath(CFStringRef str) {
 #endif
                     }
                 }
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
                 CFRelease(lastDirName);
             }
         }
@@ -1083,7 +1083,7 @@ CFBundleRef CFBundleGetBundleWithIdentifier(CFStringRef bundleID) {
                 result = _CFBundlePrimitiveGetBundleWithIdentifierAlreadyLocked(bundleID);
             }
         }
-#elif DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
@@ -1290,7 +1290,7 @@ static CFBundleRef _CFBundleCreate(CFAllocatorRef allocator, CFURLRef bundleURL,
     if (!__CFgetenv("CFBundleDisableStringsSharing") && 
         (strncmp(buff, "/System/Library/Frameworks", 26) == 0) && 
         (strncmp(buff + strlen(buff) - 10, ".framework", 10) == 0)) bundle->_sharesStringsFiles = true;
-#elif DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
@@ -1983,7 +1983,7 @@ static CFURLRef _CFBundleCopyExecutableURLInDirectoryWithAllocator(CFAllocatorRe
         if (executablePath) CFRetain(executablePath);
         __CFSpinUnlock(&CFBundleExecutablePathLock);
         if (executablePath) {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
             executableURL = CFURLCreateWithFileSystemPath(alloc, executablePath, kCFURLPOSIXPathStyle, false);
 #elif DEPLOYMENT_TARGET_WINDOWS
             executableURL = CFURLCreateWithFileSystemPath(alloc, executablePath, kCFURLWindowsPathStyle, false);
@@ -2027,7 +2027,7 @@ static CFURLRef _CFBundleCopyExecutableURLInDirectoryWithAllocator(CFAllocatorRe
                     } else {
                         exeDirURL = (CFURLRef)CFRetain(url);
                     }
-#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
                     exeDirURL = (CFURLRef)CFRetain(url);
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
@@ -2070,7 +2070,7 @@ static CFURLRef _CFBundleCopyExecutableURLInDirectoryWithAllocator(CFAllocatorRe
                 executableURL = _CFBundleCopyExecutableURLRaw(alloc, exeDirURL, executableName);
                 CFRelease(exeDirURL);
             }
-#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
@@ -2080,7 +2080,7 @@ static CFURLRef _CFBundleCopyExecutableURLInDirectoryWithAllocator(CFAllocatorRe
                 CFURLRef absURL = CFURLCopyAbsoluteURL(executableURL);
 #if DEPLOYMENT_TARGET_WINDOWS
                 executablePath = CFURLCopyFileSystemPath(absURL, kCFURLWindowsPathStyle);
-#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
                 executablePath = CFURLCopyFileSystemPath(absURL, kCFURLPOSIXPathStyle);
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
@@ -2825,7 +2825,7 @@ static Boolean _CFBundleGrokFileType(CFURLRef url, CFDataRef data, CFStringRef *
         Boolean gotPath = FALSE;
         char path[CFMaxPathSize];
         gotPath = CFURLGetFileSystemRepresentation(url, true, (uint8_t *)path, CFMaxPathSize);
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
         struct stat statBuf;
 #elif DEPLOYMENT_TARGET_WINDOWS
         struct _stat statBuf;
@@ -3770,7 +3770,7 @@ __private_extern__ Boolean _CFBundleCouldBeBundle(CFURLRef url) {
 
 __private_extern__ CFURLRef _CFBundleCopyFrameworkURLForExecutablePath(CFAllocatorRef alloc, CFStringRef executablePath) {
     // MF:!!! Implement me.  We need to be able to find the bundle from the exe, dealing with old vs. new as well as the Executables dir business on Windows.
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #elif 0 && DEPLOYMENT_TARGET_WINDOWS_SYNC
     UniChar executablesToFrameworksPathBuff[] = {'.', '.', '\\', 'F', 'r', 'a', 'm', 'e', 'w', 'o', 'r', 'k', 's'};
     UniChar executablesToPrivateFrameworksPathBuff[] = {'.', '.', '\\', 'P', 'r', 'i', 'v', 'a', 't', 'e', 'F', 'r', 'a', 'm', 'e', 'w', 'o', 'r', 'k', 's'};
@@ -3861,7 +3861,7 @@ __private_extern__ CFURLRef _CFBundleCopyFrameworkURLForExecutablePath(CFAllocat
             }
         }
     }
-#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif

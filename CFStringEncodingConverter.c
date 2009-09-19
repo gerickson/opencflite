@@ -45,7 +45,7 @@
 #include "CFStringEncodingConverterExt.h"
 #include "CFStringEncodingConverterPriv.h"
 #include <stdlib.h>
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #include <pthread.h>
 #endif
 

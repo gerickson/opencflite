@@ -133,7 +133,7 @@ static CFStringRef __CFUserNotificationCopyDescription(CFTypeRef cf) {
 #define NOTIFICATION_PORT_NAME "com.apple.UNCUserNotification"
 #elif DEPLOYMENT_TARGET_EMBEDDED
 #define NOTIFICATION_PORT_NAME "com.apple.SBUserNotification"
-#elif DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #define NOTIFICATION_PORT_NAME "com.apple.SBUserNotification"
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET

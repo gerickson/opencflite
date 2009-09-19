@@ -331,7 +331,7 @@ extern Boolean __CFStringScanHex(CFStringInlineBuffer *buf, SInt32 *indexPtr, un
 
 extern const char *__CFgetenv(const char *n);
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #define STACK_BUFFER_DECL(T, N, C) T N[C]
 #elif DEPLOYMENT_TARGET_WINDOWS
 #define STACK_BUFFER_DECL(T, N, C) T *N = (T *)_alloca((C) * sizeof(T))
@@ -369,7 +369,7 @@ const CFStringRef S = (CFStringRef) & __ ## S ## __;
 #define PE_CONST_STRING_DECL(S, V)			\
 static struct CF_CONST_STRING __ ## S ## __ = {{&__CFConstantStringClassReference, {0x07c8, 0x0000}}, V, sizeof(V) - 1}; \
 __private_extern__ const CFStringRef S = (CFStringRef) & __ ## S ## __;
-#elif DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #define CONST_STRING_DECL(S, V)			\
 static struct CF_CONST_STRING __ ## S ## __ = {{(uintptr_t)&__CFConstantStringClassReference, {0xc8, 0x07, 0x00, 0x00}}, (uint8_t *)(V), sizeof(V) - 1}; \
 const CFStringRef S = (CFStringRef) & __ ## S ## __;

@@ -221,7 +221,7 @@ static bool __CFPropertyListIsValidAux(CFPropertyListRef plist, bool recursive, 
 	if (datetype == type) return true;
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC
 	if (_CFKeyedArchiverUIDGetTypeID() == type) return true;
-#elif DEPLOYMENT_TARGET_WINDOWS_SAFARI || DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS_SAFARI || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
@@ -541,7 +541,7 @@ static void _CFAppendXML0(CFTypeRef object, UInt32 indentation, CFMutableDataRef
         _plistAppendUTF8CString(xmlString, "</");
         _plistAppendCharacters(xmlString, CFXMLPlistTags[DICT_IX], DICT_TAG_LENGTH);
         _plistAppendUTF8CString(xmlString, ">\n");
-#elif DEPLOYMENT_TARGET_WINDOWS_SAFARI || DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS_SAFARI || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif

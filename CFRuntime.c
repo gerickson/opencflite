@@ -57,7 +57,7 @@
 #include <objc/runtime.h>
 #endif
 
-#if DEPLOYMENT_TARGET_WINDOWS
+#if DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #define _objc_getFreedObjectClass()       0
 #else
 extern Class _objc_getFreedObjectClass(void);
@@ -260,9 +260,11 @@ CFTypeID _CFRuntimeRegisterClass(const CFRuntimeClass * const cls) {
 }
 
 void _CFRuntimeBridgeClasses(CFTypeID cf_typeID, const char *objc_classname) {
+#if __OBJC__
     __CFSpinLock(&__CFBigRuntimeFunnel);
     __CFRuntimeObjCClassTable[cf_typeID] = (uintptr_t)objc_getFutureClass(objc_classname);
     __CFSpinUnlock(&__CFBigRuntimeFunnel);
+#endif
 }
 
 const CFRuntimeClass * _CFRuntimeGetClassWithTypeID(CFTypeID typeID) {
@@ -378,6 +380,7 @@ void _CFRuntimeSetInstanceTypeID(CFTypeRef cf, CFTypeID typeID) {
 }
 
 __private_extern__ Boolean __CFRuntimeIsFreedObject(id anObject) {
+#if __OBJC__
    if (!anObject) return false;
    static Class freedClass = Nil;
    if (!freedClass) freedClass = _objc_getFreedObjectClass();
@@ -388,6 +391,7 @@ __private_extern__ Boolean __CFRuntimeIsFreedObject(id anObject) {
    if (object_getClass((id)cls) == nil) return false;
    const char *cname = class_getName(cls);
    if (cname && 0 == strncmp(cname, "_NSZombie_", 10)) return true;
+#endif
    return false;
 }
 
@@ -776,11 +780,13 @@ CFHashCode CFHash(CFTypeRef cf) {
 CFStringRef CFCopyDescription(CFTypeRef cf) {
     if (NULL == cf) HALT;
     if (CFTYPE_IS_OBJC(cf)) {
+#if defined(__OBJC__)
         static SEL s = NULL;
         CFStringRef (*func)(void *, SEL) = (CFStringRef (*)(void *, SEL))objc_msgSend;
         if (!s) s = sel_registerName("_copyDescription");
         CFStringRef result = func((void *)cf, s);
         return result;
+#endif
     }
     // CFTYPE_OBJC_FUNCDISPATCH0(CFStringRef, cf, "_copyDescription");  // XXX returns 0 refcounted item under GC
     __CFGenericAssertIsCF(cf);
@@ -796,12 +802,14 @@ CFStringRef CFCopyDescription(CFTypeRef cf) {
 __private_extern__ CFStringRef __CFCopyFormattingDescription(CFTypeRef cf, CFDictionaryRef formatOptions) {
     if (NULL == cf) HALT;
     if (CFTYPE_IS_OBJC(cf)) {
+#if __OBJC__
 	static SEL s = NULL, r = NULL;
 	CFStringRef (*func)(void *, SEL, CFDictionaryRef) = (CFStringRef (*)(void *, SEL, CFDictionaryRef))objc_msgSend;
 	BOOL (*rfunc)(void *, SEL, SEL) = (BOOL (*)(void *, SEL, SEL))objc_msgSend;
 	if (!s) s = sel_registerName("_copyFormattingDescription:");
 	if (!r) r = sel_registerName("respondsToSelector:");
 	if (s && rfunc((void *)cf, r, s)) return func((void *)cf, s, formatOptions);
+#endif
 	return NULL;
     }
     __CFGenericAssertIsCF(cf);
@@ -997,7 +1005,7 @@ void __CFInitialize(void) {
 	if (value && (*value == 'Y' || *value == 'y')) __CFZombieEnabled = 0xff;
 	value = __CFgetenv("NSDeallocateZombies");
 	if (value && (*value == 'Y' || *value == 'y')) __CFDeallocateZombies = 0xff;
-#if !__OBJC2__
+#if !__OBJC2__ && __OBJC__
 	_original_objc_dealloc = (void *)_dealloc;
 #endif
 
@@ -1149,10 +1157,12 @@ void __CFInitialize(void) {
 #endif
 
         if (__CFRuntimeClassTableCount < 256) __CFRuntimeClassTableCount = 256;
+#if __OBJC__
 	__CFSendObjCMsg = (void *(*)(const void *, SEL, ...))objc_msgSend;
+#endif
 
 #if DEPLOYMENT_TARGET_MACOSX
-#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_EMBEDDED
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_EMBEDDED  || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #else
 #error
 #endif
@@ -1163,7 +1173,7 @@ void __CFInitialize(void) {
 	    __CFEnv[sizeof(__CFEnv) / sizeof(__CFEnv[0]) - 1].name = "COMMAND_MODE";
 	    __CFEnv[sizeof(__CFEnv) / sizeof(__CFEnv[0]) - 1].value = "legacy";
 	}
-#elif DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #else
 #error
 #endif
@@ -1439,6 +1449,7 @@ CF_EXPORT void _CFRelease(CFTypeRef cf) {
 	usesSystemDefaultAllocator = (allocator == kCFAllocatorSystemDefault);
 
 	if (__CFZombieEnabled && !kCFUseCollectableAllocator) {
+#if __OBJC__
 	    Class cls = object_getClass((id)cf);
 	    const char *name = NULL;
             __CFSpinLock(&__CFBigRuntimeFunnel);
@@ -1471,7 +1482,7 @@ CF_EXPORT void _CFRelease(CFTypeRef cf) {
 	    if (__CFDeallocateZombies) {
 #if __OBJC2__
 	        object_setClass((id)cf, zclass);
-#else
+#elif __OBJC__
 	        //  Set 'isa' pointer only if using standard deallocator
 	        // However, _internal_object_dispose is not exported from libobjc
 	        if (_dealloc == _original_objc_dealloc) {
@@ -1493,7 +1504,7 @@ CF_EXPORT void _CFRelease(CFTypeRef cf) {
 		res = __CFFindPointer((uintptr_t)cf, res + 1);
 	    }
 #endif
-
+#endif
 	} else {
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 	    if (kCFUseCollectableAllocator || !(__CFZombieLevel & (1 << 4))) {

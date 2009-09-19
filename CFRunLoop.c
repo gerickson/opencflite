@@ -219,14 +219,8 @@ CF_INLINE void __CFPortSetFree(__CFPortSet portSet) {
 
 typedef HANDLE __CFPort;
 #define CFPORT_NULL NULL
-
-// A simple dynamic array of HANDLEs, which grows to a high-water mark
-typedef struct ___CFPortSet {
-    uint16_t	used;
-    uint16_t	size;
-    HANDLE	*handles;
-    CFSpinLock_t lock;		// insert and remove must be thread safe, like the Mach calls
-} *__CFPortSet;
+#define CFPORTSET_NULL NULL
+#define MAX_PORTS MAXIMUM_WAIT_OBJECTS
 
 CF_INLINE __CFPort __CFPortAllocate(void) {
     return CreateEventA(NULL, true, false, NULL);
@@ -236,17 +230,61 @@ CF_INLINE void __CFPortFree(__CFPort port) {
     CloseHandle(port);
 }
 
+#elif DEPLOYMENT_TARGET_LINUX
+
+typedef sem_t * __CFPort;
+#define CFPORT_NULL NULL
+#define CFPORTSET_NULL NULL
+#define MAX_PORTS 16
+
+CF_INLINE __CFPort __CFPortAllocate(void) {
+	__CFPort port = CFPORT_NULL;
+	int status;
+
+	port = (__CFPort)CFAllocatorAllocate(kCFAllocatorSystemDefault,
+										 sizeof(sem_t), 0);
+	CFAssert1(port != CFPORT_NULL, __kCFLogAssertion,
+			  "%s(): Could not allocate port memory.", __PRETTY_FUNCTION__);
+	if (port != CFPORT_NULL) {
+		status = sem_init(port, false, 0);
+		CFAssert1(status == 0, __kCFLogAssertion,
+				  "%s(): Could not initialize port.", __PRETTY_FUNCTION__);
+	}
+
+	return port;
+}
+
+CF_INLINE void __CFPortFree(__CFPort port) {
+	int status;
+	CFAssert1(port != CFPORT_NULL, __kCFLogAssertion,
+			  "%s(): Attemping to free an invalid port.", __PRETTY_FUNCTION__);
+	status = sem_destroy(port);
+	CFAllocatorDeallocate(kCFAllocatorSystemDefault, port);
+}
+
+#endif /* DEPLOYMENT_TARGET_MACOSX */
+
+#if !DEPLOYMENT_TARGET_MACOSX
+
+// A simple dynamic array of __CFPorts, which grows to a high-water mark
+typedef struct ___CFPortSet {
+    uint16_t	used;
+    uint16_t	size;
+    __CFPort	*ports;
+    CFSpinLock_t lock;		// insert and remove must be thread safe, like the Mach calls
+} *__CFPortSet;
+
 static __CFPortSet __CFPortSetAllocate(void) {
     __CFPortSet result = (__CFPortSet)CFAllocatorAllocate(kCFAllocatorSystemDefault, sizeof(struct ___CFPortSet), 0);
     result->used = 0;
     result->size = 4;
-    result->handles = (HANDLE *)CFAllocatorAllocate(kCFAllocatorSystemDefault, result->size * sizeof(HANDLE), 0);
+    result->ports = (__CFPort *)CFAllocatorAllocate(kCFAllocatorSystemDefault, result->size * sizeof(__CFPort), 0);
     CF_SPINLOCK_INIT_FOR_STRUCTS(result->lock);
     return result;
 }
 
 static void __CFPortSetFree(__CFPortSet portSet) {
-    CFAllocatorDeallocate(kCFAllocatorSystemDefault, portSet->handles);
+    CFAllocatorDeallocate(kCFAllocatorSystemDefault, portSet->ports);
     CFAllocatorDeallocate(kCFAllocatorSystemDefault, portSet);
 }
 
@@ -255,15 +293,15 @@ static __CFPort *__CFPortSetGetPorts(__CFPortSet portSet, __CFPort *portBuf, uin
     __CFSpinLock(&(portSet->lock));
     __CFPort *result = portBuf;
     if (bufSize < portSet->used)
-	result = (__CFPort *)CFAllocatorAllocate(kCFAllocatorSystemDefault, portSet->used * sizeof(HANDLE), 0);
+        result = (__CFPort *)CFAllocatorAllocate(kCFAllocatorSystemDefault, portSet->used * sizeof(__CFPort), 0);
     if (portSet->used > 1) {
 	// rotate the ports to vaguely simulate round-robin behaviour
 	uint16_t lastPort = portSet->used - 1;
-	HANDLE swapHandle = portSet->handles[0];
-	memmove(portSet->handles, &portSet->handles[1], lastPort * sizeof(HANDLE));
-	portSet->handles[lastPort] = swapHandle;
+	__CFPort swapPort = portSet->ports[0];
+	memmove(portSet->ports, &portSet->ports[1], lastPort * sizeof(__CFPort));
+	portSet->ports[lastPort] = swapPort;
     }
-    memmove(result, portSet->handles, portSet->used * sizeof(HANDLE));
+    memmove(result, portSet->ports, portSet->used * sizeof(__CFPort));
     *portsUsed = portSet->used;
     __CFSpinUnlock(&(portSet->lock));
     return result;
@@ -273,11 +311,11 @@ static Boolean __CFPortSetInsert(__CFPort port, __CFPortSet portSet) {
     __CFSpinLock(&(portSet->lock));
     if (portSet->used >= portSet->size) {
         portSet->size += 4;
-        portSet->handles = (HANDLE *)CFAllocatorReallocate(kCFAllocatorSystemDefault, portSet->handles, portSet->size * sizeof(HANDLE), 0);
+        portSet->ports = (__CFPort *)CFAllocatorReallocate(kCFAllocatorSystemDefault, portSet->ports, portSet->size * sizeof(__CFPort), 0);
     }
-    if (portSet->used >= MAXIMUM_WAIT_OBJECTS)
-        CFLog(kCFLogLevelWarning, CFSTR("*** More than MAXIMUM_WAIT_OBJECTS (%d) ports add to a port set.  The last ones will be ignored."), MAXIMUM_WAIT_OBJECTS);
-    portSet->handles[portSet->used++] = port;
+    if (portSet->used >= MAX_PORTS)
+        CFLog(kCFLogLevelWarning, CFSTR("*** More than MAXIMUM (%d) ports add to a port set.  The last ones will be ignored."), MAX_PORTS);
+    portSet->ports[portSet->used++] = port;
     __CFSpinUnlock(&(portSet->lock));
     return true;
 }
@@ -286,9 +324,9 @@ static Boolean __CFPortSetRemove(__CFPort port, __CFPortSet portSet) {
     int i, j;
     __CFSpinLock(&(portSet->lock));
     for (i = 0; i < portSet->used; i++) {
-        if (portSet->handles[i] == port) {
+        if (portSet->ports[i] == port) {
             for (j = i+1; j < portSet->used; j++) {
-                portSet->handles[j-1] = portSet->handles[j];
+                portSet->ports[j-1] = portSet->ports[j];
             }
             portSet->used--;
             __CFSpinUnlock(&(portSet->lock));
@@ -1214,6 +1252,9 @@ __private_extern__ void __CFRunLoopInitialize(void) {
     if (~0 == __CFTSDKeyRunLoopKey) __CFTSDKeyRunLoopKey = TlsAlloc();
     __kCFMainThread = pthread_self ();
 #else
+#if DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+    __kCFMainThread = pthread_self ();
+#endif
     pthread_key_init_np(__CFTSDKeyRunLoop, NULL);
     pthread_key_init_np(__CFTSDKeyRunLoopCntr, (void *)__CFFinalizeRunLoop);
 #endif
@@ -1373,6 +1414,7 @@ CF_EXPORT CFTypeRef _CFRunLoopGet2(CFRunLoopRef rl) {
     CFTypeRef ret = NULL;
     __CFSpinLock(&loopsLock);
     if (NULL == rl->_counterpart) {
+#if __OBJC__
         Class cls = (Class)objc_lookUpClass("NSRunLoop");
 	if (cls) {
             char hasMethod;
@@ -1383,6 +1425,7 @@ CF_EXPORT CFTypeRef _CFRunLoopGet2(CFRunLoopRef rl) {
                 rl->_counterpart = ns ? CFRetain(ns) : NULL;
             }
         }
+#endif
     }
     ret = rl->_counterpart;
     __CFSpinUnlock(&loopsLock);
@@ -2208,7 +2251,7 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
         Boolean freeHandles;
         if (destroyWaitSet) {
             // wait set is a local, no one else could modify it, no need to copy handles
-            handles = waitSet->handles;
+            handles = waitSet->ports;
             handleCount = waitSet->used;
             freeHandles = FALSE;
         } else {
@@ -2355,7 +2398,7 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
 	}
 #endif
 
-#if DEPLOYMENT_TARGET_WINDOWS
+#if DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
         if (NULL != timersToCall) {
             int i;
             for (i = CFArrayGetCount(timersToCall)-1; i >= 0; i--)
@@ -3139,7 +3182,7 @@ static CFStringRef __CFRunLoopSourceCopyDescription(CFTypeRef cf) {	/* DOES CALL
 	void *addr = rls->_context.version0.version == 0 ? (void *)rls->_context.version0.perform : (rls->_context.version0.version == 1 ? (void *)rls->_context.version1.perform : NULL);
 #if DEPLOYMENT_TARGET_WINDOWS
 	contextDesc = CFStringCreateWithFormat(kCFAllocatorSystemDefault, NULL, CFSTR("<CFRunLoopSource context>{version = %ld, info = %p, callout = %p}"), rls->_context.version0.version, rls->_context.version0.info, addr);
-#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 	Dl_info info;
 	const char *name = (dladdr(addr, &info) && info.dli_saddr == addr && info.dli_sname) ? info.dli_sname : "???";
 	contextDesc = CFStringCreateWithFormat(kCFAllocatorSystemDefault, NULL, CFSTR("<CFRunLoopSource context>{version = %ld, info = %p, callout = %s (%p)}"), rls->_context.version0.version, rls->_context.version0.info, name, addr);
@@ -3340,7 +3383,7 @@ static CFStringRef __CFRunLoopObserverCopyDescription(CFTypeRef cf) {	/* DOES CA
     }
 #if DEPLOYMENT_TARGET_WINDOWS
     result = CFStringCreateWithFormat(kCFAllocatorSystemDefault, NULL, CFSTR("<CFRunLoopObserver %p [%p]>{locked = %s, valid = %s, activities = 0x%x, repeats = %s, order = %d, callout = %p, context = %@}"), cf, CFGetAllocator(rlo), "unknown", __CFIsValid(rlo) ? "Yes" : "No", rlo->_activities, __CFRunLoopObserverRepeats(rlo) ? "Yes" : "No", rlo->_order, rlo->_callout, contextDesc);    
-#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     void *addr = rlo->_callout;
     Dl_info info;
     const char *name = (dladdr(addr, &info) && info.dli_saddr == addr && info.dli_sname) ? info.dli_sname : "???";
@@ -3496,7 +3539,7 @@ static CFStringRef __CFRunLoopTimerCopyDescription(CFTypeRef cf) {	/* DOES CALLO
     }
 #if DEPLOYMENT_TARGET_WINDOWS
     result = CFStringCreateWithFormat(kCFAllocatorSystemDefault, NULL, CFSTR("<CFRunLoopTimer %p [%p]>{locked = %s, valid = %s, interval = %0.09g, next fire date = %0.09g, order = %d, callout = %p, context = %@}"), cf, CFGetAllocator(rlt), "unknown", __CFIsValid(rlt) ? "Yes" : "No", __CFTSRToTimeInterval(rlt->_intervalTSR), now1 + __CFTSRToTimeInterval(fireTime - now2), rlt->_order, rlt->_callout, contextDesc);
-#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     void *addr = rlt->_callout;
     Dl_info info;
     const char *name = (dladdr(addr, &info) && info.dli_saddr == addr && info.dli_sname) ? info.dli_sname : "???";

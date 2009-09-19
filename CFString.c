@@ -429,6 +429,8 @@ CFStringEncoding __CFDefaultEightBitStringEncoding = kCFStringEncodingInvalidId;
 #define __defaultEncoding kCFStringEncodingMacRoman
 #elif DEPLOYMENT_TARGET_WINDOWS
 #define __defaultEncoding kCFStringEncodingWindowsLatin1
+#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+            __CFDefaultSystemEncoding = kCFStringEncodingISOLatin1; // a reasonable default
 #else
 #warning This value must match __CFGetConverter condition in CFStringEncodingConverter.c
 #define __defaultEncoding kCFStringEncodingISOLatin1

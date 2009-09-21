@@ -13,13 +13,13 @@ AC_PREREQ(2.61)
 # the Apple CoreFoundation release version and z tracks the OpenCFLite
 # release thereof.
 #
-AC_INIT([CoreFoundation],[476.18.0],[bfulgham@users.sourceforge.net],[opencflite])
+AC_INIT([CoreFoundation],[550.1.0],[bfulgham@users.sourceforge.net],[opencflite])
 
 #
 # Interface number, revision and age of the library interface passed to
 # libtool when the library is linked.
 #
-AC_SUBST(CF_VERSION_INFO, [476:18:0])
+AC_SUBST(CF_VERSION_INFO, [550:1:0])
 
 #
 # Check the sanity of thes source directory by checking for the
@@ -105,6 +105,7 @@ AC_MSG_RESULT(${deployment_target})
 #
 AC_PROG_CC
 AC_PROG_CXX
+AC_PROG_OBJC
 CF_BSD_SOURCE
 AC_GNU_SOURCE
 AM_PROG_CC_C_O
@@ -688,7 +689,7 @@ CF_REPLACE_STRLN_FUNC([cpy])
 # Other ibrary functions we might need to provide local compatibility
 # implementations of.
 #
-AC_REPLACE_FUNCS([flsl gettimeofday])
+AC_REPLACE_FUNCS([gettimeofday])
 
 #
 # Identify the various makefiles and auto-generated files for the package

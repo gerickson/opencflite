@@ -2184,7 +2184,7 @@ static const CFRuntimeClass __CFSocketClass = {
 CFTypeID CFSocketGetTypeID(void) {
     if (_kCFRuntimeNotATypeID == __kCFSocketTypeID) {
 	__kCFSocketTypeID = _CFRuntimeRegisterClass(&__CFSocketClass);
-#if !DEPLOYMENT_TARGET_WINDOWS
+#if !DEPLOYMENT_TARGET_WINDOWS && !DEPLOYMENT_TARGET_LINUX
         struct rlimit lim1;
         int ret1 = getrlimit(RLIMIT_NOFILE, &lim1);
         int mib[] = {CTL_KERN, KERN_MAXFILESPERPROC};
@@ -2243,8 +2243,13 @@ static CFSocketRef _CFSocketCreateWithNative(CFAllocatorRef allocator, CFSocketN
     memory->_f.connected = FALSE;
     memory->_f.writableHint = FALSE;
     memory->_f.closeSignaled = FALSE;
+#if DEPLOYMENT_TARGET_LINUX
+    CF_SPIN_LOCK_INIT_FOR_STRUCTS(memory->_lock);
+    CF_SPIN_LOCK_INIT_FOR_STRUCTS(memory->_writeLock);
+#else
     memory->_lock = CFSpinLockInit;
-	memory->_writeLock = CFSpinLockInit;
+    memory->_writeLock = CFSpinLockInit;
+#endif
     memory->_socket = sock;
     if (INVALID_SOCKET == sock || 0 != getsockopt(sock, SOL_SOCKET, SO_TYPE, (SOCK_DATA)&(memory->_socketType), (socklen_t *)&typeSize)) memory->_socketType = 0;		// cast for WinSock bad API
     memory->_errorCode = 0;

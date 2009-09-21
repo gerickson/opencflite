@@ -538,6 +538,7 @@ __private_extern__ CFIndex __CFActiveProcessorCount() {
     v = (v & 0x3333333333333333ULL) + ((v >> 2) & 0x3333333333333333ULL);
     v = (v + (v >> 4)) & 0xf0f0f0f0f0f0f0fULL;
     pcnt = (v * 0x0101010101010101ULL) >> ((sizeof(v) - 1) * 8);
+#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #else
     int32_t mib[] = {CTL_HW, HW_AVAILCPU};
     size_t len = sizeof(pcnt);

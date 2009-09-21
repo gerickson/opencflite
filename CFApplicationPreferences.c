@@ -36,6 +36,7 @@
 */
 
 #include <CoreFoundation/CFPreferences.h>
+#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include <CoreFoundation/CFUniChar.h>
 #include <CoreFoundation/CFNumber.h>

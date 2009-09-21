@@ -51,7 +51,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#elif DEPLOYMENT_TARGET_EMBEDDED
+#elif DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -70,7 +70,7 @@ CFStringRef CFURLCreateStringWithFileSystemPath(CFAllocatorRef allocator, CFURLR
 CF_EXPORT CFURLRef _CFURLCreateCurrentDirectoryURL(CFAllocatorRef allocator);
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 static CFStringRef HFSPathToURLPath(CFStringRef path, CFAllocatorRef alloc, Boolean isDir);
-#elif DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
@@ -3868,7 +3868,12 @@ CF_EXPORT CFURLRef CFURLCreateWithFileSystemPathRelativeToBase(CFAllocatorRef al
 static Boolean _pathHasFileIDPrefix( CFStringRef path )
 {
     // path is not NULL, path has prefix "/.file/" and has at least one character following the prefix.
+#if DEPLOYMENT_TARGET_LINUX
+    // FIXME
+    const CFStringRef fileIDPrefix = CFSTR( "/" FILE_ID_PREFIX "/" );
+#else
     static const CFStringRef fileIDPrefix = CFSTR( "/" FILE_ID_PREFIX "/" );
+#endif
     return path && CFStringHasPrefix( path, fileIDPrefix ) && CFStringGetLength( path ) > CFStringGetLength( fileIDPrefix );
 }
 
@@ -4405,7 +4410,7 @@ static CFStringRef HFSPathToURLPath(CFStringRef path, CFAllocatorRef alloc, Bool
     CFRelease(newComponents);
     return result;
 }
-#elif DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif

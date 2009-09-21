@@ -376,6 +376,11 @@ __private_extern__ CFMutableArrayRef _CFContentsOfDirectory(CFAllocatorRef alloc
             dirURL = CFURLCreateFromFileSystemRepresentation(alloc, (uint8_t *)dirPath, pathLength, true);
             releaseBase = true;
         }
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+        unsigned _namlen = dp->d_namlen;
+#else
+        unsigned _namlen = strlen(dp->d_name);
+#endif
         if (dp->d_type == DT_DIR || dp->d_type == DT_UNKNOWN) {
             Boolean isDir = (dp->d_type == DT_DIR);
             if (!isDir) {
@@ -389,9 +394,9 @@ __private_extern__ CFMutableArrayRef _CFContentsOfDirectory(CFAllocatorRef alloc
                     isDir = ((statBuf.st_mode & S_IFMT) == S_IFDIR);
                 }
             }
-            fileURL = CFURLCreateFromFileSystemRepresentationRelativeToBase(alloc, (uint8_t *)dp->d_name, dp->d_namlen, isDir, dirURL);
+            fileURL = CFURLCreateFromFileSystemRepresentationRelativeToBase(alloc, (uint8_t *)dp->d_name, _namlen, isDir, dirURL);
         } else {
-            fileURL = CFURLCreateFromFileSystemRepresentationRelativeToBase (alloc, (uint8_t *)dp->d_name, dp->d_namlen, false, dirURL);
+            fileURL = CFURLCreateFromFileSystemRepresentationRelativeToBase (alloc, (uint8_t *)dp->d_name, _namlen, false, dirURL);
         }
         CFArrayAppendValue(files, fileURL);
         CFRelease(fileURL);
@@ -481,6 +486,8 @@ __private_extern__ SInt32 _CFGetFileProperties(CFAllocatorRef alloc, CFURLRef pa
         if (fileExists) {
 #if DEPLOYMENT_TARGET_WINDOWS
             struct timespec ts = {statBuf.st_mtime, 0};
+#elif DEPLOYMENT_TARGET_LINUX
+            struct timespec ts = statBuf.st_mtim;
 #else
             struct timespec ts = statBuf.st_mtimespec;
 #endif

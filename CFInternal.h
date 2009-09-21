@@ -66,6 +66,7 @@
 #include <sys/time.h>
 #include <pthread.h>
 #include <signal.h>
+#include <unistd.h>
 #endif
 #if DEPLOYMENT_TARGET_WINDOWS
 #include <pthread.h>
@@ -167,7 +168,7 @@ extern void __CFGenericValidateType_(CFTypeRef cf, CFTypeID type, const char *fu
 #define __CFBitClear(V, N)  ((V) &= ~(1UL << (N)))
 
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 // The fixed range 50 - 59 of pthread_specific keys is reserved
 // for CoreFoundation; see <System/pthread_machdep.h>.
 // 60 - 69 are reserved for Foundation; Foundation uses 64 - 69
@@ -189,17 +190,21 @@ enum {
 	__CFTSDKeyAutoreleaseData1 = 62,
 	__CFTSDKeyAutoreleaseData2 = 63,  // autorelease pool stuff must be higher than run loop constants
 };
+#endif
 
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 extern int pthread_key_init_np(int, void (*)(void *));
 #endif
 
-#if DEPLOYMENT_TARGET_WINDOWS
+#if DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 typedef struct ___CFThreadSpecificData {
     void *_unused1;
     void *_allocator;
     void *_runLoop;
     int _runLoop_pid;
+#if DEPLOYMENT_TARGET_WINDOWS
     HHOOK _messageHook;
+#endif
     void *_icuThreadData;
 
 // If you add things to this struct, add cleanup to __CFFinalizeThreadData()
@@ -207,19 +212,20 @@ typedef struct ___CFThreadSpecificData {
 
 extern __CFThreadSpecificData *__CFGetThreadSpecificData(void);
 __private_extern__ void __CFFinalizeThreadData(void *arg);
-extern DWORD __CFTSDKey;
+
+#endif
 
 /*
 // implemented in windowsSyncHelper.c
 __private_extern__ __CFThreadSpecificData *__CFGetThreadSpecificData_inline(void);
+*/
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+#if DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 extern pthread_key_t __CFTSDKey;
 #elif DEPLOYMENT_TARGET_WINDOWS
 //extern pthread_key_t __CFTSDKey;
 extern DWORD __CFTSDKey;
 #endif
-*/
 
 //extern void *pthread_getspecific(pthread_key_t key);
 
@@ -232,8 +238,6 @@ CF_INLINE __CFThreadSpecificData *__CFGetThreadSpecificData_inline(void) {
     return data ? data : __CFGetThreadSpecificData();
 #endif
 }
-
-#endif
 
 #define __kCFAllocatorTypeID_CONST	2
 
@@ -446,6 +450,8 @@ typedef OSSpinLock CFSpinLock_t;
 
 #elif DEPLOYMENT_TARGET_WINDOWS
 
+#define _CFIsSetUgid() 0
+
 typedef int32_t CFSpinLock_t;
 #define CFSpinLockInit 0
 #define CF_SPINLOCK_INIT_FOR_STRUCTS(X) (X = CFSpinLockInit)
@@ -462,6 +468,11 @@ CF_INLINE void __CFSpinUnlock(volatile CFSpinLock_t *lock) {
 }
 
 #elif DEPLOYMENT_TARGET_LINUX
+
+#include <unistd.h>
+CF_INLINE bool _CFIsSetUgid(void) {
+    return (getuid() != geteuid() || getgid() != getegid());
+}
 
 typedef struct __CFSpinLock {
 	int init;

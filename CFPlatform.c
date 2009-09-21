@@ -48,6 +48,8 @@
     #include <crt_externs.h>
     #include <mach-o/dyld.h>
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+    #include <pwd.h>
+    #include <stdio.h>
     #include <stdlib.h>
     #include <string.h>
 #endif
@@ -169,7 +171,6 @@ const char *_CFProcessPath(void) {
         n = readlink(buf[0], buf[1], CFMaxPathLength);
         if (n > 0 && n <= CFMaxPathLength) {
             buf[1][n] = '\0';
-            thePath = buf[1];
         }
     }
 #endif

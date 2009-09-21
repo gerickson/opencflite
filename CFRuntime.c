@@ -85,7 +85,7 @@ __kCFRetainEvent = 28,
 __kCFReleaseEvent = 29
 };
 
-#if DEPLOYMENT_TARGET_WINDOWS
+#if DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
 #include <malloc.h>
 #else
 #include <malloc/malloc.h>
@@ -404,7 +404,7 @@ enum {
 #if DEPLOYMENT_TARGET_MACOSX
 #define NUM_EXTERN_TABLES 8
 #define EXTERN_TABLE_IDX(O) (((uintptr_t)(O) >> 8) & 0x7)
-#elif DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #define NUM_EXTERN_TABLES 1
 #define EXTERN_TABLE_IDX(O) 0
 #else
@@ -1062,7 +1062,11 @@ void __CFInitialize(void) {
 	for (CFIndex idx = 0; idx < NUM_EXTERN_TABLES; idx++) {
 	    __NSRetainCounters[idx].table = CFBasicHashCreate(kCFAllocatorSystemDefault, kCFBasicHashHasCounts | kCFBasicHashLinearHashing | kCFBasicHashAggressiveGrowth, &CFBasicHashNullCallbacks);
 	    CFBasicHashSetCapacity(__NSRetainCounters[idx].table, 40);
+#if DEPLOYMENT_TARGET_LINUX
+            CF_SPIN_LOCK_INIT_FOR_STRUCTS(__NSRetainCounters[idx].lock);
+#else
 	    __NSRetainCounters[idx].lock = CFSpinLockInit;
+#endif
 	}
 
         /*** _CFRuntimeCreateInstance() can finally be called generally after this line. ***/

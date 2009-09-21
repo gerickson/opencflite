@@ -144,6 +144,7 @@ static struct {
 #define CFNETWORK_LOAD_SYM(sym)   __CFLookupCFNetworkFunction(#sym)
 #elif DEPLOYMENT_TARGET_WINDOWS
 #define CFNETWORK_LOAD_SYM(sym)   (void *)GetProcAddress(CFNetworkSupport.image, #sym)
+#elif DEPLOYMENT_TARGET_LINUX
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
@@ -185,6 +186,7 @@ static void initializeCFNetworkSupport(void) {
         CFNetworkSupport._CFErrorCreateWithStreamError = (CFErrorRef(*)(CFAllocatorRef, CFStreamError *))CFNETWORK_LOAD_SYM(_CFErrorCreateWithStreamError);
         CFNetworkSupport._CFStreamErrorFromCFError = (CFStreamError(*)(CFErrorRef))CFNETWORK_LOAD_SYM(_CFStreamErrorFromCFError);
     }
+#elif DEPLOYMENT_TARGET_LINUX
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif

@@ -1254,9 +1254,10 @@ __private_extern__ void __CFRunLoopInitialize(void) {
 #else
 #if DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     __kCFMainThread = pthread_self ();
-#endif
+#else
     pthread_key_init_np(__CFTSDKeyRunLoop, NULL);
     pthread_key_init_np(__CFTSDKeyRunLoopCntr, (void *)__CFFinalizeRunLoop);
+#endif
 #endif
 }
  
@@ -2479,7 +2480,7 @@ SInt32 CFRunLoopRunSpecific(CFRunLoopRef rl, CFStringRef modeName, CFTimeInterva
 #if defined(__OBJC__)
     @try {
 #elif defined(__cplusplus)
-	try {
+    try {
 #endif
     if (currentMode->_observerMask & kCFRunLoopEntry || currentMode->_submodes) __CFRunLoopDoObservers(rl, currentMode, kCFRunLoopEntry);
     result = __CFRunLoopRun(rl, currentMode, seconds, returnAfterSourceHandled, previousMode, false);
@@ -2487,11 +2488,17 @@ SInt32 CFRunLoopRunSpecific(CFRunLoopRef rl, CFStringRef modeName, CFTimeInterva
 #if defined(__OBJC__)
     } @finally {
 #elif defined (__cplusplus)
-	} catch (...) { }
-	{
+    } catch (...) { }
+    {
+#else
+    {
 #endif
 	// this kvetches if an exception was raised during a run loop callout, because the mode is not locked
+#if DEPLOYMENT_TARGET_LINUX
+	if (currentMode->_lock.lock) {
+#else
 	if (0 != currentMode->_lock) {
+#endif
 	    __CFRunLoopModeUnlock(currentMode);
 	}
 	__CFRunLoopLock(rl);

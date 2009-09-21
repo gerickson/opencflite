@@ -101,6 +101,7 @@
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #include <fcntl.h>
 #include <unistd.h>
+#define RTLD_FIRST 0
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
@@ -522,6 +523,7 @@ static CFStringRef _CFBundleCopyWrapperInBinaryDirectory(CFStringRef strippedExe
     return NULL;
 }
 #elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
@@ -1312,7 +1314,11 @@ static CFBundleRef _CFBundleCreate(CFAllocatorRef allocator, CFURLRef bundleURL,
     bundle->_plugInData._instanceCount = 0;
     bundle->_plugInData._factories = NULL;
 
+#if DEPLOYMENT_TARGET_LINUX
+    CF_SPIN_LOCK_INIT_FOR_STRUCTS (bundle->_bundleLoadingLock);
+#else
     bundle->_bundleLoadingLock = CFSpinLockInit;
+#endif
     
     CFBundleGetInfoDictionary(bundle);
     
@@ -1893,6 +1899,14 @@ static CFURLRef _CFBundleCopyExecutableURLRaw(CFAllocatorRef alloc, CFURLRef url
                 executableURL = NULL;
             }
             CFRelease(newExeName);
+        }
+    }
+#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+    if (!executableURL) {
+        executableURL = CFURLCreateWithFileSystemPathRelativeToBase(alloc, exeName, kCFURLPOSIXPathStyle, false, urlPath);
+        if (executableURL && !_urlExists(alloc, executableURL)) {
+            CFRelease(executableURL);
+            executableURL = NULL;
         }
     }
 #else
@@ -4556,7 +4570,11 @@ CF_EXPORT Boolean _CFBundleDlfcnPreflight(CFBundleRef bundle, CFErrorRef *error)
         
         retval = false;
         if (executableURL && CFURLGetFileSystemRepresentation(executableURL, true, (uint8_t *)buff, CFMaxPathSize)) {
+#if DEPLOYMENT_TARGET_MACOSX
             retval = dlopen_preflight(buff);
+#else
+            retval = false;
+#endif
             if (!retval && error) {
                 CFArrayRef archs = CFBundleCopyExecutableArchitectures(bundle);
                 CFStringRef debugString = NULL;

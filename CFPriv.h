@@ -44,6 +44,7 @@
 #include <string.h>
 #include <CoreFoundation/CFBase.h>
 #include <CoreFoundation/CFArray.h>
+#include <CoreFoundation/CFDate.h>
 #include <CoreFoundation/CFString.h>
 #include <CoreFoundation/CFURL.h>
 #include <CoreFoundation/CFBundlePriv.h>

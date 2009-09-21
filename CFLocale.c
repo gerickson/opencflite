@@ -325,7 +325,11 @@ CFLocaleRef CFLocaleCopyCurrent(void) {
     locale->_cache = CFDictionaryCreateMutable(kCFAllocatorSystemDefault, 0, NULL, &kCFTypeDictionaryValueCallBacks);
     locale->_overrides = NULL;
     locale->_prefs = prefs;
+#if DEPLOYMENT_TARGET_LINUX
+    CF_SPINLOCK_INIT_FOR_STRUCTS(locale->_lock);
+#else
     locale->_lock = CFSpinLockInit;
+#endif
     locale->_nullLocale = false;
 
     __CFLocaleLockGlobal();
@@ -381,7 +385,11 @@ CFLocaleRef CFLocaleCreate(CFAllocatorRef allocator, CFStringRef identifier) {
     locale->_cache = CFDictionaryCreateMutable(allocator, 0, NULL, &kCFTypeDictionaryValueCallBacks);
     locale->_overrides = NULL;
     locale->_prefs = NULL;
+#if DEPLOYMENT_TARGET_LINUX
+    CF_SPINLOCK_INIT_FOR_STRUCTS(locale->_lock);
+#else
     locale->_lock = CFSpinLockInit;
+#endif
     if (canCache) {
 	if (NULL == __CFLocaleCache) {
 	    __CFLocaleCache = CFDictionaryCreateMutable(kCFAllocatorSystemDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);

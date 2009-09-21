@@ -60,7 +60,7 @@
 // On Unix, you can schedule an fd with the RunLoop by creating a CFSocket around it.  On Win32
 // files and sockets are not interchangeable, and we do cheapo scheduling, where the file is
 // always readable and writable until we hit EOF (similar to the way CFData streams are scheduled).
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #define REAL_FILE_SCHEDULING (1)
 #elif DEPLOYMENT_TARGET_WINDOWS
 #else

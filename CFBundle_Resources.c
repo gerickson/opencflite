@@ -1249,6 +1249,7 @@ static CFArrayRef copyWindowsLanguagePrefsArray() {
 }
 
 #elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
@@ -1828,7 +1829,7 @@ __private_extern__ Boolean _CFBundleURLLooksLikeBundleVersion(CFURLRef url, uint
 #endif /* READ_DIRECTORIES */
     if (localVersion == 3) {
 #if DEPLOYMENT_TARGET_EMBEDDED
-#elif DEPLOYMENT_TARGET_MACOSX
+#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
         if (CFStringHasSuffix(CFURLGetString(url), CFSTR(".framework/"))) {
             if (_CFBundleURLHasSubDir(url, _CFBundleResourcesURLFromBase0)) localVersion = 0;
             else if (_CFBundleURLHasSubDir(url, _CFBundleSupportFilesURLFromBase2)) localVersion = 2;

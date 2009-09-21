@@ -72,7 +72,10 @@ CFAbsoluteTime _CFAbsoluteTimeFromFileTime(const FILETIME *ft) {
     /* seconds between 1601 and 1970, 1970 and 2001 */
     return ret;
 }
+#endif
 
+#if DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+// We should export this as SPI or API to clients - 3514284
 uint64_t mach_absolute_time () {
     CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
     return __CFTimeIntervalToTSR((CFTimeInterval)now);
@@ -90,7 +93,7 @@ __private_extern__ CFTimeInterval __CFTSRToTimeInterval(int64_t tsr) {
 
 CFAbsoluteTime CFAbsoluteTimeGetCurrent(void) {
     CFAbsoluteTime ret;
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_IPHONE DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_IPHONE || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     struct timeval tv;
     gettimeofday(&tv, NULL);
     ret = (CFTimeInterval)tv.tv_sec - kCFAbsoluteTimeIntervalSince1970;

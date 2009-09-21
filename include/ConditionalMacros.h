@@ -749,16 +749,50 @@
       #define TARGET_RT_MAC_CFM       1
       #define TARGET_RT_MAC_MACHO     0
       #define TARGET_RT_MAC_68881     0
-  #elif #cpu(m68k)
+      #define TARGET_RT_LITTLE_ENDIAN     0
+      #define TARGET_RT_BIG_ENDIAN        1
+ #elif #cpu(m68k)
        #define TARGET_CPU_PPC          0
       #define TARGET_CPU_68K          1
       #define TARGET_CPU_X86          0
       #define TARGET_CPU_MIPS         0
       #define TARGET_CPU_SPARC        0   
        #define TARGET_CPU_ALPHA        0
+      #define TARGET_RT_LITTLE_ENDIAN     0
+      #define TARGET_RT_BIG_ENDIAN        1
       #define TARGET_RT_MAC_CFM       0
       #define TARGET_RT_MAC_MACHO     0
       #define TARGET_RT_MAC_68881     0
+  #elif #cpu(i386)
+      #define TARGET_CPU_PPC              0
+      #define TARGET_CPU_68K              0
+      #define TARGET_CPU_X86              1
+      #define TARGET_CPU_MIPS             0
+      #define TARGET_CPU_SPARC            0   
+      #define TARGET_CPU_ALPHA            0
+      #define TARGET_RT_MAC_CFM           0
+      #define TARGET_RT_MAC_MACHO         0
+      #define TARGET_RT_MAC_68881         0
+      #define TARGET_OS_MAC               0
+      #define TARGET_OS_WIN32             0
+      #define TARGET_OS_UNIX              1
+      #define TARGET_RT_LITTLE_ENDIAN     1
+      #define TARGET_RT_BIG_ENDIAN        0
+      #define __COREAUDIO_USE_FLAT_INCLUDES__ 1
+      #define PRAGMA_IMPORT               0
+      #define PRAGMA_STRUCT_ALIGN         0
+      #define PRAGMA_ONCE                 0
+      #define PRAGMA_STRUCT_PACK          1
+      #define PRAGMA_STRUCT_PACKPUSH      0
+      #define PRAGMA_ENUM_PACK            0
+      #define PRAGMA_ENUM_ALWAYSINT       0
+      #define PRAGMA_ENUM_OPTIONS         0
+      #define FOUR_CHAR_CODE(x)           (x)
+      #define TYPE_EXTENDED               0
+      #define TYPE_LONGDOUBLE_IS_DOUBLE   1
+      #define FUNCTION_PASCAL             0
+      #define FUNCTION_DECLSPEC           0
+      #define FUNCTION_WIN32CC            0           
   #else
       #error unsupported GNU C compiler
   #endif
@@ -775,10 +809,6 @@
       #error unsupported GNU C compiler
   #endif
 
-
-   
-   #define TARGET_RT_LITTLE_ENDIAN     0
-  #define TARGET_RT_BIG_ENDIAN        1
   #define PRAGMA_IMPORT               0
   #define PRAGMA_STRUCT_ALIGN         0
   #define PRAGMA_ONCE                 0

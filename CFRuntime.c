@@ -1024,7 +1024,7 @@ void __CFInitialize(void) {
 
         __CFRuntimeClassTableSize = 1024;
         __CFRuntimeClassTable = (CFRuntimeClass **)calloc(__CFRuntimeClassTableSize, sizeof(CFRuntimeClass *));
-	__CFRuntimeObjCClassTable = (uintptr_t *)calloc(__CFRuntimeClassTableSize, sizeof(uintptr_t));
+        __CFRuntimeObjCClassTable = (uintptr_t *)calloc(__CFRuntimeClassTableSize, sizeof(uintptr_t));
         __CFBaseInitialize();
 
         _CFRuntimeBridgeClasses(0, "__NSCFType");
@@ -1121,7 +1121,7 @@ void __CFInitialize(void) {
 
         {
             CFIndex idx, cnt;
-        char **args;
+            char **args;
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
             args = *_NSGetArgv();
             cnt = *_NSGetArgc();
@@ -1156,6 +1156,11 @@ void __CFInitialize(void) {
                 if (NULL != list[count]) count++;
             }
             __CFArgStuff = CFArrayCreate(kCFAllocatorSystemDefault, (const void **)list, count, &kCFTypeArrayCallBacks);
+#if DEPLOYMENT_TARGET_WINDOWS
+            for (int y = 0; y < cnt; y++)
+                free(args[y]);
+            free(args);
+#endif
         }
 
         _CFProcessPath();	// cache this early
@@ -1167,7 +1172,7 @@ void __CFInitialize(void) {
 
         if (__CFRuntimeClassTableCount < 256) __CFRuntimeClassTableCount = 256;
 #if __OBJC__
-	__CFSendObjCMsg = (void *(*)(const void *, SEL, ...))objc_msgSend;
+             __CFSendObjCMsg = (void *(*)(const void *, SEL, ...))objc_msgSend;
 #endif
 
 #if DEPLOYMENT_TARGET_MACOSX

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2010 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -30,6 +30,7 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
+
 /*	CoreFoundation.h
 	Copyright (c) 1998-2009, Apple Inc. All rights reserved.
 */
@@ -101,14 +102,15 @@
 #include <CoreFoundation/CFUUID.h>
 
 
-#if (TARGET_OS_MAC || TARGET_OS_WIN32)
-#include <CoreFoundation/CFURLEnumerator.h>
-#endif
+//#if (TARGET_OS_MAC || TARGET_OS_WIN32)
+//#include <CoreFoundation/CFURLEnumerator.h>
+//#endif
 
 #if (TARGET_OS_MAC && !(TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)) || (TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)
 #include <CoreFoundation/CFFileDescriptor.h>
 #include <CoreFoundation/CFMachPort.h>
 #endif
+
 #if (TARGET_OS_MAC && !(TARGET_OS_EMBEDDED || TARGET_OS_IPHONE))
 #include <CoreFoundation/CFUserNotification.h>
 #include <CoreFoundation/CFXMLNode.h>
@@ -116,7 +118,7 @@
 #endif
 #if TARGET_OS_WIN32
 #include <CoreFoundation/CFWindowsMessageQueue.h>
-#include <CoreFoundation/CFWindowsNamedPipe.h>
+//#include <CoreFoundation/CFWindowsNamedPipe.h>
 #endif
 
 #endif /* ! __COREFOUNDATION_COREFOUNDATION__ */

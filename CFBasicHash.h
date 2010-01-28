@@ -1,4 +1,14 @@
 /*
+ * Copyright (c) 2009-2010 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ *
+ * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
+ * the terms of the APSL version 2.0 (see below).
+ *
+ * For information about changes from the original Apple source release can be found by reviewing the
+ * source control system for the project at https://sourceforge.net/svn/?group_id=246198.
+ *
+ * The original license information is as follows:
+ * 
  * Copyright (c) 2009 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
@@ -20,6 +30,7 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
+
 /*	CFBasicHash.h
 	Copyright (c) 2008-2009, Apple Inc. All rights reserved.
 */

@@ -4,6 +4,7 @@ echo "Setup ..."
 
 ALL_CFILES=`ls *.c`
 ALL_HFILES=`ls *.h`
+ALL_MFILES=`ls *.m`
 CC="/mingw/bin/gcc"
 AR="/mingw/bin/ar"
 
@@ -20,20 +21,23 @@ if [ "$MACHINE_TYPE" == "i386" ]; then
 	UNICODE_DATA_FILE="CFUnicodeData-L.mapping"
 fi
 
+if [ "$MACHINE_TYPE" == "i686" ]; then
+        UNICODE_DATA_FILE="CFUnicodeData-L.mapping"
+fi
+
 if [ "$MACHINE_TYPE" == "powerpc" ]; then
 	UNICODE_DATA_FILE="CFUnicodeData-B.mapping"
 fi
-
-
 
 PUBLIC_HEADERS="CFArray.h CFBag.h CFBase.h CFBinaryHeap.h CFBitVector.h CFBundle.h CFByteOrder.h CFCalendar.h CFCharacterSet.h CFData.h CFDate.h CFDateFormatter.h CFDictionary.h CFError.h CFLocale.h CFMachPort.h CFMessagePort.h CFNumber.h CFNumberFormatter.h CFPlugIn.h CFPlugInCOM.h CFPreferences.h CFPropertyList.h CFRunLoop.h CFSet.h CFSocket.h CFStream.h CFString.h CFStringEncodingExt.h CFTimeZone.h CFTree.h CFURL.h CFURLAccess.h CFUUID.h CFUserNotification.h CFXMLNode.h CFXMLParser.h CoreFoundation.h"
 PRIVATE_HEADERS="CFBundlePriv.h CFCharacterSetPriv.h CFError_Private.h CFLogUtilities.h CFPriv.h CFRuntime.h CFStorage.h CFStreamAbstract.h CFStreamPriv.h CFStreamInternal.h CFStringDefaultEncoding.h CFStringEncodingConverter.h CFStringEncodingConverterExt.h CFUniChar.h CFUnicodeDecomposition.h CFUnicodePrecomposition.h ForFoundationOnly.h"
 
 OBJBASE=../CF-Objects
-#ARCHFLAGS="-arch ppc -arch ppc64 -arch i386 -arch x86_64"
+#ARCHFLAGS="-arch i386 -arch x86_64"
 ARCHFLAGS=""
+# CFLAGS="-c -x objective-c -pipe -std=gnu99 -g -Wmost -Wno-trigraphs -mmacosx-version-min=10.6 -fconstant-cfstrings -fexceptions -DCF_BUILDING_CF=1 -DDEPLOYMENT_TARGET_MACOSX=1 -DMAC_OS_X_VERSION_MAX_ALLOWED=MAC_OS_X_VERSION_10_6 -DU_SHOW_DRAFT_API=1 -I$OBJBASE -DVERSION=550.13 -include CoreFoundation_Prefix.h"
 CFLAGS="-c -pipe -std=gnu99 -g $WARNINGS -Wno-trigraphs $MACOSVERS -fexceptions -DCF_BUILDING_CF=1 $DEPLOYMENT_TARGET -DMAC_OS_X_VERSION_MAX_ALLOWED=MAC_OS_X_VERSION_10_5 -DU_SHOW_DRAFT_API=1 -I. -I./Compatability -I$OBJBASE -DVERSION=476.19 -DWINVER=0x0500 -D_WIN32_WINNT=0x0501"
-# LFLAGS="-dynamiclib -mmacosx-version-min=10.5 -twolevel_namespace -init ___CFInitialize -compatibility_version 150 -current_version 476 -sectcreate __UNICODE __csbitmaps CFCharacterSetBitmaps.bitmap -sectcreate __UNICODE __properties CFUniCharPropertyDatabase.data -sectcreate __UNICODE __data $UNICODE_DATA_FILE -segprot __UNICODE r r"
+# LFLAGS="-dynamiclib -mmacosx-version-min=10.6 -twolevel_namespace -init ___CFInitialize -compatibility_version 150 -current_version 550.13 -sectcreate __UNICODE __csbitmaps CFCharacterSetBitmaps.bitmap -Wl,-alias_list,SymbolAliases -sectcreate __UNICODE __properties CFUniCharPropertyDatabase.data -sectcreate __UNICODE __data $UNICODE_DATA_FILE -segprot __UNICODE r r"
 LFLAGS="-lmsvcrt -lnetapi32 -lobjc -lole32 -lws2_32 -lkernel32 -lrpcrt4"
 
 /bin/rm -rf $OBJBASE
@@ -51,6 +55,14 @@ Build () {
 	for F in $ALL_CFILES ; do
 		echo $CC $STYLE_CFLAGS $ARCHFLAGS $CFLAGS $F -o $OBJBASE/$STYLE/`basename $F .c`.o
 		$CC $STYLE_CFLAGS $ARCHFLAGS $CFLAGS $F -o $OBJBASE/$STYLE/`basename $F .c`.o
+		if [ $? -ne 0 ]; then
+			echo "*** Compiling $STYLE failed ***"
+			exit 1
+		fi
+	done
+	for F in $ALL_MFILES ; do
+		echo $CC $STYLE_CFLAGS $ARCHFLAGS $CFLAGS $F -o $OBJBASE/$STYLE/`basename $F .m`.o
+		$CC $STYLE_CFLAGS $ARCHFLAGS $CFLAGS $F -o $OBJBASE/$STYLE/`basename $F .m`.o
 		if [ $? -ne 0 ]; then
 			echo "*** Compiling $STYLE failed ***"
 			exit 1

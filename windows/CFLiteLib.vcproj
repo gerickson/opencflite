@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="8.00"
+	Version="9.00"
 	Name="CFLite"
 	ProjectGUID="{EC99198F-4CDD-4D85-AE6F-F837FF6CC372}"
 	RootNamespace="CFLiteLib"
 	Keyword="Win32Proj"
+	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform
@@ -43,7 +44,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)\dist\include&quot;;&quot;$(SolutionDir)\dist\include\CoreFoundation\GNUCompatibility&quot;;&quot;$(SolutionDir)&quot;;&quot;$(SolutionDir)\icu&quot;;&quot;$(SolutionDir)\objc4&quot;;&quot;$(SolutionDir)\pthreads\include&quot;"
-				PreprocessorDefinitions="WIN32;DEBUG;_DEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;_USRDLL;CFLITELIB_EXPORTS;DEPLOYMENT_TARGET_WINDOWS;__STDC_LIMIT_MACROS;CF_BUILDING_CF;_WIN32_WINNT=0x0500;WINVER=0x0500;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE"
+				PreprocessorDefinitions="WIN32;DEBUG;_DEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;_USRDLL;CFLITELIB_EXPORTS;DEPLOYMENT_TARGET_WINDOWS;__STDC_LIMIT_MACROS;CF_BUILDING_CF;_WIN32_WINNT=0x0500;WINVER=0x0500;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE;_BIND_TO_CURRENT_VCLIBS_VERSION"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -67,11 +68,14 @@
 				AdditionalDependencies="netapi32.lib ole32.lib ws2_32.lib kernel32.lib icuuc.lib icuin.lib rpcrt4.lib msvcrt.lib pthreadVC2.lib"
 				OutputFile="$(OutDir)\$(ProjectName)_$(ConfigurationName).dll"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;$(SolutionDir)\icu\lib&quot;;&quot;$(SolutionDir)\dist\lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(SolutionDir)\icu\lib&quot;;&quot;$(SolutionDir)\pthreads\lib&quot;;&quot;$(SolutionDir)\dist\lib&quot;"
+				IgnoreAllDefaultLibraries="false"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="1"
 				EnableCOMDATFolding="0"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				ImportLibrary="$(SolutionDir)\dist\lib\$(TargetName).lib"
 				TargetMachine="1"
 			/>
@@ -93,9 +97,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -130,7 +131,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)\dist\include&quot;;&quot;$(SolutionDir)\dist\include\CoreFoundation\GNUCompatibility&quot;;&quot;$(SolutionDir)&quot;;&quot;$(SolutionDir)\icu&quot;;&quot;$(SolutionDir)\objc4&quot;;&quot;$(SolutionDir)\pthreads\include&quot;"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;_USRDLL;CFLITELIB_EXPORTS;DEPLOYMENT_TARGET_WINDOWS;__STDC_LIMIT_MACROS;CF_BUILDING_CF;_WIN32_WINNT=0x0500;WINVER=0x0500;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;_USRDLL;CFLITELIB_EXPORTS;DEPLOYMENT_TARGET_WINDOWS;__STDC_LIMIT_MACROS;CF_BUILDING_CF;_WIN32_WINNT=0x0500;WINVER=0x0500;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE;_BIND_TO_CURRENT_VCLIBS_VERSION"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
@@ -151,11 +152,14 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="netapi32.lib ole32.lib ws2_32.lib kernel32.lib icuuc.lib icuin.lib rpcrt4.lib msvcrt.lib pthreadVC2.lib"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;$(SolutionDir)\icu\lib&quot;;&quot;$(SolutionDir)\dist\lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(SolutionDir)\icu\lib&quot;;&quot;$(SolutionDir)\pthreads\lib&quot;;&quot;$(SolutionDir)\dist\lib&quot;"
+				IgnoreAllDefaultLibraries="false"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="1"
 				EnableCOMDATFolding="0"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				ImportLibrary="$(SolutionDir)\dist\lib\$(TargetName).lib"
 				TargetMachine="1"
 			/>
@@ -177,9 +181,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"

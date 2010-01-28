@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2010 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -30,6 +30,7 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
+
 /*	CoreFoundation_Prefix.h
 	Copyright (c) 2005-2009, Apple Inc. All rights reserved.
 */
@@ -114,11 +115,6 @@ typedef int		boolean_t;
 #endif
 #endif
 
-#if DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-// This works because things aren't actually exported from the DLL unless they have a __declspec(dllexport) on them... so extern by itself is closest to __private_extern__ on Mac OS
-#define __private_extern__ extern
-#endif    
-
 #if DEPLOYMENT_TARGET_WINDOWS
 
 #define MAXPATHLEN MAX_PATH
@@ -147,6 +143,9 @@ typedef int		boolean_t;
 #define off_t _off_t
 #define mode_t uint16_t
         
+// This works because things aren't actually exported from the DLL unless they have a __declspec(dllexport) on them... so extern by itself is closest to __private_extern__ on Mac OS
+#define __private_extern__ extern
+    
 #define __builtin_expect(P1,P2) P1
     
 // These are replacements for POSIX calls on Windows, ensuring that the UTF8 parameters are converted to UTF16 before being passed to Windows
@@ -253,6 +252,12 @@ extern int pthread_main_np();
 #include <fcntl.h>
 #include <errno.h>
 
+static __inline int flsl( long mask ) {
+    int idx = 0;
+	while (mask != 0) mask = (unsigned long)mask >> 1, idx++;
+	return idx;
+}
+
 static __inline int asprintf(char **ret, const char *format, ...) {
     va_list args;
     size_t sz = 1024;
@@ -281,15 +286,6 @@ static __inline int asprintf(char **ret, const char *format, ...) {
 #define __weak
 #define __strong
 
-#endif
-
-#if DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-
-static __inline int flsl( long mask ) {
-    int idx = 0;
-	while (mask != 0) mask = (unsigned long)mask >> 1, idx++;
-	return idx;
-}
 #endif
 
 #if DEPLOYMENT_TARGET_WINDOWS

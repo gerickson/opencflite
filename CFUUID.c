@@ -65,7 +65,7 @@ static CFHashCode __CFhashUUIDBytes(const void *ptr) {
 }
 
 #if !defined(_MSC_VER)
-#import "auto_stubs.h"
+#include "auto_stubs.h"
 #endif
 
 #define LOCK() __CFSpinLock(&CFUUIDGlobalDataLock)
@@ -177,7 +177,7 @@ CFUUIDRef CFUUIDCreate(CFAllocatorRef alloc) {
     if (!checked) {
         const char *value = getenv("CFUUIDVersionNumber");
         if (value) {
-            if (1 == strtoul_l(value, NULL, 0, NULL)) useV1UUIDs = true;
+            if (1 == strtoul(value, NULL, 0)) useV1UUIDs = true;
         } else {
             if (!_CFExecutableLinkedOnOrAfter(CFSystemVersionTiger)) useV1UUIDs = true;
         }

@@ -1257,7 +1257,9 @@ void CFDictionaryReplaceValue(CFMutableHashRef hc, const_any_pointer_t key) {
 #if CFDictionary
     GETNEWVALUE(newValue);
 #endif
+#if !defined(CF_OBJC_KVO_WILLCHANGE)
     any_t oldKey = hc->_keys[match];
+#endif
     CF_OBJC_KVO_WILLCHANGE(hc, oldKey);
 #if CFSet || CFBag
     CFAllocatorRef keysAllocator = (hc->_xflags & __kCFHashWeakKeys) ? kCFAllocatorNull : allocator;
@@ -1337,7 +1339,9 @@ void CFDictionarySetValue(CFMutableHashRef hc, const_any_pointer_t key) {
 #if CFDictionary
         GETNEWVALUE(newValue);
 #endif
+#if !defined(CF_OBJC_KVO_WILLCHANGE)
         any_t oldKey = hc->_keys[match];
+#endif
         CF_OBJC_KVO_WILLCHANGE(hc, oldKey);
 #if CFSet || CFBag
         CFAllocatorRef keysAllocator = (hc->_xflags & __kCFHashWeakKeys) ? kCFAllocatorNull : allocator;

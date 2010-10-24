@@ -2524,13 +2524,13 @@ __private_extern__ CFArrayRef _CFBundleCopyArchitecturesForExecutable(CFURLRef u
     return result;
 }
 
+#if defined(BINARY_SUPPORT_DYLD)
+
 static Boolean _CFBundleGetObjCImageInfoForExecutable(CFURLRef url, uint32_t *objcVersion, uint32_t *objcFlags) {
     Boolean retval = false;
     (void)_CFBundleGrokFileType(url, NULL, NULL, NULL, NULL, NULL, &retval, objcVersion, objcFlags);
     return retval;
 }
-
-#if defined(BINARY_SUPPORT_DYLD)
 
 __private_extern__ __CFPBinaryType _CFBundleGrokBinaryType(CFURLRef executableURL) {
     // Attempt to grok the type of the binary by looking for DYLD magic numbers.  If one of the DYLD magic numbers is found, find out what type of Mach-o file it is.  Otherwise, look for the PEF magic numbers to see if it is CFM (if we understand CFM).
@@ -2850,6 +2850,7 @@ CFArrayRef CFBundleCopyExecutableArchitectures(CFBundleRef bundle) {
     return result;
 }
 
+#if defined(BINARY_SUPPORT_DYLD)
 static Boolean _CFBundleGetObjCImageInfo(CFBundleRef bundle, uint32_t *objcVersion, uint32_t *objcFlags) {
     Boolean retval = false;
     uint32_t localVersion = 0, localFlags = 0;
@@ -2862,6 +2863,7 @@ static Boolean _CFBundleGetObjCImageInfo(CFBundleRef bundle, uint32_t *objcVersi
     if (objcFlags) *objcFlags = localFlags;
     return retval;
 }
+#endif /* defined(BINARY_SUPPORT_DYLD) */
 
 void CFBundleUnloadExecutable(CFBundleRef bundle) {
     // First unload bundles scheduled for unloading (if that's not what we are already doing.)

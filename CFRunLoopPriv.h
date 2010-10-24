@@ -38,7 +38,7 @@
 
 /* -------- -------- -------- -------- -------- -------- -------- -------- */
 
-#import "CFObject.h"
+#include "CFObject.h"
 #include <CoreFoundation/CFRunLoop.h>
 #include <CoreFoundation/CFMachPort.h>
 #include <CoreFoundation/CFSocket.h>

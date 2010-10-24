@@ -454,13 +454,17 @@ if test "x${uuid_dir}" != "x" -o "x${uuid_header_dir}" != "x" -o "x${uuid_librar
 	fi
 
 	UUID_saved_libs="${LIBS}"
+	UUID_saved_ldflags="${LDFLAGS}"
+	LDFLAGS="${UUID_LDFLAGS} ${LDFLAGS}"
 	LIBS=""
 
 		AC_CHECK_LIB(uuid, uuid_compare)
 
-	UUID_LIBS="${UUID_LDFLAGS} ${LIBS}"
-	LIBS="${UUID_saved_libs}"
-	unset UUID_saved_libs
+ 	UUID_LIBS="${UUID_LDFLAGS} ${LIBS}"
+	LDFLAGS="${UUID_saved_ldflags}"
+ 	LIBS="${UUID_saved_libs}"
+ 	unset UUID_saved_libs
+	unset UUID_saved_ldflags
 
 elif test "x${UUID_CONFIG}" != "x"; then
 	UUID_CPPFLAGS="`${UUID_CONFIG} --cflags`"

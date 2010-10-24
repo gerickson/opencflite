@@ -567,6 +567,22 @@ AC_ARG_WITH(tz-includes,
 
 CPPFLAGS="${TZ_CPPFLAGS} ${CPPFLAGS}"
 
+#
+# Check whether to compile the code with compiler warnings treated as
+# errors.
+#
+
+AC_ARG_WITH(warnings-as-errors,
+	AS_HELP_STRING([--with-warnings-as-errors=OPTION],
+		       [Compile the source code treating compiler warnings as errors.]),
+	[
+        	if test -n "${withval}" -a "x${withval}" != "xno"; then
+			WERROR_FLAGS="-Werror"
+            	elif test "x${withval}" != "xyes"; then
+                	WERROR_FLAGS="${withval}"
+        	fi
+	])
+
 AC_CHECK_HEADER([tzfile.h],[true],AC_MSG_ERROR([${PACKAGE_NAME} requires 'tzfile.h'. Download the latest tzcode package from 'ftp://elsie.nci.nih.gov/pub/' and/or use the '--with-tz-includes=DIR' configuration option.]))
 
 #
@@ -693,6 +709,22 @@ CF_REPLACE_STRLN_FUNC([cpy])
 # implementations of.
 #
 AC_REPLACE_FUNCS([flsl gettimeofday])
+
+#
+# To ensure that none of the tests fail due to it, add any specified
+# warnings-as-errors flags late. But, first check to ensure that the
+# compiler accepts the set value and, if so, add it to CFLAGS.
+#
+
+if test -n "${WERROR_FLAGS}"; then
+	AC_MSG_CHECKING([whether ${CC} accepts ${WERROR_FLAGS}])
+	if test_gcc_flag ${WERROR_FLAGS} ; then
+		CFLAGS="$CFLAGS ${WERROR_FLAGS}"
+		AC_MSG_RESULT([yes])
+     	else
+		AC_MSG_RESULT([no])
+	fi
+fi
 
 #
 # Identify the various makefiles and auto-generated files for the package

@@ -983,10 +983,6 @@ void _CFArraySetCapacity(CFMutableArrayRef array, CFIndex cap) {
     }    
 }
 
-// This function is for Foundation's benefit; no one else should use it.
-bool _CFArrayIsMutable(CFArrayRef array) {
-    return (__CFArrayGetType(array) != __kCFArrayImmutable);
-}
 
 void CFArrayReplaceValues(CFMutableArrayRef array, CFRange range, const void **newValues, CFIndex newCount) {
     CF_OBJC_FUNCDISPATCH3(__kCFArrayTypeID, void, array, "replaceObjectsInRange:withObjects:count:", range, (void **)newValues, newCount);

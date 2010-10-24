@@ -1104,12 +1104,6 @@ void CFSetApplyFunction(CFHashRef hc, CFSetApplierFunction applier, any_pointer_
     }
 }
 
-
-// This function is for Foundation's benefit; no one else should use it.
-bool _CFSetIsMutable(CFSetRef set) { 
-    return (__CFHashGetType(set) != __kCFHashImmutable);
-}
-
 static void __CFSetGrow(CFMutableHashRef hc, CFIndex numNewValues) {
     any_t *oldkeys = hc->_keys;
     any_t *oldvalues = hc->_values;

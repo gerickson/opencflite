@@ -1166,10 +1166,6 @@ void _CFDictionarySetCapacity(CFMutableHashRef hc, CFIndex cap) {
     __CFDictionaryGrow(hc, cap - hc->_bucketsUsed);
 }
 
-// This function is for Foundation's benefit; no one else should use it.
-bool _CFDictionaryIsMutable(CFDictionaryRef dict) {
-    return (__CFHashGetType(dict) != __kCFHashImmutable);
-}
 
 #if CFDictionary
 void CFDictionaryAddValue(CFMutableHashRef hc, const_any_pointer_t key, const_any_pointer_t value) {

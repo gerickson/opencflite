@@ -112,16 +112,11 @@ __private_extern__ Boolean _CFIsCFM(void) {
 #define PATH_LIST_SEP ':'
 #endif
 
+#if DEPLOYMENT_TARGET_MACOSX
 static char *_CFSearchForNameInPath(const char *name, char *path) {
     struct stat statbuf;
-#if DEPLOYMENT_TARGET_WINDOWS && !defined(__GNUC__)
-    char nname[MAX_PATH + 1];
-#else
     char nname[strlen(name) + strlen(path) + 2];
-#endif
-#if !DEPLOYMENT_TARGET_WINDOWS
     int no_hang_fd = open("/dev/autofs_nowait", 0);
-#endif
     for (;;) {
         char *p = (char *)strchr(path, PATH_LIST_SEP);
         if (NULL != p) {
@@ -137,9 +132,7 @@ static char *_CFSearchForNameInPath(const char *name, char *path) {
             if (p != NULL) {
                 *p = PATH_LIST_SEP;
             }
-#if !DEPLOYMENT_TARGET_WINDOWS
            close(no_hang_fd);
-#endif
            return strdup(nname);
         }
         if (NULL == p) {
@@ -148,11 +141,10 @@ static char *_CFSearchForNameInPath(const char *name, char *path) {
         *p = PATH_LIST_SEP;
         path = p + 1;
     }
-#if !DEPLOYMENT_TARGET_WINDOWS
     close(no_hang_fd);
-#endif
     return NULL;
 }
+#endif // DEPLOYMENT_TARGET_MACOSX
 
 #if DEPLOYMENT_TARGET_WINDOWS
 // Returns the path to the CF DLL, which we can then use to find resources like char sets

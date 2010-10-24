@@ -256,6 +256,7 @@ static void __CFPortSetFree(__CFPortSet portSet) {
     CFAllocatorDeallocate(kCFAllocatorSystemDefault, portSet);
 }
 
+#if !DEPLOYMENT_TARGET_LINUX
 // Returns portBuf if ports fit in that space, else returns another ptr that must be freed
 static __CFPort *__CFPortSetGetPorts(__CFPortSet portSet, __CFPort *portBuf, uint32_t bufSize, uint32_t *portsUsed) {
     __CFSpinLock(&(portSet->lock));
@@ -267,6 +268,7 @@ static __CFPort *__CFPortSetGetPorts(__CFPortSet portSet, __CFPort *portBuf, uin
     __CFSpinUnlock(&(portSet->lock));
     return result;
 }
+#endif // !DEPLOYMENT_TARGET_LINUX
 
 static Boolean __CFPortSetInsert(__CFPort port, __CFPortSet portSet) {
     __CFSpinLock(&(portSet->lock));
@@ -834,7 +836,7 @@ static void __CFRunLoopTimerRescheduleWithAllModes(CFRunLoopTimerRef rlt, CFRunL
 }
 
 #if DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
-typedef struct _collectTimersContext {
+struct _collectTimersContext {
     CFMutableArrayRef results;
     int64_t cutoffTSR;
 };

@@ -1062,4 +1062,21 @@ __asm__ (
 #endif
 #endif
 
+#if defined(__arm__)
+__asm__ (
+".text\n"
+"   .align 2\n"
+#if DEPLOYMENT_TARGET_MACOSX
+".private_extern ___HALT\n"
+"___HALT:\n"
+#elif DEPLOYMENT_TARGET_LINUX
+".globl __HALT\n"
+"__HALT:\n"
+#else
+".globl ___HALT\n"
+"___HALT:\n"
+#endif
+"   bkpt 0xCF\n"
+);
+#endif /* defined(__arm__) */
 

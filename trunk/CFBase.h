@@ -72,6 +72,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 #endif
+
+#if !defined(__APPLE__)
+#define weak_import
+#define __private_extern__
+#endif
+
 #include <AvailabilityMacros.h>
 
 #if (TARGET_OS_MAC && !(TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)) || (TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)

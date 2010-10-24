@@ -73,7 +73,7 @@ CFComparisonResult CFDateCompare(CFDateRef theDate, CFDateRef otherDate, void *c
 
 typedef const struct __CFTimeZone * CFTimeZoneRef;
 
-typedef struct _CFGregorianDate {
+typedef struct {
     SInt32 year;
     SInt8 month;
     SInt8 day;
@@ -98,10 +98,6 @@ enum {
     kCFGregorianUnitsHours = (1 << 3),
     kCFGregorianUnitsMinutes = (1 << 4),
     kCFGregorianUnitsSeconds = (1 << 5),
-#if 0
-    kCFGregorianUnitsTimeZone = (1 << 8),
-    kCFGregorianUnitsDayOfWeek = (1 << 9),
-#endif
     kCFGregorianAllUnits = 0x00FFFFFF
 };
 typedef CFOptionFlags CFGregorianUnitFlags;

@@ -603,7 +603,7 @@ CF_INLINE CFIndex __CFStrNewCapacity(CFMutableStringRef str, CFIndex reqCapacity
             }
 	    if (__CFStrHasContentsAllocator(str)) {	/* Also apply any preferred size from the allocator; should we do something for  */
                 newCapacity = CFAllocatorGetPreferredSizeForSize(__CFStrContentsAllocator(str), newCapacity, 0);
-#if defined(__APPLE__)
+#if DEPLOYMENT_TARGET_MACOSX
             } else {
                 newCapacity = malloc_good_size(newCapacity);
 #endif

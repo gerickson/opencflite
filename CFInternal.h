@@ -705,15 +705,14 @@ extern void *__CF_INVOKE_CALLBACK(void *, ...);
 extern void *__CFLookupCFNetworkFunction(const char *name);
 
 #define DEFINE_WEAK_CFNETWORK_FUNC(R, N, P, A, ...)	\
- static R __CFNetwork_ ## N P {				\
- typedef R (*CALL_FUN_TYPE ## N) P;    \
- static CALL_FUN_TYPE ## N dyfunc = (CALL_FUN_TYPE ## N)(~(uintptr_t)0);	\
- if (((CALL_FUN_TYPE ## N)(~(uintptr_t)0)) == dyfunc) {		\
- dyfunc = (CALL_FUN_TYPE ## N)__CFLookupCFNetworkFunction(#N); }	\
- if (dyfunc) { return dyfunc A ; }			\
- return __VA_ARGS__ ;				\
- }
- 
+static R __CFNetwork_ ## N P {				\
+    static R (*dyfunc) P = (void *)(~(uintptr_t)0);	\
+    if ((void *)(~(uintptr_t)0) == dyfunc) {		\
+        dyfunc = __CFLookupCFNetworkFunction(#N); }	\
+    if (dyfunc) { return dyfunc A ; }			\
+    return __VA_ARGS__ ;				\
+}
+
 #else
 
 #define DEFINE_WEAK_CFNETWORK_FUNC(R, N, P, A, ...)

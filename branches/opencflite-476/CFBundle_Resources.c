@@ -1238,8 +1238,6 @@ CF_EXPORT void _CFBundleGetLanguageAndRegionCodes(SInt32 *languageCode, SInt32 *
     if (languages && CFArrayGetCount(languages) > 0) {
         CFStringRef localizationName = (CFStringRef)CFArrayGetValueAtIndex(languages, 0);
         Boolean retval = false;
-        LangCode langCode = -1;
-        RegionCode regCode = -1;
         if (!retval) {
             language = _CFBundleGetLanguageCodeForLocalization(localizationName);
             region = _CFBundleGetRegionCodeForLocalization(localizationName);

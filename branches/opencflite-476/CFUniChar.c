@@ -64,6 +64,7 @@ extern size_t strlcat(char *dst, const char *src, size_t siz);
 #include <mach/mach.h>
 #endif
 
+#ifndef __kCFCharacterSetDir
 #if DEPLOYMENT_TARGET_MACOSX
 #define __kCFCharacterSetDir "/System/Library/CoreServices"
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
@@ -72,6 +73,7 @@ extern size_t strlcat(char *dst, const char *src, size_t siz);
 #define __kCFCharacterSetDir "\\Windows\\CoreFoundation"
 #define MAXPATHLEN MAX_PATH
 #endif
+#endif // __kCFCharacterSetDir
 
 #if DEPLOYMENT_TARGET_MACOSX
 #define USE_MACHO_SEGMENT 1
@@ -244,7 +246,7 @@ static bool __CFUniCharLoadFile(const char *bitmapName, const void **bytes) {
 #else
     char cpath[MAXPATHLEN];
     __CFUniCharCharacterSetPath(cpath);
-	strlcat(cpath, bitmapName, MAXPATHLEN);
+    strlcat(cpath, bitmapName, MAXPATHLEN);
     return __CFUniCharLoadBytesFromFile(cpath, bytes);
 #endif
 }

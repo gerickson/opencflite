@@ -402,34 +402,6 @@ CF_INLINE Boolean _haveTestedOriginalString(CFURLRef url) {
 }
 
 typedef CFStringRef (*StringTransformation)(CFAllocatorRef, CFStringRef, CFIndex);
-static CFArrayRef copyStringArrayWithTransformation(CFArrayRef array, StringTransformation transformation) {
-    CFAllocatorRef alloc = CFGetAllocator(array);
-    CFMutableArrayRef mArray = NULL;
-    CFIndex i, c = CFArrayGetCount(array);
-    for (i = 0; i < c; i ++) {
-        CFStringRef origComp = (CFStringRef)CFArrayGetValueAtIndex(array, i);
-        CFStringRef unescapedComp = transformation(alloc, origComp, i);
-        if (!unescapedComp) { 
-            break;
-        }
-        if (unescapedComp != origComp) {
-            if (!mArray) {
-                mArray = CFArrayCreateMutableCopy(alloc, c, array);
-            }
-            CFArraySetValueAtIndex(mArray, i, unescapedComp);
-        }
-        CFRelease(unescapedComp);
-    }
-    if (i != c) {
-        if (mArray) CFRelease(mArray);
-        return NULL;
-    } else if (mArray) {
-        return mArray;
-    } else {
-        CFRetain(array);
-        return array;
-    }
-}
 
 // Returns NULL if str cannot be converted for whatever reason, str if str contains no characters in need of escaping, or a newly-created string with the appropriate % escape codes in place.  Caller must always release the returned string.
 CF_INLINE CFStringRef _replacePathIllegalCharacters(CFStringRef str, CFAllocatorRef alloc, Boolean preserveSlashes) {
@@ -438,10 +410,6 @@ CF_INLINE CFStringRef _replacePathIllegalCharacters(CFStringRef str, CFAllocator
     } else {
         return CFURLCreateStringByAddingPercentEscapes(alloc, str, NULL, CFSTR(";?/"), kCFStringEncodingUTF8);
     }        
-}
-
-static CFStringRef escapePathComponent(CFAllocatorRef alloc, CFStringRef origComponent, CFIndex componentIndex) {
-    return CFURLCreateStringByAddingPercentEscapes(alloc, origComponent, NULL, CFSTR(";?/"), kCFStringEncodingUTF8);
 }
 
 // We have 2 UniChars of a surrogate; we must convert to the correct percent-encoded UTF8 string and append to str.  Added so that file system URLs can always be converted from POSIX to full URL representation.  -- REW, 8/20/2001

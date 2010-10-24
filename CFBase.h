@@ -49,7 +49,7 @@
 #define __i386__ 1
 #endif
 
-#if (defined(__i386__) || defined(__x86_64__)) && !defined(__LITTLE_ENDIAN__)
+#if (defined(__i386__) || defined(__x86_64__) || defined(__ARMEL__)) && !defined(__LITTLE_ENDIAN__)
 #define __LITTLE_ENDIAN__ 1
 #endif
 

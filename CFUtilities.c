@@ -231,6 +231,7 @@ __private_extern__ CFStringRef _CFCreateLimitedUniqueString() {
 // If not found, and returnNonLocalizedFlag == true, will return the non localized string (retained of course), otherwise NULL
 // If bundlePtr != NULL, will use *bundlePtr and will return the bundle in there; otherwise bundle is created and released
 
+#if DEPLOYMENT_TARGET_MACOSX
 static CFStringRef _CFCopyLocalizedVersionKey(CFBundleRef *bundlePtr, CFStringRef nonLocalized) {
     CFStringRef localized = NULL;
     CFBundleRef locBundle = bundlePtr ? *bundlePtr : NULL;
@@ -261,7 +262,6 @@ static CFDictionaryRef _CFCopyVersionDictionary(CFStringRef path) {
     if (url) CFRelease(url);
     
     if (plist) {
-#if DEPLOYMENT_TARGET_MACOSX
 	CFBundleRef locBundle = NULL;
 	CFStringRef fullVersion, vers, versExtra, build;
 	CFStringRef versionString = _CFCopyLocalizedVersionKey(&locBundle, _kCFSystemVersionProductVersionStringKey);
@@ -288,10 +288,10 @@ static CFDictionaryRef _CFCopyVersionDictionary(CFStringRef path) {
 	CFRelease(buildString);
 	CFRelease(fullVersionString);
         CFRelease(fullVersion);
-#endif
     }    
     return (CFDictionaryRef)plist;
 }
+#endif // DEPLOYMENT_TARGET_MACOSX
 
 #if defined (__MACH__) || 0
 CFStringRef CFCopySystemVersionString(void) {

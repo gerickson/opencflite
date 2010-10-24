@@ -1345,8 +1345,8 @@ static CFTypeRef parseDictTag(_CFXMLPlistParseInfo *pInfo) {
 		dict = CFDictionaryCreateMutable(pInfo->allocator, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 	    }
 	} else {
-	    CFIndex cnt = CFDictionaryGetCount(dict);
 #if DEPLOYMENT_TARGET_MACOSX
+	    CFIndex cnt = CFDictionaryGetCount(dict);
 	    if (1 == cnt) {
 		CFTypeRef val = CFDictionaryGetValue(dict, CFSTR("CF$UID"));
 		if (val && CFGetTypeID(val) == numbertype) {

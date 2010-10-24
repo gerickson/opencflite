@@ -1,3 +1,9 @@
+#
+# Tell automake where to find auxilliary M4 macros
+#
+
+ACLOCAL_AMFLAGS			= -I m4
+
 # We need to ensure that the top-level (i.e. source) directory is
 # built before tests and examples, so we explicitly add '.' to the
 # list of subdirectories.l

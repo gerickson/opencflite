@@ -18528,6 +18528,8 @@ echo "$as_me: error: No such directory ${uuid_library_dir}" >&2;}
 	fi
 
 	UUID_saved_libs="${LIBS}"
+	UUID_saved_ldflags="${LDFLAGS}"
+	LDFLAGS="${UUID_LDFLAGS} ${LDFLAGS}"
 	LIBS=""
 
 
@@ -18603,8 +18605,10 @@ fi
 
 
 	UUID_LIBS="${UUID_LDFLAGS} ${LIBS}"
+	LDFLAGS="${UUID_saved_ldflags}"
 	LIBS="${UUID_saved_libs}"
 	unset UUID_saved_libs
+	unset UUID_saved_ldflags
 
 elif test "x${UUID_CONFIG}" != "x"; then
 	UUID_CPPFLAGS="`${UUID_CONFIG} --cflags`"

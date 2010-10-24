@@ -112,15 +112,17 @@ CF_EXPORT void _CFMachPortInstallNotifyPort(CFRunLoopRef rl, CFStringRef mode);
 #endif
 
 #if defined(__ppc__) || defined(__ppc64__) || defined(__powerpc__)
-    #define HALT asm __volatile__("trap")
+    #define HALT do {asm __volatile__("trap"); kill(getpid(), 9); } while (0)
 #elif defined(__i386__) || defined(__x86_64__)
     #if defined(__GNUC__)
-        #define HALT __asm__ __volatile__("int3")
+        #define HALT do {asm __volatile__("int3"); kill(getpid(), 9); } while (0)
     #elif defined(_MSC_VER)
-        #define HALT __asm int 3;
+        #define HALT do { DebugBreak(); abort(); } while (0)
     #else
         #error Compiler not supported
     #endif
+#elif defined(__arm__)
+    #define HALT do {asm __volatile__("bkpt 0xCF"); kill(getpid(), 9); } while (0)
 #endif
 
 #if defined(DEBUG)

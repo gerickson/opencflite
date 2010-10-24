@@ -16141,7 +16141,7 @@ _ACEOF
 }
 
 if test "x$GCC" = "xyes" ; then
-    DESIRED_CFLAGS="-Wall -Wmost -pipe -Wno-trigraphs -Wno-parentheses -fexceptions -std=gnu99 -mmacosx-version-min=10.5 -fconstant-cfstrings"
+    DESIRED_CFLAGS="-Wall -Wmost -pipe -Wno-trigraphs -Wno-parentheses -Wuninitialized -Wpointer-arith -Wwrite-strings -Wshadow -fexceptions -std=gnu99 -mmacosx-version-min=10.5 -fconstant-cfstrings"
 
     for flag in $DESIRED_CFLAGS ; do
         { echo "$as_me:$LINENO: checking whether ${CC} accepts ${flag}" >&5

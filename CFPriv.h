@@ -59,7 +59,7 @@
 #endif
 
 #if defined(COCOTRON) || (defined(__GNUC__) && HAVE_OBJC_OBJC_H) || DEPLOYMENT_TARGET_MACOSX
-#import <objc/objc.h>
+#include <objc/objc.h>
 #endif
 
 #if DEPLOYMENT_TARGET_WINDOWS

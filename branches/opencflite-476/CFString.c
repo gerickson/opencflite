@@ -1346,8 +1346,10 @@ __private_extern__ CFStringRef __CFStringCreateImmutableFunnel3(
     }
 
     // Now determine the necessary size
-    
+
+#if INSTRUMENT_SHARED_STRINGS || USE_STRING_ROM
     Boolean stringSupportsROM = stringSupportsEightBitCFRepresentation;
+#endif
 
 #if INSTRUMENT_SHARED_STRINGS
     if (stringSupportsROM) {

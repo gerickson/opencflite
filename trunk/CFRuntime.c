@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2010 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  *
- * Copyright (c) 2009 Apple Inc. All rights reserved.
+ * Copyright (c) 2010 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -1258,6 +1258,7 @@ int DllMain( HINSTANCE hInstance, DWORD dwReason, LPVOID pReserved ) {
         __CFStreamCleanup();
         __CFSocketCleanup();
         __CFUniCharCleanup();
+        __CFFinalizeThreadData(NULL);
         __CFBaseCleanup();
 	// do these last
 	if (cfBundle) CFRelease(cfBundle);
@@ -1324,7 +1325,7 @@ CF_EXPORT CFTypeRef _CFRetain(CFTypeRef cf) {
     } while (__builtin_expect(!success, 0));
 #endif
     if (!didAuto && __builtin_expect(__CFOASafe, 0)) {
-	__CFRecordAllocationEvent(__kCFRetainEvent, (void *)cf, 0, 0, NULL);
+	__CFRecordAllocationEvent(__kCFRetainEvent, (void *)cf, 0, CFGetRetainCount(cf), NULL);
     }
     return cf;
 }
@@ -1442,7 +1443,7 @@ CF_EXPORT void _CFRelease(CFTypeRef cf) {
 
 #endif
     if (!didAuto && __builtin_expect(__CFOASafe, 0)) {
-	__CFRecordAllocationEvent(__kCFReleaseEvent, (void *)cf, 0, 0, NULL);
+	__CFRecordAllocationEvent(__kCFReleaseEvent, (void *)cf, 0, CFGetRetainCount(cf), NULL);
     }
     return;
 

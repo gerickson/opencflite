@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2010 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  * Copyright (c) 2009 Grant Erickson <gerickson@nuovations.com>. All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
@@ -10,7 +10,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2009 Apple Inc. All rights reserved.
+ * Copyright (c) 2010 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -191,7 +191,7 @@ static size_t __CFAllocatorCustomGoodSize(malloc_zone_t *zone, size_t size) {
     return CFAllocatorGetPreferredSizeForSize(allocator, size, 0);
 }
 
-// These should live in the malloc.h heaer file
+// These should live in the malloc.h header file
 typedef double (*Fx)(double);
 typedef kern_return_t (*mit_EnumType)(task_t task, void *, unsigned type_mask, vm_address_t zone_address, memory_reader_t reader, vm_range_recorder_t recorder);
 typedef size_t        (*mit_GoodSize)(malloc_zone_t *zone, size_t size);

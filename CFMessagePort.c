@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2010 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2009 Apple Inc. All rights reserved.
+ * Copyright (c) 2010 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -32,7 +32,7 @@
  */
 
 /*	CFMessagePort.c
-	Copyright (c) 1998-2009, Apple Inc. All rights reserved.
+	Copyright (c) 1998-2010, Apple Inc. All rights reserved.
 	Responsibility: Christopher Kane
 */
 
@@ -372,6 +372,10 @@ static CFMessagePortRef __CFMessagePortCreateLocal(CFAllocatorRef allocator, CFS
 	    __CFSpinUnlock(&__CFAllMessagePortsLock);
 	    CFRelease(name);
 	    CFAllocatorDeallocate(kCFAllocatorSystemDefault, utfname);
+            if (!CFMessagePortIsValid(existing)) { // must do this outside lock to avoid deadlock
+	        CFRelease(existing);
+                existing = NULL;
+            }
 	    return (CFMessagePortRef)(existing);
 	}
     }
@@ -507,6 +511,10 @@ static CFMessagePortRef __CFMessagePortCreateRemote(CFAllocatorRef allocator, CF
 	    __CFSpinUnlock(&__CFAllMessagePortsLock);
 	    CFRelease(name);
 	    CFAllocatorDeallocate(kCFAllocatorSystemDefault, utfname);
+            if (!CFMessagePortIsValid(existing)) { // must do this outside lock to avoid deadlock
+	        CFRelease(existing);
+                existing = NULL;
+            }
 	    return (CFMessagePortRef)(existing);
 	}
     }
@@ -706,7 +714,7 @@ void CFMessagePortInvalidate(CFMessagePortRef ms) {
     __CFMessagePortLock(ms);
     if (__CFMessagePortIsValid(ms)) {
         if (ms->_dispatchSource) {
-            dispatch_cancel(ms->_dispatchSource);
+            dispatch_source_cancel(ms->_dispatchSource);
             ms->_dispatchSource = NULL;
 	    ms->_dispatchQ = NULL;
         }
@@ -773,10 +781,6 @@ Boolean CFMessagePortIsValid(CFMessagePortRef ms) {
 	return false;
     }
     if (NULL != ms->_replyPort && !CFMachPortIsValid(ms->_replyPort)) {
-	CFMessagePortInvalidate(ms);
-	return false;
-    }
-    if (NULL != ms->_source && !CFRunLoopSourceIsValid(ms->_source)) {
 	CFMessagePortInvalidate(ms);
 	return false;
     }
@@ -1080,9 +1084,13 @@ static void *__CFMessagePortPerform(void *msg, CFIndex size, CFAllocatorRef allo
 CFRunLoopSourceRef CFMessagePortCreateRunLoopSource(CFAllocatorRef allocator, CFMessagePortRef ms, CFIndex order) {
     CFRunLoopSourceRef result = NULL;
     __CFGenericValidateType(ms, __kCFMessagePortTypeID);
-//#warning CF: This should be an assert
-   // if (__CFMessagePortIsRemote(ms)) return NULL;
+    if (!CFMessagePortIsValid(ms)) return NULL;
+    if (__CFMessagePortIsRemote(ms)) return NULL;
     __CFMessagePortLock(ms);
+    if (NULL != ms->_source && !CFRunLoopSourceIsValid(ms->_source)) {
+        CFRelease(ms->_source);
+        ms->_source = NULL;
+    }
     if (NULL == ms->_source && NULL == ms->_dispatchSource && __CFMessagePortIsValid(ms)) {
 	CFRunLoopSourceContext1 context;
 	context.version = 1;
@@ -1123,7 +1131,7 @@ void CFMessagePortSetDispatchQueue(CFMessagePortRef ms, dispatch_queue_t queue) 
     }
 
     if (ms->_dispatchSource) {
-        dispatch_cancel(ms->_dispatchSource);
+        dispatch_source_cancel(ms->_dispatchSource);
         ms->_dispatchSource = NULL;
         ms->_dispatchQ = NULL;
     }
@@ -1131,19 +1139,13 @@ void CFMessagePortSetDispatchQueue(CFMessagePortRef ms, dispatch_queue_t queue) 
     if (queue) {
         mach_port_t port = __CFMessagePortGetPort(ms);
         if (MACH_PORT_NULL != port) {
-	    ms->_dispatchSource = dispatch_source_machport_create(port, DISPATCH_MACHPORT_RECV, DISPATCH_SOURCE_CREATE_SUSPENDED, __mportQueue(), ^(dispatch_source_t source) {
-                    long e = 0, d = dispatch_source_get_error(source, &e);
-                    if (DISPATCH_ERROR_DOMAIN_POSIX == d && ECANCELED == e) {
+	        dispatch_source_t theSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_MACH_RECV, port, 0, __mportQueue());
+	        dispatch_source_set_cancel_handler(theSource, ^{
                         dispatch_release(queue);
-                        dispatch_release(source);
-                        return;
-                    }
-                    if (DISPATCH_ERROR_DOMAIN_NO_ERROR != d) {
-                        HALT;
-                    }
-
+	            dispatch_release(theSource);
+	        });
+	        dispatch_source_set_event_handler(theSource, ^{
                     CFRetain(ms);
-		    mach_port_t port = dispatch_source_get_handle(source);
                     mach_msg_header_t *msg = (mach_msg_header_t *)CFAllocatorAllocate(kCFAllocatorSystemDefault, 2048, 0);
                     msg->msgh_size = 2048;
 
@@ -1173,6 +1175,7 @@ void CFMessagePortSetDispatchQueue(CFMessagePortRef ms, dispatch_queue_t queue) 
                             CFRelease(ms);
                         });
                 });
+		ms->_dispatchSource = theSource;
 	}
         if (ms->_dispatchSource) {
             dispatch_retain(queue);

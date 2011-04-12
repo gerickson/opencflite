@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2010 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2009 Apple Inc. All rights reserved.
+ * Copyright (c) 2010 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,9 +31,5 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
-/* CFVersion.c
-    Copyright 2009, Apple Inc. All rights reserved.
-    Responsibility: CFLite Team
-*/
-const unsigned char kCFCoreFoundationVersionString[] = "@(#)PROGRAM:CoreFoundation  PROJECT:CoreFoundation-550.13  SYSTEM:Darwin  DEVELOPER:unknown  BUILT:" __DATE__ " " __TIME__ "\n";
-double kCFCoreFoundationVersionNumber = (double)550.13;
+const unsigned char kCFCoreFoundationVersionString[] = "@(#)PROGRAM:CoreFoundation  PROJECT:CoreFoundation-550.42  SYSTEM:Darwin  DEVELOPER:unknown  BUILT:" __DATE__ " " __TIME__ "\n";
+double kCFCoreFoundationVersionNumber = (double)550.42;

@@ -367,7 +367,7 @@ typedef enum UDataFileAccess {
     /** ICU does not access the file system for data loading. */
     UDATA_NO_FILES,
     /** An alias for the default access mode. */
-    UDATA_DEFAULT_ACCESS = UDATA_FILES_FIRST,
+    UDATA_DEFAULT_ACCESS = UDATA_ONLY_PACKAGES,
     UDATA_FILE_ACCESS_COUNT
 } UDataFileAccess;
 

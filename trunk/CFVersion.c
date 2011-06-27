@@ -31,5 +31,5 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
-const unsigned char kCFCoreFoundationVersionString[] = "@(#)PROGRAM:CoreFoundation  PROJECT:CoreFoundation-550.42  SYSTEM:Darwin  DEVELOPER:unknown  BUILT:" __DATE__ " " __TIME__ "\n";
-double kCFCoreFoundationVersionNumber = (double)550.42;
+const unsigned char kCFCoreFoundationVersionString[] = "@(#)PROGRAM:CoreFoundation  PROJECT:CoreFoundation-550.43  SYSTEM:Darwin  DEVELOPER:unknown  BUILT:" __DATE__ " " __TIME__ "\n";
+double kCFCoreFoundationVersionNumber = (double)550.43;

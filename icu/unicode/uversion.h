@@ -159,14 +159,14 @@ typedef uint8_t UVersionInfo[U_MAX_VERSION_LENGTH];
 
 /* Define namespace symbols if the compiler supports it. */
 #if U_HAVE_NAMESPACE && defined(XP_CPLUSPLUS)
-#   if U_DISABLE_RENAMING
+#  if U_DISABLE_RENAMING
 #       define U_ICU_NAMESPACE icu
         namespace U_ICU_NAMESPACE { }
-#   else
+#  else
 #       define U_ICU_NAMESPACE icu_4_0
         namespace U_ICU_NAMESPACE { }
         namespace icu = U_ICU_NAMESPACE;
-#   endif
+#  endif
 
 #   define U_NAMESPACE_BEGIN namespace U_ICU_NAMESPACE {
 #   define U_NAMESPACE_END  }

@@ -1,39 +1,8 @@
 /*
- * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
- *
- * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
- * the terms of the APSL version 2.0 (see below).
- *
- * For information about changes from the original Apple source release can be found by reviewing the
- * source control system for the project at https://sourceforge.net/svn/?group_id=246198.
- *
- * The original license information is as follows:
- * 
- * Copyright (c) 2001-2008 by Apple Inc.. All rights reserved.
- *
- * @APPLE_LICENSE_HEADER_START@
- * 
- * This file contains Original Code and/or Modifications of Original Code
- * as defined in and that are subject to the Apple Public Source License
- * Version 2.0 (the 'License'). You may not use this file except in
- * compliance with the License. Please obtain a copy of the License at
- * http://www.opensource.apple.com/apsl/ and read it before using this
- * file.
- * 
- * The Original Code and all software distributed under the License are
- * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
- * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
- * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
- * Please see the License for the specific language governing rights and
- * limitations under the License.
- * 
- * @APPLE_LICENSE_HEADER_END@
- */
-
-/*
      File:       AvailabilityMacros.h
  
+     Copyright:  (c) 2001-2005 by Apple Computer, Inc., all rights reserved.
+
      More Info:  See TechNote 2064
 
      Contains:   Autoconfiguration of AVAILABLE_ macros for Mac OS X
@@ -105,26 +74,18 @@
 #define MAC_OS_X_VERSION_10_3 1030
 #define MAC_OS_X_VERSION_10_4 1040
 #define MAC_OS_X_VERSION_10_5 1050
-#define MAC_OS_X_VERSION_10_6 1060
 
 
 /* 
- * If min OS not specified, assume 10.1 for ppc and 10.4 for all others
+ * If min OS not specified, assume 10.1
  * Note: gcc driver may set _ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED_ based on MACOSX_DEPLOYMENT_TARGET environment variable
  */
 #ifndef MAC_OS_X_VERSION_MIN_REQUIRED
     #ifdef __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__
-        #if (__i386__ || __x86_64__) && (__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ < MAC_OS_X_VERSION_10_4)
-            #warning Building for Intel with Mac OS X Deployment Target < 10.4 is invalid.
-        #elif __ppc64__ && (__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ < MAC_OS_X_VERSION_10_4)
-            #warning Building for ppc64 with Mac OS X Deployment Target < 10.4 is invalid.
-        #endif
         #define MAC_OS_X_VERSION_MIN_REQUIRED __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__
     #else
         #if __ppc64__ || __i386__ || __x86_64__
             #define MAC_OS_X_VERSION_MIN_REQUIRED MAC_OS_X_VERSION_10_4
-        #elif __arm__
-            #define MAC_OS_X_VERSION_MIN_REQUIRED MAC_OS_X_VERSION_10_5
         #else
             #define MAC_OS_X_VERSION_MIN_REQUIRED MAC_OS_X_VERSION_10_1
         #endif
@@ -132,13 +93,13 @@
 #endif
 
 /*
- * if max OS not specified, assume largerof(10.6, min)
+ * if max OS not specified, assume largerof(10.5, min)
  */
 #ifndef MAC_OS_X_VERSION_MAX_ALLOWED
-    #if MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_6
+    #if MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_5
         #define MAC_OS_X_VERSION_MAX_ALLOWED MAC_OS_X_VERSION_MIN_REQUIRED
     #else
-        #define MAC_OS_X_VERSION_MAX_ALLOWED MAC_OS_X_VERSION_10_6
+        #define MAC_OS_X_VERSION_MAX_ALLOWED MAC_OS_X_VERSION_10_5
     #endif
 #endif
 
@@ -153,7 +114,7 @@
 #endif
 
 /*
- * only certain compilers support __attribute__((weak_import))
+ * only certain compilers support __attribute((weak_import))__
  */
 #if defined(__GNUC__) && ((__GNUC__ >= 4) || ((__GNUC__ == 3) && (__GNUC_MINOR__ >= 1))) && (MAC_OS_X_VERSION_MIN_REQUIRED >= 1020)
     #define WEAK_IMPORT_ATTRIBUTE __attribute__((weak_import))
@@ -164,7 +125,7 @@
 #endif
 
 /*
- * only certain compilers support __attribute__((deprecated))
+ * only certain compilers support __attribute((deprecated))__
  */
 #if defined(__GNUC__) && ((__GNUC__ >= 4) || ((__GNUC__ == 3) && (__GNUC_MINOR__ >= 1)))
     #define DEPRECATED_ATTRIBUTE __attribute__((deprecated))
@@ -173,7 +134,7 @@
 #endif
 
 /*
- * only certain compilers support __attribute__((unavailable))
+ * only certain compilers support __attribute((unavailable))__
  */
 #if defined(__GNUC__) && ((__GNUC__ >= 4) || ((__GNUC__ == 3) && (__GNUC_MINOR__ >= 1)))
     #define UNAVAILABLE_ATTRIBUTE __attribute__((unavailable))
@@ -587,119 +548,6 @@
     #define DEPRECATED_IN_MAC_OS_X_VERSION_10_5_AND_LATER    DEPRECATED_ATTRIBUTE
 #else
     #define DEPRECATED_IN_MAC_OS_X_VERSION_10_5_AND_LATER
-#endif
-
-
-
-
-
-
-/*
- * AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER
- * 
- * Used on declarations introduced in Mac OS X 10.6 
- */
-#if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_6
-    #define AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER     UNAVAILABLE_ATTRIBUTE
-#elif MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_6
-    #define AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER     WEAK_IMPORT_ATTRIBUTE
-#else
-    #define AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER
-#endif
-
-/*
- * AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER_BUT_DEPRECATED
- * 
- * Used on declarations introduced in Mac OS X 10.6, 
- * and deprecated in Mac OS X 10.6
- */
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6
-    #define AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER_BUT_DEPRECATED    DEPRECATED_ATTRIBUTE
-#else
-    #define AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER_BUT_DEPRECATED    AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER
-#endif
-
-/*
- * AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_6
- * 
- * Used on declarations introduced in Mac OS X 10.0, 
- * but later deprecated in Mac OS X 10.6
- */
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6
-    #define AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_6    DEPRECATED_ATTRIBUTE
-#else
-    #define AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_6    AVAILABLE_MAC_OS_X_VERSION_10_0_AND_LATER
-#endif
-
-/*
- * AVAILABLE_MAC_OS_X_VERSION_10_1_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_6
- * 
- * Used on declarations introduced in Mac OS X 10.1, 
- * but later deprecated in Mac OS X 10.6
- */
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6
-    #define AVAILABLE_MAC_OS_X_VERSION_10_1_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_6    DEPRECATED_ATTRIBUTE
-#else
-    #define AVAILABLE_MAC_OS_X_VERSION_10_1_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_6    AVAILABLE_MAC_OS_X_VERSION_10_1_AND_LATER
-#endif
-
-/*
- * AVAILABLE_MAC_OS_X_VERSION_10_2_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_6
- * 
- * Used on declarations introduced in Mac OS X 10.2, 
- * but later deprecated in Mac OS X 10.6
- */
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6
-    #define AVAILABLE_MAC_OS_X_VERSION_10_2_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_6    DEPRECATED_ATTRIBUTE
-#else
-    #define AVAILABLE_MAC_OS_X_VERSION_10_2_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_6    AVAILABLE_MAC_OS_X_VERSION_10_2_AND_LATER
-#endif
-
-/*
- * AVAILABLE_MAC_OS_X_VERSION_10_3_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_6
- * 
- * Used on declarations introduced in Mac OS X 10.3, 
- * but later deprecated in Mac OS X 10.6
- */
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6
-    #define AVAILABLE_MAC_OS_X_VERSION_10_3_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_6    DEPRECATED_ATTRIBUTE
-#else
-    #define AVAILABLE_MAC_OS_X_VERSION_10_3_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_6    AVAILABLE_MAC_OS_X_VERSION_10_3_AND_LATER
-#endif
-
-/*
- * AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_6
- * 
- * Used on declarations introduced in Mac OS X 10.4, 
- * but later deprecated in Mac OS X 10.6
- */
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6
-    #define AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_6    DEPRECATED_ATTRIBUTE
-#else
-    #define AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_6    AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER
-#endif
-
-/*
- * AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_6
- * 
- * Used on declarations introduced in Mac OS X 10.5, 
- * but later deprecated in Mac OS X 10.6
- */
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6
-    #define AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_6    DEPRECATED_ATTRIBUTE
-#else
-    #define AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_6    AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER
-#endif
-
-/*
- * DEPRECATED_IN_MAC_OS_X_VERSION_10_6_AND_LATER
- * 
- * Used on types deprecated in Mac OS X 10.6 
- */
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6
-    #define DEPRECATED_IN_MAC_OS_X_VERSION_10_6_AND_LATER    DEPRECATED_ATTRIBUTE
-#else
-    #define DEPRECATED_IN_MAC_OS_X_VERSION_10_6_AND_LATER
 #endif
 
 #endif  /* __AVAILABILITYMACROS__ */

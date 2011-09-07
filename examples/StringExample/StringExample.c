@@ -383,7 +383,6 @@ Boolean equalValues(CFStringRef number, CFNumberRef expected, CFNumberFormatterS
    //CFLocaleRef curLocale = CFLocaleCreate(NULL, enLocaleIdentifier);
    
    CFLocaleRef curLocale = CFLocaleCopyCurrent();
-   CFStringRef identifier = CFLocaleGetIdentifier(curLocale);
    CFNumberFormatterRef fmt;
    CFNumberRef val;
 

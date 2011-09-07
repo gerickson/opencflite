@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,9 +30,8 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFPropertyList.h
-	Copyright (c) 1998-2009, Apple Inc. All rights reserved.
+	Copyright (c) 1998-2007, Apple Inc. All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFPROPERTYLIST__)
@@ -51,7 +50,7 @@ enum {
     kCFPropertyListMutableContainersAndLeaves
 };
 typedef CFOptionFlags CFPropertyListMutabilityOptions;
-
+    
 /*
 	Creates a property list object from its XML description; xmlData should
 	be the raw bytes of that description, possibly the contents of an XML
@@ -59,8 +58,6 @@ typedef CFOptionFlags CFPropertyListMutabilityOptions;
 	and errorString is non-NULL, a human-readable description of the failure
 	is returned in errorString. It is the caller's responsibility to release
 	either the returned object or the error string, whichever is applicable.
- 
-        This function is obsolete and will be deprecated soon. See CFPropertyListCreateWithData() for a replacement.
 */
 CF_EXPORT
 CFPropertyListRef CFPropertyListCreateFromXMLData(CFAllocatorRef allocator, CFDataRef xmlData, CFOptionFlags mutabilityOption, CFStringRef *errorString);
@@ -74,8 +71,6 @@ CFPropertyListRef CFPropertyListCreateFromXMLData(CFAllocatorRef allocator, CFDa
 	appropriate for writing out to an XML file. Note that a data, not a
 	string, is returned because the bytes contain in them a description
 	of the string encoding used.
- 
-        This function is obsolete and will be deprecated soon. See CFPropertyListCreateData() for a replacement.
 */
 CF_EXPORT
 CFDataRef CFPropertyListCreateXMLData(CFAllocatorRef allocator, CFPropertyListRef propertyList);
@@ -98,13 +93,17 @@ enum {
 };
 typedef CFIndex CFPropertyListFormat;
 
+CF_EXPORT
+Boolean CFPropertyListIsValid(CFPropertyListRef plist, CFPropertyListFormat format);
+
 /* Returns true if the object graph rooted at plist is a valid property list
  * graph -- that is, no cycles, containing only plist objects, and dictionary
  * keys are strings. The debugging library version spits out some messages
  * to be helpful. The plist structure which is to be allowed is given by
  * the format parameter. */
+
 CF_EXPORT
-Boolean CFPropertyListIsValid(CFPropertyListRef plist, CFPropertyListFormat format);
+CFIndex CFPropertyListWriteToStream(CFPropertyListRef propertyList, CFWriteStreamRef stream, CFPropertyListFormat format, CFStringRef *errorString);
 
 /* Writes the bytes of a plist serialization out to the stream.  The
  * stream must be opened and configured -- the function simply writes
@@ -113,12 +112,10 @@ Boolean CFPropertyListIsValid(CFPropertyListRef plist, CFPropertyListFormat form
  * reading stream to end wherever the writing ended, so that the
  * end of the plist data can be identified. Returns the number of bytes
  * written, or 0 on error. Error messages are not currently localized, but
- * may be in the future, so they are not suitable for comparison. 
- *
- * This function is obsolete and will be deprecated soon. See CFPropertyListWrite() for a replacement. */
-CF_EXPORT
-CFIndex CFPropertyListWriteToStream(CFPropertyListRef propertyList, CFWriteStreamRef stream, CFPropertyListFormat format, CFStringRef *errorString);
+ * may be in the future, so they are not suitable for comparison. */
 
+CF_EXPORT
+CFPropertyListRef CFPropertyListCreateFromStream(CFAllocatorRef allocator, CFReadStreamRef stream, CFIndex streamLength, CFOptionFlags mutabilityOption, CFPropertyListFormat *format, CFStringRef *errorString);
 
 /* Same as current function CFPropertyListCreateFromXMLData()
  * but takes a stream instead of data, and works on any plist file format.
@@ -128,43 +125,9 @@ CFIndex CFPropertyListWriteToStream(CFPropertyListRef propertyList, CFWriteStrea
  * of the stream, which is expected to be the end of the plist, or up to the
  * number of bytes given by the length parameter if it is not 0. Error messages
  * are not currently localized, but may be in the future, so they are not
- * suitable for comparison. 
- *
- * This function is obsolete and will be deprecated soon. See CFPropertyListCreateWithStream() for a replacement. */
-CF_EXPORT
-CFPropertyListRef CFPropertyListCreateFromStream(CFAllocatorRef allocator, CFReadStreamRef stream, CFIndex streamLength, CFOptionFlags mutabilityOption, CFPropertyListFormat *format, CFStringRef *errorString);
+ * suitable for comparison. */
 
 #endif
-
-#if MAC_OS_X_VERSION_10_6 <= MAC_OS_X_VERSION_MAX_ALLOWED
-enum {
-    kCFPropertyListReadCorruptError = 3840,              // Error parsing a property list
-    kCFPropertyListReadUnknownVersionError = 3841,       // The version number in the property list is unknown
-    kCFPropertyListReadStreamError = 3842,               // Stream error reading a property list
-    kCFPropertyListWriteStreamError = 3851,              // Stream error writing a property list
-};
-#endif
-
-/* Create a property list with a CFData input. If the format parameter is non-NULL, it will be set to the format of the data after parsing is complete. The options parameter is used to specify CFPropertyListMutabilityOptions. If an error occurs while parsing the data, the return value will be NULL. Additionally, if an error occurs and the error parameter is non-NULL, the error parameter will be set to a CFError describing the problem, which the caller must release. If the parse succeeds, the returned value is a reference to the new property list. It is the responsibility of the caller to release this value.
- */
-CF_EXPORT
-CFPropertyListRef CFPropertyListCreateWithData(CFAllocatorRef allocator, CFDataRef data, CFOptionFlags options, CFPropertyListFormat *format, CFErrorRef *error) AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
-
-/* Create and return a property list with a CFReadStream input. TIf the format parameter is non-NULL, it will be set to the format of the data after parsing is complete. The options parameter is used to specify CFPropertyListMutabilityOptions. The streamLength parameter specifies the number of bytes to read from the stream. Set streamLength to 0 to read until the end of the stream is detected. If an error occurs while parsing the data, the return value will be NULL. Additionally, if an error occurs and the error parameter is non-NULL, the error parameter will be set to a CFError describing the problem, which the caller must release. If the parse succeeds, the returned value is a reference to the new property list. It is the responsibility of the caller to release this value.
- */
-CF_EXPORT
-CFPropertyListRef CFPropertyListCreateWithStream(CFAllocatorRef allocator, CFReadStreamRef stream, CFIndex streamLength, CFOptionFlags options, CFPropertyListFormat *format, CFErrorRef *error) AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
-
-/* Write the bytes of a serialized property list out to a stream. The stream must be opened and configured. The format of the property list can be chosen with the format parameter. The options parameter is currently unused and should be set to 0. The return value is the number of bytes written or 0 in the case of an error. If an error occurs and the error parameter is non-NULL, the error parameter will be set to a CFError describing the problem, which the caller must release.
- */
-CF_EXPORT
-CFIndex CFPropertyListWrite(CFPropertyListRef propertyList, CFWriteStreamRef stream, CFPropertyListFormat format, CFOptionFlags options, CFErrorRef *error) AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
-
-/* Create a CFData with the bytes of a serialized property list. The format of the property list can be chosen with the format parameter. The options parameter is currently unused and should be set to 0. If an error occurs while parsing the data, the return value will be NULL. Additionally, if an error occurs and the error parameter is non-NULL, the error parameter will be set to a CFError describing the problem, which the caller must release. If the conversion succeeds, the returned value is a reference to the created data. It is the responsibility of the caller to release this value.
- */
-CF_EXPORT
-CFDataRef CFPropertyListCreateData(CFAllocatorRef allocator, CFPropertyListRef propertyList, CFPropertyListFormat format, CFOptionFlags options, CFErrorRef *error) AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
-
 
 CF_EXTERN_C_END
 

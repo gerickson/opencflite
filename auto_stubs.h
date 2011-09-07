@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2009 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -40,19 +40,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-
-#if !defined(__OBJC__)
-typedef void* id;
-typedef void* Class;
-#define OBJC_INLINE
-#define YES TRUE
-#define NO FALSE
-#endif
-static __inline int flsl( long mask ) {
-    int idx = 0;
-	while (mask != 0) mask = (unsigned long)mask >> 1, idx++;
-	return idx;
-}
 #if DEPLOYMENT_TARGET_MACOSX
 #include <malloc/malloc.h>
 #endif

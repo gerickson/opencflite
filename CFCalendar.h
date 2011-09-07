@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,9 +30,8 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFCalendar.h
-	Copyright (c) 2004-2009, Apple Inc. All rights reserved.
+	Copyright (c) 2004-2007, Apple Inc. All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFCALENDAR__)
@@ -90,19 +89,16 @@ void CFCalendarSetMinimumDaysInFirstWeek(CFCalendarRef calendar, CFIndex mwd) AV
 
 
 enum {
-	kCFCalendarUnitEra = (1UL << 1),
-	kCFCalendarUnitYear = (1UL << 2),
-	kCFCalendarUnitMonth = (1UL << 3),
-	kCFCalendarUnitDay = (1UL << 4),
-	kCFCalendarUnitHour = (1UL << 5),
-	kCFCalendarUnitMinute = (1UL << 6),
-	kCFCalendarUnitSecond = (1UL << 7),
-	kCFCalendarUnitWeek = (1UL << 8),
-	kCFCalendarUnitWeekday = (1UL << 9),
-	kCFCalendarUnitWeekdayOrdinal = (1UL << 10),
-#if MAC_OS_X_VERSION_10_6 <= MAC_OS_X_VERSION_MAX_ALLOWED
-	kCFCalendarUnitQuarter = (1UL << 11),
-#endif
+	kCFCalendarUnitEra = (1 << 1),
+	kCFCalendarUnitYear = (1 << 2),
+	kCFCalendarUnitMonth = (1 << 3),
+	kCFCalendarUnitDay = (1 << 4),
+	kCFCalendarUnitHour = (1 << 5),
+	kCFCalendarUnitMinute = (1 << 6),
+	kCFCalendarUnitSecond = (1 << 7),
+	kCFCalendarUnitWeek = (1 << 8),
+	kCFCalendarUnitWeekday = (1 << 9),
+	kCFCalendarUnitWeekdayOrdinal = (1 << 10)
 };
 typedef CFOptionFlags CFCalendarUnit;
 
@@ -129,7 +125,7 @@ Boolean CFCalendarDecomposeAbsoluteTime(CFCalendarRef calendar, CFAbsoluteTime a
 
 
 enum {
-    kCFCalendarComponentsWrap = (1UL << 0)  // option for adding
+    kCFCalendarComponentsWrap = (1 << 0)  // option for adding
 };
 
 CF_EXPORT

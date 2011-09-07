@@ -3237,7 +3237,7 @@ private:
   union StackBufferOrFields {
     // fStackBuffer is used iff (fFlags&kUsingStackBuffer)
     // else fFields is used
-    UChar     fStackBuffer [US_STACKBUF_SIZE]; // buffer for small strings
+  UChar     fStackBuffer [ US_STACKBUF_SIZE ]; // buffer for small strings
     struct {
       uint16_t  fPadding;   // align the following field at 8B (32b pointers) or 12B (64b)
       int32_t   fLength;    // number of characters in fArray if >127; else undefined

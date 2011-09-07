@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,9 +30,8 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFBundle_Internal.h
-	Copyright (c) 1999-2009, Apple Inc.  All rights reserved.
+	Copyright (c) 1999-2007, Apple Inc.  All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFBUNDLE_INTERNAL__)
@@ -51,7 +50,7 @@ CF_EXTERN_C_BEGIN
 #define __kCFLogBundle       3
 #define __kCFLogPlugIn       3
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX || 0
 #define PLATFORM_PATH_STYLE kCFURLPOSIXPathStyle
 #elif DEPLOYMENT_TARGET_WINDOWS
 #define PLATFORM_PATH_STYLE kCFURLWindowsPathStyle
@@ -123,15 +122,14 @@ extern void _CFBundleUnloadScheduledBundles(void);
 #if defined(BINARY_SUPPORT_DYLD)
 // DYLD API
 extern __CFPBinaryType _CFBundleGrokBinaryType(CFURLRef executableURL);
-extern CFArrayRef _CFBundleDYLDCopyLoadedImagePathsIfChanged(void);
-extern CFArrayRef _CFBundleDYLDCopyLoadedImagePathsForHint(CFStringRef hint);
-#if !defined(BINARY_SUPPORT_DLFCN)
 extern Boolean _CFBundleDYLDCheckLoaded(CFBundleRef bundle);
 extern Boolean _CFBundleDYLDLoadBundle(CFBundleRef bundle, Boolean forceGlobal, CFErrorRef *error);
 extern Boolean _CFBundleDYLDLoadFramework(CFBundleRef bundle, CFErrorRef *error);
 extern void _CFBundleDYLDUnloadBundle(CFBundleRef bundle);
 extern void *_CFBundleDYLDGetSymbolByName(CFBundleRef bundle, CFStringRef symbolName);
-#endif /* !BINARY_SUPPORT_DLFCN */
+
+extern CFArrayRef _CFBundleDYLDCopyLoadedImagePathsIfChanged(void);
+extern CFArrayRef _CFBundleDYLDCopyLoadedImagePathsForHint(CFStringRef hint);
 #endif /* BINARY_SUPPORT_DYLD */
 
 #if defined(BINARY_SUPPORT_DLFCN)
@@ -233,7 +231,7 @@ extern void _CFPlugInRemoveFactory(CFPlugInRef plugIn, _CFPFactory *factory);
 
 #define _CFBundleLocalizedResourceForkFileName CFSTR("Localized")
 
-#if DEPLOYMENT_TARGET_WINDOWS
+#if DEPLOYMENT_TARGET_WINDOWS || 0
 #define _CFBundleWindowsResourceDirectoryExtension CFSTR("resources")
 #endif
 

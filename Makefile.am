@@ -1,3 +1,9 @@
+#
+# Tell automake where to find auxilliary M4 macros
+#
+
+ACLOCAL_AMFLAGS			= -I m4
+
 # We need to ensure that the top-level (i.e. source) directory is
 # built before tests and examples, so we explicitly add '.' to the
 # list of subdirectories.l
@@ -75,12 +81,10 @@ CF_include_HEADERS		= CFArray.h				\
 				  CFDictionary.h			\
 				  CFError.h				\
 				  CFError_Private.h			\
-				  CFFileDescriptor.h			\
 				  CFLocale.h				\
 				  CFLogUtilities.h			\
 				  CFMachPort.h				\
 				  CFMessagePort.h			\
-				  CFNotificationCenter.h		\
 				  CFNumberFormatter.h			\
 				  CFNumber.h				\
 				  CFPlugInCOM.h				\
@@ -136,13 +140,11 @@ CF_COMMON_SOURCES		= CFApplicationPreferences.c		\
 				  CFDate.c				\
 				  CFDictionary.c			\
 				  CFError.c				\
-				  CFFileDescriptor.c			\
 				  CFFileUtilities.c			\
 				  CFLocaleIdentifier.c			\
 				  CFLocale.c				\
 				  CFMachPort.c				\
 				  CFMessagePort.c			\
-				  CFNotificationCenter.c		\
 				  CFNumberFormatter.c			\
 				  CFNumber.c				\
 				  CFPlatform.c				\

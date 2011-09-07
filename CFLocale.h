@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,9 +30,8 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFLocale.h
-	Copyright (c) 2002-2009, Apple Inc. All rights reserved.
+	Copyright (c) 2002-2007, Apple Inc. All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFLOCALE__)
@@ -113,29 +112,6 @@ CFStringRef CFLocaleCreateCanonicalLocaleIdentifierFromScriptManagerCodes(CFAllo
 	// Map a Mac OS LangCode and RegionCode to the canonical locale identifier.
 
 CF_EXPORT
-CFStringRef CFLocaleCreateLocaleIdentifierFromWindowsLocaleCode(CFAllocatorRef allocator, uint32_t lcid) AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
-	// Map a Windows LCID to the canonical locale identifier.
-
-CF_EXPORT
-uint32_t CFLocaleGetWindowsLocaleCodeFromLocaleIdentifier(CFStringRef localeIdentifier) AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
-	// Map a locale identifier to a Windows LCID.
-
-enum {
-    kCFLocaleLanguageDirectionUnknown = 0,
-    kCFLocaleLanguageDirectionLeftToRight = 1,
-    kCFLocaleLanguageDirectionRightToLeft = 2,
-    kCFLocaleLanguageDirectionTopToBottom = 3,
-    kCFLocaleLanguageDirectionBottomToTop = 4
-};
-typedef CFIndex CFLocaleLanguageDirection;
-
-CF_EXPORT
-CFLocaleLanguageDirection CFLocaleGetLanguageCharacterDirection(CFStringRef isoLangCode) AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
-
-CF_EXPORT
-CFLocaleLanguageDirection CFLocaleGetLanguageLineDirection(CFStringRef isoLangCode) AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
-
-CF_EXPORT
 CFDictionaryRef CFLocaleCreateComponentsFromLocaleIdentifier(CFAllocatorRef allocator, CFStringRef localeID) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER;
 	// Parses a locale ID consisting of language, script, country, variant,
 	// and keyword/value pairs into a dictionary. The keys are the constant
@@ -200,11 +176,6 @@ CF_EXPORT const CFStringRef kCFLocaleDecimalSeparator AVAILABLE_MAC_OS_X_VERSION
 CF_EXPORT const CFStringRef kCFLocaleGroupingSeparator AVAILABLE_MAC_OS_X_VERSION_10_3_AND_LATER;
 CF_EXPORT const CFStringRef kCFLocaleCurrencySymbol AVAILABLE_MAC_OS_X_VERSION_10_3_AND_LATER;
 CF_EXPORT const CFStringRef kCFLocaleCurrencyCode AVAILABLE_MAC_OS_X_VERSION_10_3_AND_LATER; // ISO 3-letter currency code
-CF_EXPORT const CFStringRef kCFLocaleCollatorIdentifier AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
-CF_EXPORT const CFStringRef kCFLocaleQuotationBeginDelimiterKey AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
-CF_EXPORT const CFStringRef kCFLocaleQuotationEndDelimiterKey AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
-CF_EXPORT const CFStringRef kCFLocaleAlternateQuotationBeginDelimiterKey AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
-CF_EXPORT const CFStringRef kCFLocaleAlternateQuotationEndDelimiterKey AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
 
 // Values for kCFLocaleCalendarIdentifier
 CF_EXPORT const CFStringRef kCFGregorianCalendar AVAILABLE_MAC_OS_X_VERSION_10_3_AND_LATER;
@@ -214,10 +185,7 @@ CF_EXPORT const CFStringRef kCFHebrewCalendar AVAILABLE_MAC_OS_X_VERSION_10_4_AN
 CF_EXPORT const CFStringRef kCFIslamicCalendar AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER;
 CF_EXPORT const CFStringRef kCFIslamicCivilCalendar AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER;
 CF_EXPORT const CFStringRef kCFJapaneseCalendar AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER;
-CF_EXPORT const CFStringRef kCFRepublicOfChinaCalendar AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
-CF_EXPORT const CFStringRef kCFPersianCalendar AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
-CF_EXPORT const CFStringRef kCFIndianCalendar AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
-CF_EXPORT const CFStringRef kCFISO8601Calendar AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
+
 
 CF_EXTERN_C_END
 

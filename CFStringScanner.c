@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,9 +30,8 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFStringScanner.c
-	Copyright (c) 1999-2009, Apple Inc. All rights reserved.
+	Copyright 1999-2002, Apple, Inc. All rights reserved.
 	Responsibility: Ali Ozer
 */
 
@@ -172,7 +171,7 @@ static const unsigned char __CFNumberSet[16] = {
     0X00, // 0, 0, 0, 0, 0, 0, 0, 0, //  dle dc1 dc2 dc3 dc4 nak syn etb
     0X00, // 0, 0, 0, 0, 0, 0, 0, 0, //  can em  sub esc fs  gs  rs  us
     0X00, // 0, 0, 0, 0, 0, 0, 0, 0, //  sp   !   "   #   $   %   &   '
-    0X68, // 0, 0, 0, 1, 0, 1, 1, 0, //  (   )   *   +   ,   -   .   /
+    0X28, // 0, 0, 0, 1, 0, 1, 0, 0, //  (   )   *   +   ,   -   .   /
     0xFF, // 1, 1, 1, 1, 1, 1, 1, 1, //  0   1   2   3   4   5   6   7
     0X03, // 1, 1, 0, 0, 0, 0, 0, 0, //  8   9   :   ;   <   =   >   ?
     0X20, // 0, 0, 0, 0, 0, 1, 0, 0, //  @   A   B   C   D   E   F   G
@@ -191,12 +190,19 @@ __private_extern__ Boolean __CFStringScanDouble(CFStringInlineBuffer *buf, CFTyp
     char localCharBuffer[STACK_BUFFER_SIZE];
     char *charPtr = localCharBuffer;
     char *endCharPtr;
+    UniChar decimalChar = '.';
     SInt32 numChars = 0;
     SInt32 capacity = STACK_BUFFER_SIZE;	// in chars
     double result;
     UniChar ch;
     CFAllocatorRef tmpAlloc = NULL;
 
+#if 0
+    if (locale != NULL) {
+        CFStringRef decimalSeparator = [locale objectForKey: @"NSDecimalSeparator"];
+        if (decimalSeparator != nil) decimalChar = [decimalSeparator characterAtIndex:0];
+    }
+#endif
     ch = __CFStringGetFirstNonSpaceCharacterFromInlineBuffer(buf, indexPtr);
     // At this point indexPtr points at the first non-space char
 #if 0
@@ -237,9 +243,13 @@ __private_extern__ Boolean __CFStringScanDouble(CFStringInlineBuffer *buf, CFTyp
             return true;
         }
     }
-#endif 0
-    // Get characters until one not in __CFNumberSet[] is encountered
-    while ((ch < 128) && (__CFNumberSet[ch >> 3] & (1 << (ch & 7)))) {
+#endif
+    do {
+	if (ch >= 128 || (__CFNumberSet[ch >> 3] & (1 << (ch & 7))) == 0) {
+            // Not in __CFNumberSet
+	    if (ch != decimalChar) break;
+            ch = '.';	// Replace the decimal character with something strtod will understand
+        }
         if (numChars >= capacity - 1) {
 	    capacity += ALLOC_CHUNK_SIZE;
 	    if (tmpAlloc == NULL) tmpAlloc = __CFGetDefaultAllocator();
@@ -252,10 +262,14 @@ __private_extern__ Boolean __CFStringScanDouble(CFStringInlineBuffer *buf, CFTyp
         }
 	charPtr[numChars++] = (char)ch;
 	ch = __CFStringGetCharacterFromInlineBufferAux(buf, *indexPtr + numChars);
-    };
+    } while (true);
     charPtr[numChars] = 0;	// Null byte for strtod
 
+#if DEPLOYMENT_TARGET_MACOSX
     result = strtod_l(charPtr, &endCharPtr, NULL);
+#else
+    result = strtod(charPtr, &endCharPtr);
+#endif
 
     if (tmpAlloc) CFAllocatorDeallocate(tmpAlloc, charPtr);
     if (charPtr == endCharPtr) return false;

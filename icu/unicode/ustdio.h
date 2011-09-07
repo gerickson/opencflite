@@ -205,16 +205,19 @@ you can use one of the following u_fprintf examples to display a UnicodeString.<
 /** Forward declaration of a Unicode-aware file @stable 3.0 */
 typedef struct UFILE UFILE;
 
+#ifndef U_HIDE_DRAFT_API
 /**
  * Enum for which direction of stream a transliterator applies to.
  * @see u_fsettransliterator
- * @stable ICU 3.0
+ * @draft 3.0
  */
 typedef enum { 
    U_READ = 1,
    U_WRITE = 2, 
    U_READWRITE =3  /* == (U_READ | U_WRITE) */ 
 } UFileDirection;
+
+#endif /* U_HIDE_DRAFT_API */
 
 /**
  * Open a UFILE.

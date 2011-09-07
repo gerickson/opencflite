@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,9 +30,8 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFSocketStream.c
-	Copyright (c) 2000-2009, Apple Inc. All rights reserved.
+	Copyright 2000-2002, Apple, Inc. All rights reserved.
 	Responsibility: Jeremy Wyld
 */
 //	Original Author: Becky Willrich
@@ -42,7 +41,7 @@
 #include "CFStreamInternal.h"
 #include "CFStreamPriv.h"
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX
 // On Mach these live in CF for historical reasons, even though they are declared in CFNetwork
 
 const int kCFStreamErrorDomainSSL = 3;
@@ -67,14 +66,6 @@ CONST_STRING_DECL(kCFStreamSocketSecurityLevelSSLv3, "kCFStreamSocketSecurityLev
 CONST_STRING_DECL(kCFStreamSocketSecurityLevelTLSv1, "kCFStreamSocketSecurityLevelTLSv1");
 CONST_STRING_DECL(kCFStreamSocketSecurityLevelNegotiatedSSL, "kCFStreamSocketSecurityLevelNegotiatedSSL");
 
-#endif
-
-
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-#elif DEPLOYMENT_TARGET_WINDOWS
-typedef void (*CF_SOCKET_STREAM_PAIR)(CFAllocatorRef, CFStringRef, UInt32, CFSocketNativeHandle, const CFSocketSignature*, CFReadStreamRef*, CFWriteStreamRef*);
-#else
-#error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
 
 // These are duplicated in CFNetwork, who actually externs them in its headers
@@ -113,27 +104,19 @@ enum {
     kInitialized
 };
 
+typedef void          (*cf_net_CreatePair)(CFAllocatorRef, CFStringRef, UInt32, CFSocketNativeHandle, const CFSocketSignature*, CFReadStreamRef*, CFWriteStreamRef*);
+typedef CFErrorRef    (*cf_net_StreamError)(CFAllocatorRef, CFStreamError*);
+typedef CFStreamError (*cf_net_FromCFError)(CFErrorRef);
+
 static struct {
     CFSpinLock_t lock;
     UInt32	flags;
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-#elif DEPLOYMENT_TARGET_WINDOWS
-    HMODULE	image;
-#else
-#error Unknown or unspecified DEPLOYMENT_TARGET
-#endif
     void (*_CFSocketStreamCreatePair)(CFAllocatorRef, CFStringRef, UInt32, CFSocketNativeHandle, const CFSocketSignature*, CFReadStreamRef*, CFWriteStreamRef*);
     CFErrorRef (*_CFErrorCreateWithStreamError)(CFAllocatorRef, CFStreamError*);
     CFStreamError (*_CFStreamErrorFromCFError)(CFErrorRef);
 } CFNetworkSupport = {
     CFSpinLockInit,
     0x0,
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-#elif DEPLOYMENT_TARGET_WINDOWS
-    NULL,
-#else
-#error Unknown or unspecified DEPLOYMENT_TARGET
-#endif
     NULL,
     NULL,
     NULL
@@ -141,57 +124,21 @@ static struct {
 
 #define CFNETWORK_CALL(sym, args)		((CFNetworkSupport.sym)args)
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX
 #define CFNETWORK_LOAD_SYM(sym)   __CFLookupCFNetworkFunction(#sym)
-#elif DEPLOYMENT_TARGET_WINDOWS
-#define CFNETWORK_LOAD_SYM(sym)   (void *)GetProcAddress(CFNetworkSupport.image, #sym)
-#elif DEPLOYMENT_TARGET_LINUX
-#else
-#error Unknown or unspecified DEPLOYMENT_TARGET
+//#elif DEPLOYMENT_TARGET_WINDOWS
+//#define CFNETWORK_LOAD_SYM(sym)   (void *)GetProcAddress(CFNetworkSupport.image, #sym)
 #endif
 
 static void initializeCFNetworkSupport(void) {
     __CFBitSet(CFNetworkSupport.flags, kTriedToLoad);
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-    CFNetworkSupport._CFSocketStreamCreatePair = CFNETWORK_LOAD_SYM(_CFSocketStreamCreatePair);
-    CFNetworkSupport._CFErrorCreateWithStreamError = CFNETWORK_LOAD_SYM(_CFErrorCreateWithStreamError);
-    CFNetworkSupport._CFStreamErrorFromCFError = CFNETWORK_LOAD_SYM(_CFStreamErrorFromCFError);
-#elif DEPLOYMENT_TARGET_WINDOWS
-    if (!CFNetworkSupport.image) {
-#if _DEBUG
-        CFNetworkSupport.image = GetModuleHandleW(L"CFNetwork_debug.dll");
-#else
-        CFNetworkSupport.image = GetModuleHandleW(L"CFNetwork.dll");
+#if DEPLOYMENT_TARGET_MACOSX
+    CFNetworkSupport._CFSocketStreamCreatePair = (cf_net_CreatePair)CFNETWORK_LOAD_SYM(_CFSocketStreamCreatePair);
+    CFNetworkSupport._CFErrorCreateWithStreamError = (cf_net_StreamError)CFNETWORK_LOAD_SYM(_CFErrorCreateWithStreamError);
+    CFNetworkSupport._CFStreamErrorFromCFError = (cf_net_FromCFError)CFNETWORK_LOAD_SYM(_CFStreamErrorFromCFError);
 #endif
-    }
-
-    if (!CFNetworkSupport.image) {
-        // not loaded yet, try to load from the filesystem
-        char path[MAX_PATH+1];
-        if (!CFNetworkSupport.image) {
-            strlcpy(path, (const char *)_CFDLLPath(), sizeof(path));
-#if _DEBUG
-            strlcat(path, "\\CFNetwork_debug.dll", sizeof(path));
-#else
-            strlcat(path, "\\CFNetwork.dll", sizeof(path));
-#endif
-            CFNetworkSupport.image = LoadLibraryA(path);
-        }
-    }
-            
-    if (!CFNetworkSupport.image) {
-        CFLog(__kCFLogAssertion, CFSTR("CoreFoundation: failed to dynamically load CFNetwork"));
-    } else  {
-        CFNetworkSupport._CFSocketStreamCreatePair = (CF_SOCKET_STREAM_PAIR)CFNETWORK_LOAD_SYM(_CFSocketStreamCreatePair);
-        CFNetworkSupport._CFErrorCreateWithStreamError = (CFErrorRef(*)(CFAllocatorRef, CFStreamError *))CFNETWORK_LOAD_SYM(_CFErrorCreateWithStreamError);
-        CFNetworkSupport._CFStreamErrorFromCFError = (CFStreamError(*)(CFErrorRef))CFNETWORK_LOAD_SYM(_CFStreamErrorFromCFError);
-    }
-#elif DEPLOYMENT_TARGET_LINUX
-#else
-#error Unknown or unspecified DEPLOYMENT_TARGET
-#endif
-
+   
     if (!CFNetworkSupport._CFSocketStreamCreatePair) CFLog(__kCFLogAssertion, CFSTR("CoreFoundation: failed to dynamically link symbol _CFSocketStreamCreatePair"));
     if (!CFNetworkSupport._CFErrorCreateWithStreamError) CFLog(__kCFLogAssertion, CFSTR("CoreFoundation: failed to dynamically link symbol _CFErrorCreateWithStreamError"));
     if (!CFNetworkSupport._CFStreamErrorFromCFError) CFLog(__kCFLogAssertion, CFSTR("CoreFoundation: failed to dynamically link symbol _CFStreamErrorFromCFError"));
@@ -216,15 +163,15 @@ createPair(CFAllocatorRef alloc, CFStringRef host, UInt32 port, CFSocketNativeHa
 }
 
 
-CF_EXPORT void CFStreamCreatePairWithSocket(CFAllocatorRef alloc, CFSocketNativeHandle sock, CFReadStreamRef *readStream, CFWriteStreamRef *writeStream) {
+extern void CFStreamCreatePairWithSocket(CFAllocatorRef alloc, CFSocketNativeHandle sock, CFReadStreamRef *readStream, CFWriteStreamRef *writeStream) {
     createPair(alloc, NULL, 0, sock, NULL, readStream, writeStream);
 }
 
-CF_EXPORT void CFStreamCreatePairWithSocketToHost(CFAllocatorRef alloc, CFStringRef host, UInt32 port, CFReadStreamRef *readStream, CFWriteStreamRef *writeStream) {
+extern void CFStreamCreatePairWithSocketToHost(CFAllocatorRef alloc, CFStringRef host, UInt32 port, CFReadStreamRef *readStream, CFWriteStreamRef *writeStream) {
     createPair(alloc, host, port, 0, NULL, readStream, writeStream);
 }
 
-CF_EXPORT void CFStreamCreatePairWithPeerSocketSignature(CFAllocatorRef alloc, const CFSocketSignature* sig, CFReadStreamRef *readStream, CFWriteStreamRef *writeStream) {
+extern void CFStreamCreatePairWithPeerSocketSignature(CFAllocatorRef alloc, const CFSocketSignature* sig, CFReadStreamRef *readStream, CFWriteStreamRef *writeStream) {
     createPair(alloc, NULL, 0, 0, sig, readStream, writeStream);
 }
 

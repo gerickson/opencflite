@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,9 +30,8 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFRuntime.h
-	Copyright (c) 1999-2009, Apple Inc. All rights reserved.
+	Copyright (c) 1999-2007, Apple Inc. All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFRUNTIME__)
@@ -45,23 +44,59 @@
 CF_EXTERN_C_BEGIN
 
 // GC: until we link against ObjC must use indirect functions.  Overridden in CFSetupFoundationBridging
-CF_EXPORT bool kCFUseCollectableAllocator;
-CF_EXPORT bool (*__CFObjCIsCollectable)(void *);
+extern bool kCFUseCollectableAllocator;
+extern bool (*__CFObjCIsCollectable)(void *);
+extern const void* (*__CFObjCAssignIvar)(const void *value, const void *base, const void **slot);
+extern const void* (*__CFObjCStrongAssign)(const void *value, const void **slot);
+extern void* (*__CFObjCMemmoveCollectable)(void *dest, const void *src, size_t);
+extern void (*__CFObjCWriteBarrierRange)(void *, size_t);
 
 // GC: primitives.
 // is GC on?
 #define CF_USING_COLLECTABLE_MEMORY (kCFUseCollectableAllocator)
 // is GC on and is this the GC allocator?
-#define CF_IS_COLLECTABLE_ALLOCATOR(allocator) (kCFUseCollectableAllocator && (NULL == (allocator) || kCFAllocatorSystemDefault == (allocator)))
+#define CF_IS_COLLECTABLE_ALLOCATOR(allocator) (CF_USING_COLLECTABLE_MEMORY && (NULL == (allocator) || kCFAllocatorSystemDefault == (allocator)))
 // is this allocated by the collector?
 #define CF_IS_COLLECTABLE(obj) (__CFObjCIsCollectable ? __CFObjCIsCollectable((void*)obj) : false)
 
+// XXX_PCB for generational GC support.
+
+CF_INLINE const void* __CFAssignIvar(CFAllocatorRef allocator, const void *rvalue, const void *base, const void **lvalue) {
+    if (rvalue && CF_IS_COLLECTABLE_ALLOCATOR(allocator))
+        return __CFObjCAssignIvar(rvalue, base, lvalue);
+    else
+        return (*lvalue = rvalue);
+}
+
+CF_INLINE const void* __CFStrongAssign(CFAllocatorRef allocator, const void *rvalue, const void **lvalue) {
+    if (rvalue && CF_IS_COLLECTABLE_ALLOCATOR(allocator))
+        return __CFObjCStrongAssign(rvalue, lvalue);
+    else
+        return (*lvalue = rvalue);
+}
+
+// Use this form when the base pointer to the object is known.
+#define CF_WRITE_BARRIER_BASE_ASSIGN(allocator, base, lvalue, rvalue) __CFAssignIvar(allocator, (const void*)rvalue, (const void*)base, (const void**)&(lvalue))
+
+// Use this form when the base pointer to the object isn't known.
+#define CF_WRITE_BARRIER_ASSIGN(allocator, lvalue, rvalue) __CFStrongAssign(allocator, (const void*)rvalue, (const void**)&(lvalue))
+
+// Write-barrier memory move.
+#define CF_WRITE_BARRIER_MEMMOVE(dst, src, size) __CFObjCMemmoveCollectable(dst, src, size)
+
+// Used by frameworks to assert they "KNOW WHAT THEY'RE DOING under GC."
+CF_EXPORT CFAllocatorRef _CFAllocatorCreateGC(CFAllocatorRef allocator, CFAllocatorContext *context);
+
+// Zero-retain count CFAllocator functions, i.e. memory that will be collected, no dealloc necessary
+CF_EXPORT void *_CFAllocatorAllocateGC(CFAllocatorRef allocator, CFIndex size, CFOptionFlags hint);
+CF_EXPORT void *_CFAllocatorReallocateGC(CFAllocatorRef allocator, void *ptr, CFIndex newsize, CFOptionFlags hint);
+CF_EXPORT void _CFAllocatorDeallocateGC(CFAllocatorRef allocator, void *ptr);
 
 enum {
     _kCFRuntimeNotATypeID =                0,
-    _kCFRuntimeScannedObject =       (1UL << 0),
-    /* _kCFRuntimeUncollectableObject = (1UL << 1),  No longer used; obsolete. */
-    _kCFRuntimeResourcefulObject =   (1UL << 2)
+    _kCFRuntimeScannedObject =       (1 << 0),
+    /* _kCFRuntimeUncollectableObject = (1 << 1),  No longer used; obsolete. */
+    _kCFRuntimeResourcefulObject =   (1 << 2)
 };
 
 typedef struct __CFRuntimeClass {	// Version 0 struct

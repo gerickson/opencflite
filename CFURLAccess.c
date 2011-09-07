@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  * Copyright (c) 2009 Grant Erickson <gerickson@nuovations.com>. All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
@@ -10,7 +10,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,10 +31,9 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFURLAccess.c
-	Copyright (c) 1999-2009, Apple Inc. All rights reserved.
-	Responsibility: Chris Linn
+	Copyright 1999-2002, Apple, Inc. All rights reserved.
+	Responsibility: Becky Willrich
 */
 
 /*------
@@ -50,7 +49,7 @@ CFData read/write routines
 #include <CoreFoundation/CFNumber.h>
 #include <string.h>
 #include <ctype.h>
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX
 #include <stdlib.h>
 #include <unistd.h>
 #include <dirent.h>
@@ -60,37 +59,21 @@ CFData read/write routines
 #include <fcntl.h>
 #include <dlfcn.h>
 #elif DEPLOYMENT_TARGET_WINDOWS
-//#include <winsock2.h>
-#include <io.h>
+#include <winsock2.h>
 #include <sys/stat.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <ctype.h>
+#include <io.h>
 #define chmod _chmod
-#else
-#error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
 
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX
 
+DEFINE_WEAK_CFNETWORK_FUNC(Boolean, _CFURLCreateDataAndPropertiesFromResource, (CFAllocatorRef A, CFURLRef B, CFDataRef *C, CFDictionaryRef *D, CFArrayRef E, SInt32 *F), (A, B, C, D, E, F), false)
+DEFINE_WEAK_CFNETWORK_FUNC(Boolean, _CFURLWriteDataAndPropertiesToResource, (CFURLRef A, CFDataRef B, CFDictionaryRef C, SInt32 *D), (A, B, C, D), false)
+DEFINE_WEAK_CFNETWORK_FUNC(Boolean, _CFURLDestroyResource, (CFURLRef A, SInt32 *B), (A, B), false)
 
-DEFINE_WEAK_CFNETWORK_FUNC_FAIL(Boolean, _CFURLCreateDataAndPropertiesFromResource, (CFAllocatorRef A, CFURLRef B, CFDataRef *C, CFDictionaryRef *D, CFArrayRef E, SInt32 *F), (A, B, C, D, E, F), { if(C) *C=NULL; if (D) *D=NULL; if(F) *F=kCFURLImproperArgumentsError; }, false)
-DEFINE_WEAK_CFNETWORK_FUNC_FAIL(Boolean, _CFURLWriteDataAndPropertiesToResource, (CFURLRef A, CFDataRef B, CFDictionaryRef C, SInt32 *D), (A, B, C, D), if (D) *D = kCFURLImproperArgumentsError, false)
-
-DEFINE_WEAK_CFNETWORK_FUNC_FAIL(Boolean, _CFURLDestroyResource, (CFURLRef A, SInt32 *B), (A, B), if(B) *B = kCFURLImproperArgumentsError, false)
-
-#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-#else
-#error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
 
-typedef struct __NSString__ *NSString;
-
-/*
-    Pre-10.6 property keys
-*/
 
 CONST_STRING_DECL(kCFURLFileExists, "kCFURLFileExists")
 CONST_STRING_DECL(kCFURLFilePOSIXMode, "kCFURLFilePOSIXMode")
@@ -165,13 +148,7 @@ static CFDictionaryRef _CFFileURLCreatePropertiesFromResource(CFAllocatorRef all
     }
 
     if (_CFGetFileProperties(alloc, url, &exists, &posixMode, &size, modTimePtr, &ownerID, contentsPtr) != 0) {
-	
-	//  If all they've asked for is whether this file exists, then any error will just make
-	//  this return kCFURLFileExists = kCFBooleanFalse, which handles the case where the filename is invalid or too long or something.
-	if ( arrayRange.length == 1 && CFArrayContainsValue( desiredProperties, arrayRange, kCFURLFileExists ) ) {
-	    CFDictionarySetValue(propertyDict, kCFURLFileExists, kCFBooleanFalse);
-	}
-	else if (errorCode) {
+        if (errorCode) {
             *errorCode = kCFURLUnknownError;
         }
         return propertyDict;
@@ -264,12 +241,10 @@ static Boolean _CFFileURLWritePropertiesToResource(CFURLRef url, CFDictionaryRef
                 CFNumberRef modeNum = (CFNumberRef)value;
                 CFNumberGetValue(modeNum, kCFNumberSInt32Type, &mode);
             } else {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX
 #define MODE_TYPE mode_t
 #elif DEPLOYMENT_TARGET_WINDOWS
-#define MODE_TYPE uint16_t
-#else
-#error Unknown or unspecified DEPLOYMENT_TARGET
+#define MODE_TYPE unsigned short
 #endif
                 const MODE_TYPE *modePtr = (const MODE_TYPE *)CFDataGetBytePtr((CFDataRef)value);
                 mode = *modePtr;
@@ -317,15 +292,9 @@ static Boolean _CFFileURLCreateDataAndPropertiesFromResource(CFAllocatorRef allo
 
     if (fetchedProperties) {
         *fetchedProperties = _CFFileURLCreatePropertiesFromResource(alloc, url, desiredProperties, errorCode);
-        if (!*fetchedProperties)
-	    success = false;
+        if (!*fetchedProperties) success = false;
     }
 
-    if ( ! success && fetchedData && *fetchedData ) {
-	CFRelease( *fetchedData );
-	*fetchedData = NULL;
-    }
-    
     return success;
 }
 
@@ -426,7 +395,7 @@ static CFStringRef charsetFromContentTypeHeader(CFStringRef contentType) {
 
 #define STATIC_BUFFER_SIZE 1024
 
-static BOOL isHexDigit(char c)
+static Boolean isHexDigit(char c)
 {
     return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
 }
@@ -488,12 +457,12 @@ static CFDataRef percentEscapeDecodeBuffer(CFAllocatorRef alloc, const UInt8* sr
 
 // base 64 digits: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
-static BOOL isBase64Digit(char c)
+static Boolean isBase64Digit(char c)
 {
     return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || (c == '+') || (c == '/');
 }
 
-static BOOL isBase64DigitOrEqualSign(char c)
+static Boolean isBase64DigitOrEqualSign(char c)
 {
     return isBase64Digit(c) || c == '=';
 }
@@ -568,20 +537,15 @@ done:
 
 static inline CFStringRef percentExpandAndTrimContentType(CFAllocatorRef alloc, CFStringRef str, CFRange range)
 {
-    CFMutableStringRef contentTypeHeader = NULL;
-    CFStringRef contentTypeUnexpanded = CFStringCreateWithSubstring(alloc, str, range);
-    CFStringRef contentTypeExpanded = CFURLCreateStringByReplacingPercentEscapes(alloc, contentTypeUnexpanded, CFSTR(""));
-    
-    if (NULL == contentTypeExpanded) {
-	contentTypeHeader = CFStringCreateMutableCopy(alloc, 0, contentTypeUnexpanded);
-    } else {
-	contentTypeHeader = CFStringCreateMutableCopy(alloc, 0, contentTypeExpanded);
+	CFStringRef contentTypeUnexpanded = CFStringCreateWithSubstring(alloc, str, range);
+	CFStringRef contentTypeExpanded = CFURLCreateStringByReplacingPercentEscapes(alloc, contentTypeUnexpanded, CFSTR(""));
+	CFRelease(contentTypeUnexpanded);
+	
+	CFMutableStringRef contentTypeHeader = CFStringCreateMutableCopy(alloc, 0, contentTypeExpanded);
 	CFRelease(contentTypeExpanded);
-    }
-    CFRelease(contentTypeUnexpanded);
-    CFStringTrimWhitespace(contentTypeHeader);
-    
-    return contentTypeHeader;
+	CFStringTrimWhitespace(contentTypeHeader);
+	
+	return contentTypeHeader;
 }
 
 static Boolean parseDataRequestURL(CFURLRef url, CFDataRef* outData, CFStringRef* outMimeType, CFStringRef* outTextEncodingName)
@@ -603,6 +567,10 @@ static Boolean parseDataRequestURL(CFURLRef url, CFDataRef* outData, CFStringRef
 				mimeType = (CFStringRef) CFRetain(CFSTR("text/plain"));
 			}
 			
+			if (textEncodingName == NULL) {
+				textEncodingName = (CFStringRef) CFRetain(CFSTR("us-ascii"));
+			}
+
 			CFIndex bufferSize = CFURLGetBytes(url, NULL, 0);
 			UInt8* srcBuffer = (UInt8*) malloc(bufferSize);
 			CFURLGetBytes(url, srcBuffer, bufferSize);
@@ -741,18 +709,18 @@ Boolean CFURLCreateDataAndPropertiesFromResource(CFAllocatorRef alloc, CFURLRef 
         if (CFStringCompare(scheme, CFSTR("file"), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
             result = _CFFileURLCreateDataAndPropertiesFromResource(alloc, url, fetchedData, desiredProperties, fetchedProperties, errorCode);
         } else if (CFStringCompare(scheme, CFSTR("data"), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
-	    result = _CFDataURLCreateDataAndPropertiesFromResource(alloc, url, fetchedData, desiredProperties, fetchedProperties, errorCode);
-	} else {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-            result = __CFNetwork__CFURLCreateDataAndPropertiesFromResource(alloc, url, fetchedData, fetchedProperties, desiredProperties, errorCode);
-#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-            if (fetchedData) *fetchedData = NULL;
-            if (fetchedProperties) *fetchedProperties = NULL;
-            if (errorCode) *errorCode = kCFURLUnknownSchemeError;
-            result = false;
-#else
-#error Unknown or unspecified DEPLOYMENT_TARGET
+			result = _CFDataURLCreateDataAndPropertiesFromResource(alloc, url, fetchedData, desiredProperties, fetchedProperties, errorCode);
+		} else {
+#if DEPLOYMENT_TARGET_MACOSX
+         result = __CFNetwork__CFURLCreateDataAndPropertiesFromResource(alloc, url, fetchedData, fetchedProperties, desiredProperties, errorCode);
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
+			result = false;
 #endif
+	    if (!result) {
+		if (fetchedData) *fetchedData = NULL;
+		if (fetchedProperties) *fetchedProperties = NULL;
+		if (errorCode) *errorCode = kCFURLUnknownSchemeError;
+	    }
         }
         CFRelease(scheme);
         return result;
@@ -788,22 +756,12 @@ Boolean CFURLWriteDataAndPropertiesToResource(CFURLRef url, CFDataRef data, CFDi
         if (data) {
             if (CFURLHasDirectoryPath(url)) {
                 // Create a directory
-#if DEPLOYMENT_TARGET_WINDOWS
-		wchar_t cPath[CFMaxPathSize];
-                if (!_CFURLGetWideFileSystemRepresentation(url, true, cPath, CFMaxPathSize))
-#else
                 char cPath[CFMaxPathSize];
-                if (!CFURLGetFileSystemRepresentation(url, true, (unsigned char *)cPath, CFMaxPathSize))
-#endif
-                {
+                if (!CFURLGetFileSystemRepresentation(url, true, (unsigned char *)cPath, CFMaxPathSize)) {
                     if (errorCode) *errorCode = kCFURLImproperArgumentsError;
                     success = false;
                 } else {
-#if DEPLOYMENT_TARGET_WINDOWS
-                    success = _CFCreateDirectoryWide(cPath);
-#else
                     success = _CFCreateDirectory(cPath);
-#endif
                     if (!success && errorCode) *errorCode = kCFURLUnknownError;
                 }
             } else {
@@ -821,17 +779,14 @@ Boolean CFURLWriteDataAndPropertiesToResource(CFURLRef url, CFDataRef data, CFDi
         return success;
     } else {
         CFRelease(scheme);
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX
         Boolean result = __CFNetwork__CFURLWriteDataAndPropertiesToResource(url, data, propertyDict, errorCode);
-	if (!result) {
-	    if (errorCode) *errorCode = kCFURLUnknownSchemeError;
-	}
-	return result;
-#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-        if (errorCode) *errorCode = kCFURLUnknownSchemeError;
-        return false;
+        if (!result) {
+            if (errorCode) *errorCode = kCFURLUnknownSchemeError;
+        }
+        return result;
 #else
-#error Unknown or unspecified DEPLOYMENT_TARGET
+        return false;
 #endif
     }
 }
@@ -869,19 +824,15 @@ Boolean CFURLDestroyResource(CFURLRef url, SInt32 *errorCode) {
         }
     } else {
         CFRelease(scheme);
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX
         Boolean result = __CFNetwork__CFURLDestroyResource(url, errorCode);
-	if (!result) {
-	    if (errorCode) *errorCode = kCFURLUnknownSchemeError;
-	}
-	return result;
-#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-        if (errorCode) *errorCode = kCFURLUnknownSchemeError;
-        return false;
+        if (!result) {
+            if (errorCode) *errorCode = kCFURLUnknownSchemeError;
+        }
+        return result;
 #else
-#error Unknown or unspecified DEPLOYMENT_TARGET
+        return false;
 #endif
     }
 }
-
 

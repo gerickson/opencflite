@@ -13,13 +13,13 @@ AC_PREREQ(2.61)
 # the Apple CoreFoundation release version and z tracks the OpenCFLite
 # release thereof.
 #
-AC_INIT([CoreFoundation],[550.1.0],[bfulgham@users.sourceforge.net],[opencflite])
+AC_INIT([CoreFoundation],[476.19.0],[bfulgham@users.sourceforge.net],[opencflite])
 
 #
 # Interface number, revision and age of the library interface passed to
 # libtool when the library is linked.
 #
-AC_SUBST(CF_VERSION_INFO, [550:1:0])
+AC_SUBST(CF_VERSION_INFO, [476:19:0])
 
 #
 # Check the sanity of thes source directory by checking for the
@@ -105,7 +105,6 @@ AC_MSG_RESULT(${deployment_target})
 #
 AC_PROG_CC
 AC_PROG_CXX
-AC_PROG_OBJC
 CF_BSD_SOURCE
 AC_GNU_SOURCE
 AM_PROG_CC_C_O
@@ -143,7 +142,7 @@ test_gcc_flag() {
 }
 
 if test "x$GCC" = "xyes" ; then
-    DESIRED_CFLAGS="-Wall -Wmost -pipe -Wno-trigraphs -Wno-parentheses -fexceptions -std=gnu99 -mmacosx-version-min=10.5 -fconstant-cfstrings"
+    DESIRED_CFLAGS="-Wall -Wmost -pipe -Wno-trigraphs -Wno-parentheses -Wuninitialized -Wpointer-arith -Wwrite-strings -Wshadow -fexceptions -std=gnu99 -mmacosx-version-min=10.5 -fconstant-cfstrings"
 
     for flag in $DESIRED_CFLAGS ; do
         AC_MSG_CHECKING([whether ${CC} accepts ${flag}])
@@ -568,6 +567,22 @@ AC_ARG_WITH(tz-includes,
 
 CPPFLAGS="${TZ_CPPFLAGS} ${CPPFLAGS}"
 
+#
+# Check whether to compile the code with compiler warnings treated as
+# errors.
+#
+
+AC_ARG_WITH(warnings-as-errors,
+	AS_HELP_STRING([--with-warnings-as-errors=OPTION],
+		       [Compile the source code treating compiler warnings as errors.]),
+	[
+        	if test -n "${withval}" -a "x${withval}" != "xno"; then
+			WERROR_FLAGS="-Werror"
+            	elif test "x${withval}" != "xyes"; then
+                	WERROR_FLAGS="${withval}"
+        	fi
+	])
+
 AC_CHECK_HEADER([tzfile.h],[true],AC_MSG_ERROR([${PACKAGE_NAME} requires 'tzfile.h'. Download the latest tzcode package from 'ftp://elsie.nci.nih.gov/pub/' and/or use the '--with-tz-includes=DIR' configuration option.]))
 
 #
@@ -693,7 +708,23 @@ CF_REPLACE_STRLN_FUNC([cpy])
 # Other ibrary functions we might need to provide local compatibility
 # implementations of.
 #
-AC_REPLACE_FUNCS([gettimeofday])
+AC_REPLACE_FUNCS([flsl gettimeofday])
+
+#
+# To ensure that none of the tests fail due to it, add any specified
+# warnings-as-errors flags late. But, first check to ensure that the
+# compiler accepts the set value and, if so, add it to CFLAGS.
+#
+
+if test -n "${WERROR_FLAGS}"; then
+	AC_MSG_CHECKING([whether ${CC} accepts ${WERROR_FLAGS}])
+	if test_gcc_flag ${WERROR_FLAGS} ; then
+		CFLAGS="$CFLAGS ${WERROR_FLAGS}"
+		AC_MSG_RESULT([yes])
+     	else
+		AC_MSG_RESULT([no])
+	fi
+fi
 
 #
 # Identify the various makefiles and auto-generated files for the package

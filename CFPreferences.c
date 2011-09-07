@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,27 +30,25 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFPreferences.c
-	Copyright (c) 1998-2009, Apple Inc. All rights reserved.
+	Copyright 1998-2002, Apple, Inc. All rights reserved.
 	Responsibility: Chris Parker
 */
 
 #include <CoreFoundation/CFPreferences.h>
 #include <CoreFoundation/CFURLAccess.h>
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#ifndef DEPLOYMENT_TARGET_WINDOWS
 #include <CoreFoundation/CFUserNotification.h>
 #endif
 #include <CoreFoundation/CFPropertyList.h>
 #include <CoreFoundation/CFBundle.h>
 #include <CoreFoundation/CFNumber.h>
 #include <CoreFoundation/CFPriv.h>
-#include <CoreFoundation/CFPriv.h>
+#include "CFPriv.h"
 #include "CFInternal.h"
 #include <sys/stat.h>
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+#if !DEPLOYMENT_TARGET_WINDOWS
 #include <unistd.h>
-#include <CoreFoundation/CFUUID.h>
 #endif
 
 #if DEBUG_PREFERENCES_MEMORY
@@ -107,100 +105,45 @@ CF_EXPORT void CFPreferencesDumpMem(void) {
 #pragma mark Determining host UUID
 #endif
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-// The entry point is in libSystem.B.dylib, but not actually declared
-// If this becomes available in a header (<rdar://problem/4943036>), I need to pull this out
-int gethostuuid(unsigned char *uuid_buf, const struct timespec *timeoutp);
-
-__private_extern__ CFStringRef _CFGetHostUUIDString(void) {
-    static CFStringRef __hostUUIDString = NULL;
-    
-    if (!__hostUUIDString) {
-        CFUUIDBytes uuidBytes;
-        int getuuidErr = 0;
-        struct timespec timeout = {0, 0};   // Infinite timeout for gethostuuid()
-        
-        getuuidErr = gethostuuid((unsigned char *)&uuidBytes, &timeout);
-        if (getuuidErr == -1) {
-            // An error has occurred trying to get the host UUID string. There's nothing we can do here, so we should just return NULL.
-            CFLog(kCFLogLevelWarning, CFSTR("_CFGetHostUUIDString: unable to determine UUID for host. Error: %d"), errno);
-            return NULL;
-        }
-        
-        CFUUIDRef uuidRef = CFUUIDCreateFromUUIDBytes(kCFAllocatorSystemDefault, uuidBytes);
-        CFStringRef uuidAsString = CFUUIDCreateString(kCFAllocatorSystemDefault, uuidRef);
-        
-        if (!OSAtomicCompareAndSwapPtrBarrier(NULL, (void *)uuidAsString, (void *)&__hostUUIDString)) {
-            CFRelease(uuidAsString);    // someone else made the assignment, so just release the extra string.
-        }
-        
-        CFRelease(uuidRef);
-    }
-    
-    return __hostUUIDString;
-}
-
-__private_extern__ CFStringRef _CFPreferencesGetByHostIdentifierString(void) {
-    static CFStringRef __byHostIdentifierString = NULL;
-
-    if (!__byHostIdentifierString) {
-        CFStringRef hostID = _CFGetHostUUIDString();
-        if (hostID) {
-            if (CFStringHasPrefix(hostID, CFSTR("00000000-0000-1000-8000-"))) {
-                // If the host UUID is prefixed by "00000000-0000-1000-8000-" then the UUID returned is the "compatible" type. The last field of the string will be the MAC address of the primary ethernet interface of the computer. We use this for compatibility with existing by-host preferences.
-                CFStringRef lastField = CFStringCreateWithSubstring(kCFAllocatorSystemDefault, hostID, CFRangeMake(24, 12));
-                CFMutableStringRef tmpstr = CFStringCreateMutableCopy(kCFAllocatorSystemDefault, 0, lastField);
-                CFStringLowercase(tmpstr, NULL);
-                CFStringRef downcasedField = CFStringCreateCopy(kCFAllocatorSystemDefault, tmpstr);
-                
-                if (!OSAtomicCompareAndSwapPtrBarrier(NULL, (void *)downcasedField, (void *)&__byHostIdentifierString)) {
-                    CFRelease(downcasedField);
-                }
-                
-                CFRelease(tmpstr);
-                CFRelease(lastField);
-            } else {
-                // The host UUID is a full UUID, and we should just use that. This doesn't involve any additional string creation, so we should just be able to do the assignment.
-                __byHostIdentifierString = hostID;
-            }
-        } else {
-            __byHostIdentifierString = CFSTR("UnknownHostID");
-        }
-    }
-    
-    return __byHostIdentifierString;
-}
-
-#else
 
 __private_extern__ CFStringRef _CFPreferencesGetByHostIdentifierString(void) {
     return CFSTR("");
 }
 
-#endif
 
 
 static unsigned long __CFSafeLaunchLevel = 0;
 
-#if DEPLOYMENT_TARGET_WINDOWS
+#if 0
 #include <shfolder.h>
+
+CF_INLINE CFIndex strlen_UniChar(const UniChar* p) {
+	CFIndex result = 0;
+	while ((*p++) != 0)
+		++result;
+	return result;
+}
 
 #endif
 
 static CFURLRef _preferencesDirectoryForUserHostSafetyLevel(CFStringRef userName, CFStringRef hostName, unsigned long safeLevel) {
     CFAllocatorRef alloc = __CFPreferencesAllocator();
-#if DEPLOYMENT_TARGET_WINDOWS
+#if 0
 
 	CFURLRef url = NULL;
 
-	CFMutableStringRef completePath = _CFCreateApplicationRepositoryPath(alloc, CSIDL_APPDATA);
- 	if (completePath) {
-	    // append "Preferences\" and make the CFURL
-	    CFStringAppend(completePath, CFSTR("Preferences\\"));
-		url = CFURLCreateWithFileSystemPath(alloc, completePath, kCFURLWindowsPathStyle, true);
-		CFRelease(completePath);
+	UniChar szPath[MAX_PATH];
+	if (S_OK == SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, (LPWSTR) szPath)) {
+		CFStringRef directoryPath = CFStringCreateWithCharacters(alloc, szPath, strlen_UniChar(szPath));
+		if (directoryPath) {
+			CFStringRef completePath = CFStringCreateWithFormat(alloc, NULL, CFSTR("%@\\Apple\\"), directoryPath);
+			if (completePath) {
+				url = CFURLCreateWithFileSystemPath(alloc, completePath, kCFURLWindowsPathStyle, true);
+				CFRelease(completePath);
+			}
+			CFRelease(directoryPath);
+		}
 	}
-
 
 	// Can't find a better place?  Home directory then?
 	if (url == NULL)
@@ -476,7 +419,7 @@ static CFStringRef  _CFPreferencesStandardDomainCacheKey(CFStringRef  domainName
 static CFURLRef _CFPreferencesURLForStandardDomainWithSafetyLevel(CFStringRef domainName, CFStringRef userName, CFStringRef hostName, unsigned long safeLevel) {
     CFURLRef theURL = NULL;
     CFAllocatorRef prefAlloc = __CFPreferencesAllocator();
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_WINDOWS ||  DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
     CFURLRef prefDir = _preferencesDirectoryForUserHostSafetyLevel(userName, hostName, safeLevel);
     CFStringRef  appName;
     CFStringRef  fileName;
@@ -510,11 +453,7 @@ static CFURLRef _CFPreferencesURLForStandardDomainWithSafetyLevel(CFStringRef do
 	CFRelease(appName);
     }
     if (fileName) {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
         theURL = CFURLCreateWithFileSystemPathRelativeToBase(prefAlloc, fileName, kCFURLPOSIXPathStyle, false, prefDir);
-#elif DEPLOYMENT_TARGET_WINDOWS
-		theURL = CFURLCreateWithFileSystemPathRelativeToBase(prefAlloc, fileName, kCFURLWindowsPathStyle, false, prefDir);
-#endif
         if (prefDir) CFRelease(prefDir);
         CFRelease(fileName);
     }
@@ -734,7 +673,7 @@ __private_extern__ void _CFPreferencesDomainSetIsWorldReadable(CFPreferencesDoma
 }
 
 __private_extern__ void *_CFPreferencesDomainCopyDictFunc(CFPreferencesDomainRef domain) {
-    return domain->_callBacks->copyDomainDictionary;
+    return (void*)domain->_callBacks->copyDomainDictionary;
 }
 
 void _CFPreferencesDomainSetDictionary(CFPreferencesDomainRef domain, CFDictionaryRef dict) {

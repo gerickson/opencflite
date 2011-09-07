@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,9 +30,8 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFError_Private.h
-        Copyright (c) 2006-2009, Apple Inc. All rights reserved.
+        Copyright (c) 2006-2007, Apple Inc. All rights reserved.
 	
 	This is Apple-internal SPI for CFError.
 */
@@ -50,10 +49,9 @@ typedef CFTypeRef (*CFErrorUserInfoKeyCallBack)(CFErrorRef err, CFStringRef key)
 CF_EXPORT void CFErrorSetCallBackForDomain(CFStringRef domainName, CFErrorUserInfoKeyCallBack callBack) AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER;
 CF_EXPORT CFErrorUserInfoKeyCallBack CFErrorGetCallBackForDomain(CFStringRef domainName) AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER;
 
-
 /* A key for "true" debugging descriptions which should never be shown to the user. It's only used when the CFError is shown to the console, and nothing else is available. For instance the rather terse and techie OSStatus descriptions are in this boat.
 */
-CF_EXPORT const CFStringRef kCFErrorDebugDescriptionKey AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER;
+CF_EXPORT const CFStringRef kCFErrorDebugDescription AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER;
 
 
 CF_EXTERN_C_END

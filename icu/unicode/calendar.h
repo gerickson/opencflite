@@ -192,12 +192,12 @@ public:
         DST_OFFSET,           // Example: 0 or U_MILLIS_PER_HOUR
         YEAR_WOY,             // 'Y' Example: 1..big number - Year of Week of Year
         DOW_LOCAL,            // 'e' Example: 1..7 - Day of Week / Localized
-		
+#ifndef DEPLOYMENT_TARGET_WIN32		
 		EXTENDED_YEAR,
 		JULIAN_DAY,
 		MILLISECONDS_IN_DAY,
 		IS_LEAP_MONTH,
-
+#endif
         FIELD_COUNT = UCAL_FIELD_COUNT // See ucal.h for other fields.
 #endif /* U_HIDE_DEPRECATED_API */
     };

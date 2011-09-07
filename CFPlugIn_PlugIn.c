@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,10 +30,9 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
-/*      CFPlugIn_PlugIn.c
-        Copyright (c) 1999-2009, Apple Inc.  All rights reserved.
-        Responsibility: Doug Davidson
+/*	CFPlugIn_PlugIn.c
+	Copyright (c) 1999-2007 Apple Inc.  All rights reserved.
+	Responsibility: Doug Davidson
 */
 
 #include "CFBundle_Internal.h"
@@ -45,10 +44,10 @@ static void _registerFactory(const void *key, const void *val, void *context) {
     CFStringRef factoryFuncStr = (CFStringRef)val;
     CFBundleRef bundle = (CFBundleRef)context;
     CFUUIDRef factoryID = (CFGetTypeID(factoryIDStr) == CFStringGetTypeID()) ? CFUUIDCreateFromString(kCFAllocatorSystemDefault, factoryIDStr) : NULL;
-    if (!factoryID) factoryID = (CFUUIDRef)CFRetain(factoryIDStr);
+    if (NULL == factoryID) factoryID = (CFUUIDRef)CFRetain(factoryIDStr);
     if (CFGetTypeID(factoryFuncStr) != CFStringGetTypeID() || CFStringGetLength(factoryFuncStr) <= 0) factoryFuncStr = NULL;
     CFPlugInRegisterFactoryFunctionByName(factoryID, bundle, factoryFuncStr);
-    if (factoryID) CFRelease(factoryID);
+    if (NULL != factoryID) CFRelease(factoryID);
 }
 
 static void _registerType(const void *key, const void *val, void *context) {
@@ -59,21 +58,21 @@ static void _registerType(const void *key, const void *val, void *context) {
     CFStringRef curFactoryIDStr;
     CFUUIDRef typeID = (CFGetTypeID(typeIDStr) == CFStringGetTypeID()) ? CFUUIDCreateFromString(kCFAllocatorSystemDefault, typeIDStr) : NULL;
     CFUUIDRef curFactoryID;
-    if (!typeID) typeID = (CFUUIDRef)CFRetain(typeIDStr);
-    if (0 == c && CFGetTypeID(factoryIDStrArray) != CFArrayGetTypeID()) {
+    if (NULL == typeID) typeID = (CFUUIDRef)CFRetain(typeIDStr);
+    if (0 == c && (CFGetTypeID(factoryIDStrArray) != CFArrayGetTypeID())) {
         curFactoryIDStr = (CFStringRef)val;
         curFactoryID = (CFGetTypeID(curFactoryIDStr) == CFStringGetTypeID()) ? CFUUIDCreateFromString(CFGetAllocator(bundle), curFactoryIDStr) : NULL;
-        if (!curFactoryID) curFactoryID = (CFUUIDRef)CFRetain(curFactoryIDStr);
+        if (NULL == curFactoryID) curFactoryID = (CFUUIDRef)CFRetain(curFactoryIDStr);
         CFPlugInRegisterPlugInType(curFactoryID, typeID);
-        if (curFactoryID) CFRelease(curFactoryID);
-    } else for (i = 0; i < c; i++) {
+        if (NULL != curFactoryID) CFRelease(curFactoryID);
+    } else for (i=0; i<c; i++) {
         curFactoryIDStr = (CFStringRef)CFArrayGetValueAtIndex(factoryIDStrArray, i);
         curFactoryID = (CFGetTypeID(curFactoryIDStr) == CFStringGetTypeID()) ? CFUUIDCreateFromString(CFGetAllocator(bundle), curFactoryIDStr) : NULL;
-        if (!curFactoryID) curFactoryID = (CFUUIDRef)CFRetain(curFactoryIDStr);
+        if (NULL == curFactoryID) curFactoryID = (CFUUIDRef)CFRetain(curFactoryIDStr);
         CFPlugInRegisterPlugInType(curFactoryID, typeID);
-        if (curFactoryID) CFRelease(curFactoryID);
+        if (NULL != curFactoryID) CFRelease(curFactoryID);
     }
-    if (typeID) CFRelease(typeID);
+    if (NULL != typeID) CFRelease(typeID);
 }
 
 __private_extern__ Boolean _CFBundleNeedsInitPlugIn(CFBundleRef bundle) {
@@ -82,9 +81,9 @@ __private_extern__ Boolean _CFBundleNeedsInitPlugIn(CFBundleRef bundle) {
     CFStringRef tempStr;
     if (infoDict) {
         factoryDict = (CFDictionaryRef)CFDictionaryGetValue(infoDict, kCFPlugInFactoriesKey);
-        if (factoryDict && CFGetTypeID(factoryDict) == CFDictionaryGetTypeID()) result = true;
+        if (factoryDict != NULL && CFGetTypeID(factoryDict) == CFDictionaryGetTypeID()) result = true;
         tempStr = (CFStringRef)CFDictionaryGetValue(infoDict, kCFPlugInDynamicRegistrationKey);
-        if (tempStr && CFGetTypeID(tempStr) == CFStringGetTypeID() && CFStringCompare(tempStr, CFSTR("YES"), kCFCompareCaseInsensitive) == kCFCompareEqualTo) result = true;
+        if (tempStr != NULL && CFGetTypeID(tempStr) == CFStringGetTypeID() && CFStringCompare(tempStr, CFSTR("YES"), kCFCompareCaseInsensitive) == kCFCompareEqualTo) result = true;
     }
     return result;
 }
@@ -98,13 +97,19 @@ __private_extern__ void _CFBundleInitPlugIn(CFBundleRef bundle) {
     CFStringRef tempStr;
 
     infoDict = CFBundleGetInfoDictionary(bundle);
-    if (!infoDict) return;
-    
+    if (infoDict == NULL) {
+        return;
+    }
     factoryDict = (CFDictionaryRef)CFDictionaryGetValue(infoDict, kCFPlugInFactoriesKey);
-    if (factoryDict && CFGetTypeID(factoryDict) != CFDictionaryGetTypeID()) factoryDict = NULL;
+    if (factoryDict != NULL && CFGetTypeID(factoryDict) != CFDictionaryGetTypeID()) factoryDict = NULL;
     tempStr = (CFStringRef)CFDictionaryGetValue(infoDict, kCFPlugInDynamicRegistrationKey);
-    if (tempStr && CFGetTypeID(tempStr) == CFStringGetTypeID() && CFStringCompare(tempStr, CFSTR("YES"), kCFCompareCaseInsensitive) == kCFCompareEqualTo) doDynamicReg = true;
-    if (!factoryDict && !doDynamicReg) return;  // This is not a plug-in.
+    if (tempStr != NULL && CFGetTypeID(tempStr) == CFStringGetTypeID() && CFStringCompare(tempStr, CFSTR("YES"), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
+        doDynamicReg = true;
+    }
+    if (!factoryDict && !doDynamicReg) {
+        // This is not a plugIn.
+        return;
+    }
 
     /* loadOnDemand is true by default if the plugIn does not do dynamic registration.  It is false, by default if it does do dynamic registration.  The dynamic register function can set this. */
     __CFBundleGetPlugInData(bundle)->_isPlugIn = true;
@@ -117,10 +122,14 @@ __private_extern__ void _CFBundleInitPlugIn(CFBundleRef bundle) {
     /* Now do the registration */
 
     /* First do static registrations, if any. */
-    if (factoryDict) CFDictionaryApplyFunction(factoryDict, _registerFactory, bundle);
+    if (factoryDict != NULL) {
+        CFDictionaryApplyFunction(factoryDict, _registerFactory, bundle);
+    }
     typeDict = (CFDictionaryRef)CFDictionaryGetValue(infoDict, kCFPlugInTypesKey);
-    if (typeDict && CFGetTypeID(typeDict) != CFDictionaryGetTypeID()) typeDict = NULL;
-    if (typeDict) CFDictionaryApplyFunction(typeDict, _registerType, bundle);
+    if (typeDict != NULL && CFGetTypeID(typeDict) != CFDictionaryGetTypeID()) typeDict = NULL;
+    if (typeDict != NULL) {
+        CFDictionaryApplyFunction(typeDict, _registerType, bundle);
+    }
 
     /* Now set key for dynamic registration if necessary */
     if (doDynamicReg) {
@@ -137,10 +146,12 @@ __private_extern__ void _CFBundlePlugInLoaded(CFBundleRef bundle) {
     if (!__CFBundleGetPlugInData(bundle)->_isPlugIn || __CFBundleGetPlugInData(bundle)->_isDoingDynamicRegistration || !infoDict || !CFBundleIsExecutableLoaded(bundle)) return;
 
     tempStr = (CFStringRef)CFDictionaryGetValue(infoDict, CFSTR("CFPlugInNeedsDynamicRegistration"));
-    if (tempStr && CFGetTypeID(tempStr) == CFStringGetTypeID() && CFStringCompare(tempStr, CFSTR("YES"), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
+    if (tempStr != NULL && CFGetTypeID(tempStr) == CFStringGetTypeID() && CFStringCompare(tempStr, CFSTR("YES"), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
         CFDictionaryRemoveValue((CFMutableDictionaryRef)infoDict, CFSTR("CFPlugInNeedsDynamicRegistration"));
         tempStr = (CFStringRef)CFDictionaryGetValue(infoDict, kCFPlugInDynamicRegisterFunctionKey);
-        if (!tempStr || CFGetTypeID(tempStr) != CFStringGetTypeID() || CFStringGetLength(tempStr) <= 0) tempStr = CFSTR("CFPlugInDynamicRegister");
+        if (tempStr == NULL || CFGetTypeID(tempStr) != CFStringGetTypeID() || CFStringGetLength(tempStr) <= 0) {
+            tempStr = CFSTR("CFPlugInDynamicRegister");
+        }
         __CFBundleGetPlugInData(bundle)->_loadOnDemand = false;
         __CFBundleGetPlugInData(bundle)->_isDoingDynamicRegistration = true;
 
@@ -152,7 +163,10 @@ __private_extern__ void _CFBundlePlugInLoaded(CFBundleRef bundle) {
         }
 
         __CFBundleGetPlugInData(bundle)->_isDoingDynamicRegistration = false;
-        if (__CFBundleGetPlugInData(bundle)->_loadOnDemand && __CFBundleGetPlugInData(bundle)->_instanceCount == 0) CFBundleUnloadExecutable(bundle);   // Unload now if we can/should.
+        if (__CFBundleGetPlugInData(bundle)->_loadOnDemand && (__CFBundleGetPlugInData(bundle)->_instanceCount == 0)) {
+            /* Unload now if we can/should. */
+            CFBundleUnloadExecutable(bundle);
+        }
     } else {
         CFDictionaryRemoveValue((CFMutableDictionaryRef)infoDict, CFSTR("CFPlugInNeedsDynamicRegistration"));
     }
@@ -164,7 +178,9 @@ __private_extern__ void _CFBundleDeallocatePlugIn(CFBundleRef bundle) {
 
         /* Go through factories disabling them.  Disabling these factories should cause them to dealloc since we wouldn't be deallocating if any of the factories had outstanding instances.  So go backwards. */
         c = CFArrayGetCount(__CFBundleGetPlugInData(bundle)->_factories);
-        while (c-- > 0) _CFPFactoryDisable((_CFPFactory *)CFArrayGetValueAtIndex(__CFBundleGetPlugInData(bundle)->_factories, c));
+        while (c--) {
+            _CFPFactoryDisable((_CFPFactory *)CFArrayGetValueAtIndex(__CFBundleGetPlugInData(bundle)->_factories, c));
+        }
         CFRelease(__CFBundleGetPlugInData(bundle)->_factories);
 
         __CFBundleGetPlugInData(bundle)->_isPlugIn = false;
@@ -187,7 +203,7 @@ CFBundleRef CFPlugInGetBundle(CFPlugInRef plugIn) {
 void CFPlugInSetLoadOnDemand(CFPlugInRef plugIn, Boolean flag) {
     if (__CFBundleGetPlugInData(plugIn)->_isPlugIn) {
         __CFBundleGetPlugInData(plugIn)->_loadOnDemand = flag;
-        if (__CFBundleGetPlugInData(plugIn)->_loadOnDemand && !__CFBundleGetPlugInData(plugIn)->_isDoingDynamicRegistration && __CFBundleGetPlugInData(plugIn)->_instanceCount == 0) {
+        if (__CFBundleGetPlugInData(plugIn)->_loadOnDemand && !__CFBundleGetPlugInData(plugIn)->_isDoingDynamicRegistration && (__CFBundleGetPlugInData(plugIn)->_instanceCount == 0)) {
             /* Unload now if we can/should. */
             /* If we are doing dynamic registration currently, do not unload.  The unloading will happen when dynamic registration is done, if necessary. */
             CFBundleUnloadExecutable(plugIn);
@@ -210,13 +226,18 @@ __private_extern__ void _CFPlugInWillUnload(CFPlugInRef plugIn) {
     if (__CFBundleGetPlugInData(plugIn)->_isPlugIn) {
         SInt32 c = CFArrayGetCount(__CFBundleGetPlugInData(plugIn)->_factories);
         /* First, flush all the function pointers that may be cached by our factories. */
-        while (c-- > 0) _CFPFactoryFlushFunctionCache((_CFPFactory *)CFArrayGetValueAtIndex(__CFBundleGetPlugInData(plugIn)->_factories, c));
+        while (c--) {
+            _CFPFactoryFlushFunctionCache((_CFPFactory *)CFArrayGetValueAtIndex(__CFBundleGetPlugInData(plugIn)->_factories, c));
+        }
     }
 }
 
 __private_extern__ void _CFPlugInAddPlugInInstance(CFPlugInRef plugIn) {
     if (__CFBundleGetPlugInData(plugIn)->_isPlugIn) {
-        if (__CFBundleGetPlugInData(plugIn)->_instanceCount == 0 && __CFBundleGetPlugInData(plugIn)->_loadOnDemand) _CFBundleUnscheduleForUnloading(CFPlugInGetBundle(plugIn));     // Make sure we are not scheduled for unloading
+        if ((__CFBundleGetPlugInData(plugIn)->_instanceCount == 0) && (__CFBundleGetPlugInData(plugIn)->_loadOnDemand)) {
+            /* Make sure we are not scheduled for unloading */
+            _CFBundleUnscheduleForUnloading(CFPlugInGetBundle(plugIn));
+        }
         __CFBundleGetPlugInData(plugIn)->_instanceCount++;
         /* Instances also retain the CFBundle */
         CFRetain(plugIn);
@@ -227,7 +248,7 @@ __private_extern__ void _CFPlugInRemovePlugInInstance(CFPlugInRef plugIn) {
     if (__CFBundleGetPlugInData(plugIn)->_isPlugIn) {
         /* MF:!!! Assert that instanceCount > 0. */
         __CFBundleGetPlugInData(plugIn)->_instanceCount--;
-        if (__CFBundleGetPlugInData(plugIn)->_instanceCount == 0 && __CFBundleGetPlugInData(plugIn)->_loadOnDemand) {
+        if ((__CFBundleGetPlugInData(plugIn)->_instanceCount == 0) && (__CFBundleGetPlugInData(plugIn)->_loadOnDemand)) {
             // We unload the code lazily because the code that caused this function to be called is probably code from the plugin itself.  If we unload now, we will hose things.
             //CFBundleUnloadExecutable(plugIn);
             _CFBundleScheduleForUnloading(CFPlugInGetBundle(plugIn));
@@ -239,12 +260,16 @@ __private_extern__ void _CFPlugInRemovePlugInInstance(CFPlugInRef plugIn) {
 }
 
 __private_extern__ void _CFPlugInAddFactory(CFPlugInRef plugIn, _CFPFactory *factory) {
-    if (__CFBundleGetPlugInData(plugIn)->_isPlugIn) CFArrayAppendValue(__CFBundleGetPlugInData(plugIn)->_factories, factory);
+    if (__CFBundleGetPlugInData(plugIn)->_isPlugIn) {
+        CFArrayAppendValue(__CFBundleGetPlugInData(plugIn)->_factories, factory);
+    }
 }
 
 __private_extern__ void _CFPlugInRemoveFactory(CFPlugInRef plugIn, _CFPFactory *factory) {
     if (__CFBundleGetPlugInData(plugIn)->_isPlugIn) {
         SInt32 idx = CFArrayGetFirstIndexOfValue(__CFBundleGetPlugInData(plugIn)->_factories, CFRangeMake(0, CFArrayGetCount(__CFBundleGetPlugInData(plugIn)->_factories)), factory);
-        if (idx >= 0) CFArrayRemoveValueAtIndex(__CFBundleGetPlugInData(plugIn)->_factories, idx);
+        if (idx >= 0) {
+            CFArrayRemoveValueAtIndex(__CFBundleGetPlugInData(plugIn)->_factories, idx);
+        }
     }
 }

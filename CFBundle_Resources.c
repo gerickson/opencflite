@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  * Copyright (c) 2009 David M. Cotter <me@davevcotter.com>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
@@ -10,7 +10,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,22 +31,13 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
-/*      CFBundle_Resources.c
-        Copyright (c) 1999-2009, Apple Inc.  All rights reserved.
-        Responsibility: Doug Davidson
+/*	CFBundle_Resources.c
+	Copyright (c) 1999-2007 Apple Inc.  All rights reserved.
+	Responsibility: Doug Davidson
 */
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX
 #define READ_DIRECTORIES 1
-#elif DEPLOYMENT_TARGET_WINDOWS
-#define READ_DIRECTORIES 0
-//#if DEPLOYMENT_TARGET_WINDOWS && !defined(__GNUC__)
-//#include "compat/dirent.h"
-//#define  READ_DIRECTORIES 1
-//#endif
-#else
-#error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
 
 #define READ_DIRECTORIES_CACHE_CAPACITY 128
@@ -56,37 +47,34 @@
 #include <CoreFoundation/CFPropertyList.h>
 #include <CoreFoundation/CFByteOrder.h>
 #include <CoreFoundation/CFNumber.h>
-#include <CoreFoundation/CFLocale.h>
-#include <CoreFoundation/CFPreferences.h>
 #include <string.h>
 #include "CFInternal.h"
-#include <CoreFoundation/CFPriv.h>
+#include "CFPriv.h"
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <ctype.h>
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX
+#if DEPLOYMENT_TARGET_MACOSX
+#include <CoreFoundation/CFPreferences.h>
 #include <unistd.h>
-#elif DEPLOYMENT_TARGET_EMBEDDED
-#include <unistd.h>
-#elif DEPLOYMENT_TARGET_WINDOWS
-#else
-#error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
 
 #if READ_DIRECTORIES
 #include <dirent.h>
 #endif /* READ_DIRECTORIES */
 
+#if DEPLOYMENT_TARGET_WINDOWS && !defined(__GNUC__)
+#include "compat/dirent.h"
+#define  READ_DIRECTORIES 1
+#endif
+
 
 
 // All new-style bundles will have these extensions.
 CF_INLINE CFStringRef _CFGetPlatformName(void) {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX
     return _CFBundleMacOSXPlatformName;
-#elif DEPLOYMENT_TARGET_WINDOWS
-    return _CFBundleWindowsPlatformName;
 #elif DEPLOYMENT_TARGET_SOLARIS
     return _CFBundleSolarisPlatformName;
 #elif DEPLOYMENT_TARGET_HPUX
@@ -95,18 +83,18 @@ CF_INLINE CFStringRef _CFGetPlatformName(void) {
     return _CFBundleLinuxPlatformName;
 #elif DEPLOYMENT_TARGET_FREEBSD
     return _CFBundleFreeBSDPlatformName;
+#elif DEPLOYMENT_TARGET_WINDOWS
+    return _CFBundleWindowsPlatformName;
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
 }
 
 CF_INLINE CFStringRef _CFGetAlternatePlatformName(void) {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX
     return _CFBundleAlternateMacOSXPlatformName;
-#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-    return CFSTR("");
 #else
-#error Unknown or unspecified DEPLOYMENT_TARGET
+    return CFSTR("");
 #endif
 }
 
@@ -238,6 +226,7 @@ static CFArrayRef _CFBundleCopyDirectoryContentsAtPath(CFStringRef path, _CFBund
                             if (!foundIt) tryToOpen = false;
                         }
                         __CFSpinUnlock(&CFBundleResourceGlobalDataLock);
+                        
                         CFRelease(name);
                     }
                     CFRelease(dirName);
@@ -403,10 +392,7 @@ static void _CFSearchBundleDirectory(CFAllocatorRef alloc, CFMutableArrayRef res
     // cheapStr is available for our use for whatever we want.
     // URLs for found resources get added to result.
     CFIndex savedPathLen;
-    Boolean appendSucceeded = true, platformGenericFound = false, platformSpecificFound = false, platformGenericIsDir = false, platformSpecificIsDir = false;
-#if READ_DIRECTORIES
-    Boolean platformGenericIsUnknown = false, platformSpecificIsUnknown = false; 
-#endif
+    Boolean appendSucceeded = true, platformGenericFound = false, platformSpecificFound = false, platformGenericIsDir = false, platformSpecificIsDir = false, platformGenericIsUnknown = false, platformSpecificIsUnknown = false;
     CFStringRef platformGenericStr = NULL;
 
 #if READ_DIRECTORIES
@@ -518,10 +504,19 @@ static void _CFFindBundleResourcesInRawDir(CFAllocatorRef alloc, UniChar *workin
             for (i = 0; i < c; i++) {
                 CFStringRef curType = (CFStringRef)CFArrayGetValueAtIndex(subResTypes, i);
                 CFIndex typeLen = CFStringGetLength(curType);
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
                 STACK_BUFFER_DECL(UniChar, typeChars, typeLen);
+#else
+                UniChar *typeChars = (UniChar*)CFAllocatorAllocate(alloc, sizeof(UniChar) * typeLen, 0);
+                if (typeChars) {
+#endif
                 CFStringGetCharacters(curType, CFRangeMake(0, typeLen), typeChars);
                 _CFSearchBundleDirectory(alloc, result, workingUniChars, workingLen, nameUniChars, nameLen, typeChars, typeLen, cheapStr, tmpString, version);
                 if (limit <= CFArrayGetCount(result)) break;
+#if !DEPLOYMENT_TARGET_MACOSX && !DEPLOYMENT_TARGET_WINDOWS && !DEPLOYMENT_TARGET_LINUX
+                    CFAllocatorDeallocate(alloc, typeChars);
+                }
+#endif
             }
             if (releaseSubResTypes) CFRelease(subResTypes);
         }
@@ -629,71 +624,64 @@ CFArrayRef _CFFindBundleResources(CFBundleRef bundle, CFURLRef bundleURL, CFStri
     CFAllocatorRef alloc = (bundle ? CFGetAllocator(bundle) : (CFAllocatorRef)CFRetain(__CFGetDefaultAllocator()));
     CFMutableArrayRef result;
     UniChar *workingUniChars, *nameUniChars, *subDirUniChars;
-    CFIndex nameLen = 0;
+    CFIndex nameLen = (resName ? CFStringGetLength(resName) : 0);
     CFIndex subDirLen = (subDirName ? CFStringGetLength(subDirName) : 0);
     CFIndex workingLen, savedWorkingLen;
     CFURLRef absoluteURL;
     CFStringRef bundlePath;
     CFMutableStringRef cheapStr, tmpString;
-    char buff[CFMaxPathSize];
 
     result = CFArrayCreateMutable(alloc, 0, &kCFTypeArrayCallBacks);
-    if (resName) {  
-        CFStringRef newResName = NULL;
-        if (CFStringGetFileSystemRepresentation(resName, buff, CFMaxPathSize)) newResName = CFStringCreateWithFileSystemRepresentation(alloc, buff);
-        resName = newResName ? newResName : (CFStringRef)CFRetain(resName);
-        nameLen = CFStringGetLength(resName);
-    }
-
     // Init the one-time-only unichar buffers.
     _CFEnsureStaticBuffersInited();
 
     // Build UniChar buffers for some of the string pieces we need.
     // One malloc will do.
     nameUniChars = (UniChar *)CFAllocatorAllocate(alloc, sizeof(UniChar) * (nameLen + subDirLen + CFMaxPathSize), 0);
-    if (nameUniChars) {
-        subDirUniChars = nameUniChars + nameLen;
-        workingUniChars = subDirUniChars + subDirLen;
+    subDirUniChars = nameUniChars + nameLen;
+    workingUniChars = subDirUniChars + subDirLen;
 
-        if (nameLen > 0) CFStringGetCharacters(resName, CFRangeMake(0, nameLen), nameUniChars);
-        if (subDirLen > 0) CFStringGetCharacters(subDirName, CFRangeMake(0, subDirLen), subDirUniChars);
-        // Build a UniChar buffer with the absolute path to the bundle's resources directory.
-        // If no URL was passed, we get it from the bundle.
-        bundleURL = (bundleURL ? (CFURLRef)CFRetain(bundleURL) : CFBundleCopyBundleURL(bundle));
-        absoluteURL = CFURLCopyAbsoluteURL(bundleURL);
-        bundlePath = CFURLCopyFileSystemPath(absoluteURL, PLATFORM_PATH_STYLE);
-        if ((workingLen = CFStringGetLength(bundlePath)) > 0) CFStringGetCharacters(bundlePath, CFRangeMake(0, workingLen), workingUniChars);
-        savedWorkingLen = workingLen;
-        if (1 == version) {
-            _CFAppendPathComponent(workingUniChars, &workingLen, CFMaxPathSize, _AppSupportUniChars1, _AppSupportLen1);
-        } else if (2 == version) {
-            _CFAppendPathComponent(workingUniChars, &workingLen, CFMaxPathSize, _AppSupportUniChars2, _AppSupportLen2);
-        }
-        if (0 == version || 1 == version || 2 == version) _CFAppendPathComponent(workingUniChars, &workingLen, CFMaxPathSize, _ResourcesUniChars, _ResourcesLen);
-
-        // both of these used for temp string operations, for slightly different purposes, where each type is appropriate
-        cheapStr = CFStringCreateMutable(alloc, 0);
-        _CFStrSetDesiredCapacity(cheapStr, CFMaxPathSize);
-        tmpString = CFStringCreateMutableWithExternalCharactersNoCopy(kCFAllocatorSystemDefault, NULL, 0, 0, kCFAllocatorNull);
-
-        _CFFindBundleResourcesInResourcesDir(alloc, workingUniChars, workingLen, subDirUniChars, subDirLen, searchLanguages, nameUniChars, nameLen, resTypes, limit, version, cheapStr, tmpString, result);
-        
-        // drd: This unfortunate hack is still necessary because of installer packages and Spotlight importers
-        if (CFArrayGetCount(result) == 0 && (0 == version || (2 == version && bundlePath && CFEqual(CFSTR("/Library/Spotlight"), bundlePath)))) {
-            // Try looking directly in the bundle path
-            workingLen = savedWorkingLen;
-            _CFFindBundleResourcesInResourcesDir(alloc, workingUniChars, workingLen, subDirUniChars, subDirLen, searchLanguages, nameUniChars, nameLen, resTypes, limit, version, cheapStr, tmpString, result);
-        }
-
-        CFRelease(absoluteURL);
-        CFRelease(bundlePath);
-        CFRelease(bundleURL);
-        CFRelease(cheapStr);
-        CFRelease(tmpString);
-        CFAllocatorDeallocate(alloc, nameUniChars);
+    if (nameLen > 0) CFStringGetCharacters(resName, CFRangeMake(0, nameLen), nameUniChars);
+    if (subDirLen > 0) CFStringGetCharacters(subDirName, CFRangeMake(0, subDirLen), subDirUniChars);
+    // Build a UniChar buffer with the absolute path to the bundle's resources directory.
+    // If no URL was passed, we get it from the bundle.
+    bundleURL = (bundleURL ? (CFURLRef)CFRetain(bundleURL) : CFBundleCopyBundleURL(bundle));
+    absoluteURL = CFURLCopyAbsoluteURL(bundleURL);
+    bundlePath = CFURLCopyFileSystemPath(absoluteURL, PLATFORM_PATH_STYLE);
+    CFRelease(absoluteURL);
+    if ((workingLen = CFStringGetLength(bundlePath)) > 0) CFStringGetCharacters(bundlePath, CFRangeMake(0, workingLen), workingUniChars);
+    CFRelease(bundlePath);
+    CFRelease(bundleURL);
+    savedWorkingLen = workingLen;
+    if (1 == version) {
+        _CFAppendPathComponent(workingUniChars, &workingLen, CFMaxPathSize, _AppSupportUniChars1, _AppSupportLen1);
+    } else if (2 == version) {
+        _CFAppendPathComponent(workingUniChars, &workingLen, CFMaxPathSize, _AppSupportUniChars2, _AppSupportLen2);
     }
-    if (resName) CFRelease(resName);
+    if (0 == version || 1 == version || 2 == version) {
+        _CFAppendPathComponent(workingUniChars, &workingLen, CFMaxPathSize, _ResourcesUniChars, _ResourcesLen);
+    }
+
+    // both of these used for temp string operations, for slightly
+    // different purposes, where each type is appropriate
+    cheapStr = CFStringCreateMutable(alloc, 0);
+    _CFStrSetDesiredCapacity(cheapStr, CFMaxPathSize);
+    tmpString = CFStringCreateMutableWithExternalCharactersNoCopy(kCFAllocatorSystemDefault, NULL, 0, 0, kCFAllocatorNull);
+
+    _CFFindBundleResourcesInResourcesDir(alloc, workingUniChars, workingLen, subDirUniChars, subDirLen, searchLanguages, nameUniChars, nameLen, resTypes, limit, version, cheapStr, tmpString, result);
+    
+    // drd: This unfortunate hack is still necessary because of installer packages
+    if (0 == version && CFArrayGetCount(result) == 0) {
+        // Try looking directly in the bundle path
+        workingLen = savedWorkingLen;
+        _CFFindBundleResourcesInResourcesDir(alloc, workingUniChars, workingLen, subDirUniChars, subDirLen, searchLanguages, nameUniChars, nameLen, resTypes, limit, version, cheapStr, tmpString, result);
+    }
+
+    CFRelease(cheapStr);
+    CFRelease(tmpString);
+    CFAllocatorDeallocate(alloc, nameUniChars);
     if (!bundle) CFRelease(alloc);
+
     return result;
 }
 
@@ -701,8 +689,11 @@ CF_EXPORT CFURLRef CFBundleCopyResourceURL(CFBundleRef bundle, CFStringRef resou
     CFURLRef result = NULL;
     CFArrayRef languages = _CFBundleGetLanguageSearchList(bundle), types = NULL, array;
     if (resourceType) types = CFArrayCreate(CFGetAllocator(bundle), (const void **)&resourceType, 1, &kCFTypeArrayCallBacks);
+    
     array = _CFFindBundleResources(bundle, NULL, subDirName, languages, resourceName, types, 1, _CFBundleLayoutVersion(bundle));
+    
     if (types) CFRelease(types);
+    
     if (array) {
         if (CFArrayGetCount(array) > 0) result = (CFURLRef)CFRetain(CFArrayGetValueAtIndex(array, 0));
         CFRelease(array);
@@ -713,16 +704,16 @@ CF_EXPORT CFURLRef CFBundleCopyResourceURL(CFBundleRef bundle, CFStringRef resou
 CF_EXPORT CFArrayRef CFBundleCopyResourceURLsOfType(CFBundleRef bundle, CFStringRef resourceType, CFStringRef subDirName) {
     CFArrayRef languages = _CFBundleGetLanguageSearchList(bundle), types = NULL, array;
     if (resourceType) types = CFArrayCreate(CFGetAllocator(bundle), (const void **)&resourceType, 1, &kCFTypeArrayCallBacks);
+
     // MF:!!! Better "limit" than 1,000,000?
     array = _CFFindBundleResources(bundle, NULL, subDirName, languages, NULL, types, 1000000, _CFBundleLayoutVersion(bundle));
+    
     if (types) CFRelease(types);
     
     return array;
 }
 
-CF_EXPORT CFURLRef _CFBundleCopyResourceURLForLanguage(CFBundleRef bundle, CFStringRef resourceName, CFStringRef resourceType, CFStringRef subDirName, CFStringRef language) {
-    return CFBundleCopyResourceURLForLocalization(bundle, resourceName, resourceType, subDirName, language);
-}
+CF_EXPORT CFURLRef _CFBundleCopyResourceURLForLanguage(CFBundleRef bundle, CFStringRef resourceName, CFStringRef resourceType, CFStringRef subDirName, CFStringRef language) {return CFBundleCopyResourceURLForLocalization(bundle, resourceName, resourceType, subDirName, language);}
 
 CF_EXPORT CFURLRef CFBundleCopyResourceURLForLocalization(CFBundleRef bundle, CFStringRef resourceName, CFStringRef resourceType, CFStringRef subDirName, CFStringRef localizationName) {
     CFURLRef result = NULL;
@@ -730,48 +721,44 @@ CF_EXPORT CFURLRef CFBundleCopyResourceURLForLocalization(CFBundleRef bundle, CF
 
     if (localizationName) languages = CFArrayCreate(CFGetAllocator(bundle), (const void **)&localizationName, 1, &kCFTypeArrayCallBacks);
     if (resourceType) types = CFArrayCreate(CFGetAllocator(bundle), (const void **)&resourceType, 1, &kCFTypeArrayCallBacks);
+    
     array = _CFFindBundleResources(bundle, NULL, subDirName, languages, resourceName, types, 1, _CFBundleLayoutVersion(bundle));
     if (array) {
         if (CFArrayGetCount(array) > 0) result = (CFURLRef)CFRetain(CFArrayGetValueAtIndex(array, 0));
         CFRelease(array);
     }
+
     if (types) CFRelease(types);
     if (languages) CFRelease(languages);
+    
     return result;
 }
 
-CF_EXPORT CFArrayRef _CFBundleCopyResourceURLsOfTypeForLanguage(CFBundleRef bundle, CFStringRef resourceType, CFStringRef subDirName, CFStringRef language) {
-    return CFBundleCopyResourceURLsOfTypeForLocalization(bundle, resourceType, subDirName, language);
-}
+CF_EXPORT CFArrayRef _CFBundleCopyResourceURLsOfTypeForLanguage(CFBundleRef bundle, CFStringRef resourceType, CFStringRef subDirName, CFStringRef language) {return CFBundleCopyResourceURLsOfTypeForLocalization(bundle, resourceType, subDirName, language);}
 
 CF_EXPORT CFArrayRef CFBundleCopyResourceURLsOfTypeForLocalization(CFBundleRef bundle, CFStringRef resourceType, CFStringRef subDirName, CFStringRef localizationName) {
     CFArrayRef languages = NULL, types = NULL, array;
 
     if (localizationName) languages = CFArrayCreate(CFGetAllocator(bundle), (const void **)&localizationName, 1, &kCFTypeArrayCallBacks);
     if (resourceType) types = CFArrayCreate(CFGetAllocator(bundle), (const void **)&resourceType, 1, &kCFTypeArrayCallBacks);
+    
     // MF:!!! Better "limit" than 1,000,000?
     array = _CFFindBundleResources(bundle, NULL, subDirName, languages, NULL, types, 1000000, _CFBundleLayoutVersion(bundle));
+
     if (types) CFRelease(types);
     if (languages) CFRelease(languages);
+
     return array;
 }
 
 CF_EXPORT CFStringRef CFBundleCopyLocalizedString(CFBundleRef bundle, CFStringRef key, CFStringRef value, CFStringRef tableName) {
     CFStringRef result = NULL;
     CFDictionaryRef stringTable = NULL;
-    static CFSpinLock_t CFBundleLocalizedStringLock = CFSpinLockInit;
 
     if (!key) return (value ? (CFStringRef)CFRetain(value) : (CFStringRef)CFRetain(CFSTR("")));
 
     if (!tableName || CFEqual(tableName, CFSTR(""))) tableName = _CFBundleDefaultStringTableName;
-
-    __CFSpinLock(&CFBundleLocalizedStringLock);
-    if (__CFBundleGetResourceData(bundle)->_stringTableCache) {
-        stringTable = (CFDictionaryRef)CFDictionaryGetValue(__CFBundleGetResourceData(bundle)->_stringTableCache, tableName);
-        if (stringTable) CFRetain(stringTable);
-    }
-    __CFSpinUnlock(&CFBundleLocalizedStringLock);
-
+    if (__CFBundleGetResourceData(bundle)->_stringTableCache) stringTable = (CFDictionaryRef)CFDictionaryGetValue(__CFBundleGetResourceData(bundle)->_stringTableCache, tableName);
     if (!stringTable) {
         // Go load the table.
         CFURLRef tableURL = CFBundleCopyResourceURL(bundle, tableName, _CFBundleStringTableType, NULL);
@@ -798,13 +785,9 @@ CF_EXPORT CFStringRef CFBundleCopyLocalizedString(CFBundleRef bundle, CFStringRe
             CFRelease(tableURL);
         }
         if (!stringTable) stringTable = CFDictionaryCreate(CFGetAllocator(bundle), NULL, NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-
-        if (!CFStringHasSuffix(tableName, CFSTR(".nocache")) || !_CFExecutableLinkedOnOrAfter(CFSystemVersionLeopard)) {
-            __CFSpinLock(&CFBundleLocalizedStringLock);
-            if (!__CFBundleGetResourceData(bundle)->_stringTableCache) __CFBundleGetResourceData(bundle)->_stringTableCache = CFDictionaryCreateMutable(CFGetAllocator(bundle), 0, &kCFCopyStringDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-            CFDictionarySetValue(__CFBundleGetResourceData(bundle)->_stringTableCache, tableName, stringTable);
-            __CFSpinUnlock(&CFBundleLocalizedStringLock);
-        }
+        if (!__CFBundleGetResourceData(bundle)->_stringTableCache) __CFBundleGetResourceData(bundle)->_stringTableCache = CFDictionaryCreateMutable(CFGetAllocator(bundle), 0, &kCFCopyStringDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+        CFDictionarySetValue(__CFBundleGetResourceData(bundle)->_stringTableCache, tableName, stringTable);
+        CFRelease(stringTable);
     }
 
     result = (CFStringRef)CFDictionaryGetValue(stringTable, key);
@@ -829,7 +812,8 @@ CF_EXPORT CFStringRef CFBundleCopyLocalizedString(CFBundleRef bundle, CFStringRe
     } else {
         CFRetain(result);
     }
-    CFRelease(stringTable);
+    if (CFStringHasSuffix(tableName, CFSTR(".nocache")) && __CFBundleGetResourceData(bundle)->_stringTableCache && _CFExecutableLinkedOnOrAfter(CFSystemVersionLeopard)) CFDictionaryRemoveValue(__CFBundleGetResourceData(bundle)->_stringTableCache, tableName);
+    
     return result;
 }
 
@@ -846,9 +830,12 @@ CF_EXPORT CFURLRef CFBundleCopyResourceURLInDirectory(CFURLRef bundleURL, CFStri
         uint8_t version = 0;
         CFArrayRef languages = _CFBundleCopyLanguageSearchListInDirectory(kCFAllocatorSystemDefault, newURL, &version), types = NULL, array;
         if (resourceType) types = CFArrayCreate(kCFAllocatorSystemDefault, (const void **)&resourceType, 1, &kCFTypeArrayCallBacks);
+        
         array = _CFFindBundleResources(NULL, newURL, subDirName, languages, resourceName, types, 1, version);
+
         if (types) CFRelease(types);
         if (languages) CFRelease(languages);
+
         if (array) {
             if (CFArrayGetCount(array) > 0) result = (CFURLRef)CFRetain(CFArrayGetValueAtIndex(array, 0));
             CFRelease(array);
@@ -871,8 +858,10 @@ CF_EXPORT CFArrayRef CFBundleCopyResourceURLsOfTypeInDirectory(CFURLRef bundleUR
         uint8_t version = 0;
         CFArrayRef languages = _CFBundleCopyLanguageSearchListInDirectory(kCFAllocatorSystemDefault, newURL, &version), types = NULL;
         if (resourceType) types = CFArrayCreate(kCFAllocatorSystemDefault, (const void **)&resourceType, 1, &kCFTypeArrayCallBacks);
+
         // MF:!!! Better "limit" than 1,000,000?
         array = _CFFindBundleResources(NULL, newURL, subDirName, languages, NULL, types, 1000000, version);
+
         if (types) CFRelease(types);
         if (languages) CFRelease(languages);
     }
@@ -897,8 +886,8 @@ const char * __CFBundleLocaleAbbreviationsArray =
     "ur_IN\0"      "vi_VN\0"      "fr_BE\0"      "uz_UZ\0"      "en_SG\0"      "nn_NO\0"      "af_ZA\0"      "eo\0\0\0\0"
     "mr_IN\0"      "bo\0\0\0\0"   "ne_NP\0"      "kl\0\0\0\0"   "en_IE\0";
 
-#define NUM_LOCALE_ABBREVIATIONS        109
-#define LOCALE_ABBREVIATION_LENGTH      6
+#define NUM_LOCALE_ABBREVIATIONS	109
+#define LOCALE_ABBREVIATION_LENGTH	6
 
 static const char * const __CFBundleLanguageNamesArray[] = {
     "English",      "French",       "German",       "Italian",      "Dutch",        "Swedish",      "Spanish",      "Danish",
@@ -922,8 +911,8 @@ static const char * const __CFBundleLanguageNamesArray[] = {
     "Scottish",     "Manx",         "Irish",        "Tongan",       "Greek",        "Greenlandic",  "Azerbaijani",  "Nynorsk"
 };
 
-#define NUM_LANGUAGE_NAMES      152
-#define LANGUAGE_NAME_LENGTH    13
+#define NUM_LANGUAGE_NAMES	152
+#define LANGUAGE_NAME_LENGTH	13
 
 // string, with groups of 3 characters being 1 element in the array of abbreviations
 const char * __CFBundleLanguageAbbreviationsArray =
@@ -947,8 +936,8 @@ const char * __CFBundleLanguageAbbreviationsArray =
     "ug\0"   "dz\0"   "jv\0"   "su\0"   "gl\0"   "af\0"   "br\0"   "iu\0"
     "gd\0"   "gv\0"   "ga\0"   "to\0"   "el\0"   "kl\0"   "az\0"   "nn\0";
 
-#define NUM_LANGUAGE_ABBREVIATIONS      152
-#define LANGUAGE_ABBREVIATION_LENGTH    3
+#define NUM_LANGUAGE_ABBREVIATIONS	152
+#define LANGUAGE_ABBREVIATION_LENGTH	3
 
 #if defined(__CONSTANT_CFSTRINGS__)
 
@@ -1066,7 +1055,7 @@ CF_INLINE CFStringRef _CFBundleCopyLanguageNameForLocalization(CFStringRef local
 
 static SInt32 _CFBundleGetLanguageCodeForRegionCode(SInt32 regionCode) {
     SInt32 result = -1, i;
-    if (52 == regionCode) {     // hack for mixed-up Chinese language codes
+    if (52 == regionCode) {	// hack for mixed-up Chinese language codes
         result = 33;
     } else if (0 <= regionCode && regionCode < NUM_LOCALE_ABBREVIATIONS) {
         const char *localeAbbreviation = __CFBundleLocaleAbbreviationsArray + regionCode * LOCALE_ABBREVIATION_LENGTH;
@@ -1081,7 +1070,7 @@ static SInt32 _CFBundleGetLanguageCodeForRegionCode(SInt32 regionCode) {
 
 static SInt32 _CFBundleGetRegionCodeForLanguageCode(SInt32 languageCode) {
     SInt32 result = -1, i;
-    if (19 == languageCode) {   // hack for mixed-up Chinese language codes
+    if (19 == languageCode) {	// hack for mixed-up Chinese language codes
         result = 53;
     } else if (0 <= languageCode && languageCode < NUM_LANGUAGE_ABBREVIATIONS) {
         const char *languageAbbreviation = __CFBundleLanguageAbbreviationsArray + languageCode * LANGUAGE_ABBREVIATION_LENGTH;
@@ -1100,7 +1089,7 @@ static SInt32 _CFBundleGetRegionCodeForLocalization(CFStringRef localizationName
     SInt32 result = -1, i;
     char buff[LOCALE_ABBREVIATION_LENGTH];
     CFIndex length = CFStringGetLength(localizationName);
-    if (length >= LANGUAGE_ABBREVIATION_LENGTH - 1 && length <= LOCALE_ABBREVIATION_LENGTH - 1 && CFStringGetCString(localizationName, buff, LOCALE_ABBREVIATION_LENGTH, kCFStringEncodingASCII)) {
+    if ((length >= LANGUAGE_ABBREVIATION_LENGTH - 1) && (length <= LOCALE_ABBREVIATION_LENGTH - 1) && CFStringGetCString(localizationName, buff, LOCALE_ABBREVIATION_LENGTH, kCFStringEncodingASCII)) {
         buff[LOCALE_ABBREVIATION_LENGTH - 1] = '\0';
         for (i = 0; -1 == result && i < NUM_LOCALE_ABBREVIATIONS * LOCALE_ABBREVIATION_LENGTH; i += LOCALE_ABBREVIATION_LENGTH) {
             if (0 == strcmp(buff, __CFBundleLocaleAbbreviationsArray + i)) result = i / LOCALE_ABBREVIATION_LENGTH;
@@ -1141,19 +1130,6 @@ Boolean CFBundleGetLocalizationInfoForLocalization(CFStringRef localizationName,
         if (!languages) languages = _CFBundleCopyUserLanguages(false);
         if (languages && CFArrayGetCount(languages) > 0) localizationName = (CFStringRef)CFArrayGetValueAtIndex(languages, 0);
     }
-    if (localizationName) {
-        LangCode langCode = -1;
-        RegionCode regCode = -1;
-        ScriptCode scrCode = 0;
-        CFStringEncoding enc = kCFStringEncodingMacRoman;
-        retval = CFLocaleGetLanguageRegionEncodingForLocaleIdentifier(localizationName, &langCode, &regCode, &scrCode, &enc);
-        if (retval) {
-            language = langCode;
-            region = regCode;
-            script = scrCode;
-            encoding = enc;
-        }
-    }  
     if (!retval) {
         if (localizationName) {
             language = _CFBundleGetLanguageCodeForLocalization(localizationName);
@@ -1180,11 +1156,15 @@ Boolean CFBundleGetLocalizationInfoForLocalization(CFStringRef localizationName,
 
 CFStringRef CFBundleCopyLocalizationForLocalizationInfo(SInt32 languageCode, SInt32 regionCode, SInt32 scriptCode, CFStringEncoding stringEncoding) {
     CFStringRef localizationName = NULL;
-    if (!localizationName) localizationName = _CFBundleCopyLocaleAbbreviationForRegionCode(regionCode);
-#if DEPLOYMENT_TARGET_MACOSX
-    if (!localizationName && 0 <= languageCode && languageCode < SHRT_MAX) localizationName = CFLocaleCreateCanonicalLocaleIdentifierFromScriptManagerCodes(kCFAllocatorSystemDefault, (LangCode)languageCode, (RegionCode)-1);
-#endif
-    if (!localizationName) localizationName = _CFBundleCopyLanguageAbbreviationForLanguageCode(languageCode);
+    if (!localizationName) {
+        localizationName = _CFBundleCopyLocaleAbbreviationForRegionCode(regionCode);
+    }
+    if (!localizationName && 0 <= languageCode && languageCode < SHRT_MAX) {
+        localizationName = CFLocaleCreateCanonicalLocaleIdentifierFromScriptManagerCodes(kCFAllocatorSystemDefault, (LangCode)languageCode, (RegionCode)-1);
+    }
+    if (!localizationName) {
+        localizationName = _CFBundleCopyLanguageAbbreviationForLanguageCode(languageCode);
+    }
     if (!localizationName) {
         SInt32 language = -1, scriptLanguage = -1, encodingLanguage = -1;
         unsigned int i;
@@ -1206,61 +1186,11 @@ CFStringRef CFBundleCopyLocalizationForLocalizationInfo(SInt32 languageCode, SIn
 
 extern void *__CFAppleLanguages;
 
-#if DEPLOYMENT_TARGET_WINDOWS
-
-extern CFStringRef copyLocaleLanguageName(void);
-extern CFStringRef copyLocaleCountryName(void);
-
-static CFArrayRef copyWindowsLanguagePrefsArray() {
-    CFArrayRef result;
-    CFStringRef locales[4];
-    CFStringRef languageName = copyLocaleLanguageName(), countryName = copyLocaleCountryName();
-    if (!languageName) languageName = CFSTR("en");
-    if (!countryName) countryName = CFSTR("");
-    CFIndex i, localesCount = 0;
-    if (CFStringGetLength(countryName) > 0) locales[localesCount++] = CFStringCreateWithFormat(kCFAllocatorDefault, NULL, CFSTR("%@_%@"), languageName, countryName);
-    if (CFStringGetLength(languageName) != 0) {
-        // special-case for zh since we don't have a generic zh localization
-        if (CFStringCompare(languageName, CFSTR("zh"), kCFCompareCaseInsensitive) != 0) {
-            locales[localesCount++] = CFStringCreateCopy(kCFAllocatorSystemDefault, languageName);//languageName;
-        } else {
-            CFStringRef moreSpecificLanguageName;
-
-            // See http://intrigue-build.apple.com/changeset/14948 for the details on the change.  Copied below is the snippet of the code change.
-            // According to http://www.microsoft.com/globaldev/reference/win2k/setup/lcid.mspx, the locales that use 
-            // 126          // simplified chinese are CN (PRC) and SG (Singapore).  The rest use traditional chinese. 
-            // 127          languageName = (countryName == TEXT("CN") || countryName == TEXT("SG")) ? TEXT("zh_CN") : TEXT("zh_TW"); 
-
-            // Compare for CN or SG
-            if (CFStringCompare(countryName, CFSTR("CN"), kCFCompareCaseInsensitive) == 0 || CFStringCompare(countryName, CFSTR("SG"), kCFCompareCaseInsensitive) == 0) {
-                moreSpecificLanguageName = CFSTR("zh_CN");
-            } else {
-                moreSpecificLanguageName = CFSTR("zh_TW");
-            }
-            locales[localesCount++] = CFStringCreateCopy(kCFAllocatorSystemDefault, moreSpecificLanguageName);
-        }
-        // Don't need this now
-        if (languageName) CFRelease(languageName);
-        if (countryName) CFRelease(countryName);
-    }
-    if (localesCount == 0) locales[localesCount++] = CFStringCreateCopy(kCFAllocatorSystemDefault, CFSTR("en"));
-    result = CFArrayCreate(kCFAllocatorDefault, (const void **)locales, localesCount, &kCFTypeArrayCallBacks);
-    for (i = 0; i < localesCount; i++) CFRelease(locales[i]);
-    return result;
-}
-
-#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-#else
-#error Unknown or unspecified DEPLOYMENT_TARGET
-#endif
-    
-static CFArrayRef _CFBundleUserLanguages = NULL;
-
 __private_extern__ CFArrayRef _CFBundleCopyUserLanguages(Boolean useBackstops) {
     CFArrayRef result = NULL;
+    static CFArrayRef userLanguages = NULL;
     static Boolean didit = false;
-    CFArrayRef preferencesArray = NULL;
+    CFArrayRef preferencesArray = CFLocaleCopyPreferredLanguages();
     // This is a temporary solution, until the argument domain is moved down into CFPreferences
     __CFSpinLock(&CFBundleResourceGlobalDataLock);
     if (!didit) {
@@ -1270,27 +1200,27 @@ __private_extern__ CFArrayRef _CFBundleCopyUserLanguages(Boolean useBackstops) {
             if (length > 0) {
                 data = CFDataCreateWithBytesNoCopy(kCFAllocatorSystemDefault, (const UInt8 *)__CFAppleLanguages, length, kCFAllocatorNull);
                 if (data) {
-                    _CFBundleUserLanguages = (CFArrayRef)CFPropertyListCreateFromXMLData(kCFAllocatorSystemDefault, data, kCFPropertyListImmutable, NULL);
+                    userLanguages = (CFArrayRef)CFPropertyListCreateFromXMLData(kCFAllocatorSystemDefault, data, kCFPropertyListImmutable, NULL);
                     CFRelease(data);
                 }
             }
         }
-        if (!_CFBundleUserLanguages && preferencesArray) _CFBundleUserLanguages = (CFArrayRef)CFRetain(preferencesArray);
+        if (!userLanguages && preferencesArray) userLanguages = (CFArrayRef)CFRetain(preferencesArray);
         Boolean useEnglishAsBackstop = true;
         // could perhaps read out of LANG environment variable
-        if (useEnglishAsBackstop && !_CFBundleUserLanguages) {
+        if (useEnglishAsBackstop && !userLanguages) {
             CFStringRef english = CFSTR("en");
-            _CFBundleUserLanguages = CFArrayCreate(kCFAllocatorSystemDefault, (const void **)&english, 1, &kCFTypeArrayCallBacks);
+            userLanguages = CFArrayCreate(kCFAllocatorSystemDefault, (const void **)&english, 1, &kCFTypeArrayCallBacks);
         }
-        if (_CFBundleUserLanguages && CFGetTypeID(_CFBundleUserLanguages) != CFArrayGetTypeID()) {
-            CFRelease(_CFBundleUserLanguages);
-            _CFBundleUserLanguages = NULL;
+        if (userLanguages && CFGetTypeID(userLanguages) != CFArrayGetTypeID()) {
+            CFRelease(userLanguages);
+            userLanguages = NULL;
         }
         didit = true;
     }
     __CFSpinUnlock(&CFBundleResourceGlobalDataLock);
     if (preferencesArray) CFRelease(preferencesArray);
-    if (!result && _CFBundleUserLanguages) result = (CFArrayRef)CFRetain(_CFBundleUserLanguages);
+    if (!result && userLanguages) result = (CFArrayRef)CFRetain(userLanguages);
     return result;
 }
 
@@ -1308,13 +1238,6 @@ CF_EXPORT void _CFBundleGetLanguageAndRegionCodes(SInt32 *languageCode, SInt32 *
     if (languages && CFArrayGetCount(languages) > 0) {
         CFStringRef localizationName = (CFStringRef)CFArrayGetValueAtIndex(languages, 0);
         Boolean retval = false;
-        LangCode langCode = -1;
-        RegionCode regCode = -1;
-        retval = CFLocaleGetLanguageRegionEncodingForLocaleIdentifier(localizationName, &langCode, &regCode, NULL, NULL);
-        if (retval) {
-            language = langCode;
-            region = regCode;
-        }
         if (!retval) {
             language = _CFBundleGetLanguageCodeForLocalization(localizationName);
             region = _CFBundleGetRegionCodeForLocalization(localizationName);
@@ -1331,12 +1254,12 @@ CF_EXPORT void _CFBundleGetLanguageAndRegionCodes(SInt32 *languageCode, SInt32 *
 }
 
 
-static Boolean _CFBundleTryOnePreferredLprojNameInDirectory(CFAllocatorRef alloc, UniChar *pathUniChars, CFIndex pathLen, uint8_t version, CFDictionaryRef infoDict, CFStringRef curLangStr, CFMutableArrayRef lprojNames, Boolean fallBackToLanguage) {
+static Boolean _CFBundleTryOnePreferredLprojNameInDirectory(CFAllocatorRef alloc, UniChar *pathUniChars, CFIndex pathLen, uint8_t version, CFDictionaryRef infoDict, CFStringRef curLangStr, CFMutableArrayRef lprojNames) {
     CFIndex curLangLen = CFStringGetLength(curLangStr), savedPathLen;
     UniChar curLangUniChars[255];
-    CFStringRef altLangStr = NULL, modifiedLangStr = NULL, languageAbbreviation = NULL, languageName = NULL, canonicalLanguageIdentifier = NULL, canonicalLanguageAbbreviation = NULL;
+    CFStringRef altLangStr = NULL, modifiedLangStr = NULL, languageAbbreviation = NULL, languageName = NULL, canonicalLanguageIdentifier = NULL;
     CFMutableDictionaryRef canonicalLanguageIdentifiers = NULL, predefinedCanonicalLanguageIdentifiers = NULL;
-    Boolean foundOne = false, specifiesScript = false;
+    Boolean foundOne = false;
     CFArrayRef predefinedLocalizations = NULL;
     CFRange predefinedLocalizationsRange;
     CFMutableStringRef cheapStr, tmpString;
@@ -1473,7 +1396,7 @@ static Boolean _CFBundleTryOnePreferredLprojNameInDirectory(CFAllocatorRef alloc
             }
         }
     }
-    if (!specifiesScript && (foundOne || fallBackToLanguage) && !altLangStr && (languageAbbreviation = _CFBundleCopyLanguageAbbreviationForLocalization(curLangStr)) && !CFEqual(curLangStr, languageAbbreviation)) {
+    if (!altLangStr && (languageAbbreviation = _CFBundleCopyLanguageAbbreviationForLocalization(curLangStr)) && !CFEqual(curLangStr, languageAbbreviation)) {
         curLangLen = CFStringGetLength(languageAbbreviation);
         if (curLangLen > 255) curLangLen = 255;
         CFStringGetCharacters(languageAbbreviation, CFRangeMake(0, curLangLen), curLangUniChars);
@@ -1493,7 +1416,7 @@ static Boolean _CFBundleTryOnePreferredLprojNameInDirectory(CFAllocatorRef alloc
             }
         }
     }
-    if (!specifiesScript && (foundOne || fallBackToLanguage) && !altLangStr && (languageName = _CFBundleCopyLanguageNameForLocalization(curLangStr)) && !CFEqual(curLangStr, languageName)) {
+    if (!altLangStr && (languageName = _CFBundleCopyLanguageNameForLocalization(curLangStr)) && !CFEqual(curLangStr, languageName)) {
         curLangLen = CFStringGetLength(languageName);
         if (curLangLen > 255) curLangLen = 255;
         CFStringGetCharacters(languageName, CFRangeMake(0, curLangLen), curLangUniChars);
@@ -1519,12 +1442,12 @@ static Boolean _CFBundleTryOnePreferredLprojNameInDirectory(CFAllocatorRef alloc
     if (canonicalLanguageIdentifier) CFRelease(canonicalLanguageIdentifier);
     if (canonicalLanguageIdentifiers) CFRelease(canonicalLanguageIdentifiers);
     if (predefinedCanonicalLanguageIdentifiers) CFRelease(predefinedCanonicalLanguageIdentifiers);
-    if (canonicalLanguageAbbreviation) CFRelease(canonicalLanguageAbbreviation);
     CFRelease(cheapStr);
     CFRelease(tmpString);
 #if READ_DIRECTORIES
     CFRelease(contents);
 #endif /* READ_DIRECTORIES */
+
     return foundOne;
 }
 
@@ -1550,36 +1473,20 @@ static Boolean CFBundleAllowMixedLocalizations(void) {
     return allowMixed;
 }
 
-static Boolean _CFBundleLocalizationsHaveCommonPrefix(CFStringRef loc1, CFStringRef loc2) {
-    Boolean result = false;
-    CFIndex length1 = CFStringGetLength(loc1), length2 = CFStringGetLength(loc2), idx;
-    if (length1 > 3 && length2 > 3) {
-        for (idx = 0; idx < length1 && idx < length2; idx++) {
-            UniChar c1 = CFStringGetCharacterAtIndex(loc1, idx), c2 = CFStringGetCharacterAtIndex(loc2, idx);
-            if (idx >= 2 && (c1 == '-' || c1 == '_') && (c2 == '-' || c2 == '_')) {
-                result = true;
-                break;
-            } else if (c1 != c2) {
-                break;
-            }
-        }
-    }
-    return result;
-}
-
 __private_extern__ void _CFBundleAddPreferredLprojNamesInDirectory(CFAllocatorRef alloc, CFURLRef bundleURL, uint8_t version, CFDictionaryRef infoDict, CFMutableArrayRef lprojNames, CFStringRef devLang) {
     // This function will add zero, one or two elements to the lprojNames array.
     // It examines the users preferred language list and the lproj directories inside the bundle directory.  It picks the lproj directory that is highest on the users list.
     // The users list can contain region names (like "en_US" for US English).  In this case, if the region lproj exists, it will be added, and, if the region's associated language lproj exists that will be added.
     CFURLRef resourcesURL = _CFBundleCopyResourcesDirectoryURLInDirectory(alloc, bundleURL, version);
     CFURLRef absoluteURL;
-    CFIndex idx, startIdx;
+    CFIndex idx;
     CFIndex count;
     CFStringRef resourcesPath;
     UniChar pathUniChars[CFMaxPathSize];
     CFIndex pathLen;
-    CFStringRef curLangStr, nextLangStr;
+    CFStringRef curLangStr;
     Boolean foundOne = false;
+
     CFArrayRef userLanguages;
     
     // Init the one-time-only unichar buffers.
@@ -1600,17 +1507,15 @@ __private_extern__ void _CFBundleAddPreferredLprojNamesInDirectory(CFAllocatorRe
         CFBundleRef mainBundle = CFBundleGetMainBundle();
         if (mainBundle) {
             CFURLRef mainBundleURL = CFBundleCopyBundleURL(mainBundle);
-            if (mainBundleURL) {
-                if (!CFEqual(bundleURL, mainBundleURL)) {
-                    // If there is a main bundle, and it isn't this one, try to use the language it prefers.
-                    CFArrayRef mainBundleLangs = _CFBundleGetLanguageSearchList(mainBundle);
-                    if (mainBundleLangs && (CFArrayGetCount(mainBundleLangs) > 0)) {
-                        curLangStr = (CFStringRef)CFArrayGetValueAtIndex(mainBundleLangs, 0);
-                        foundOne = _CFBundleTryOnePreferredLprojNameInDirectory(alloc, pathUniChars, pathLen, version, infoDict, curLangStr, lprojNames, true);
-                    }
+            if (!CFEqual(bundleURL, mainBundleURL)) {
+                // If there is a main bundle, and it isn't this one, try to use the language it prefers.
+                CFArrayRef mainBundleLangs = _CFBundleGetLanguageSearchList(mainBundle);
+                if (mainBundleLangs && (CFArrayGetCount(mainBundleLangs) > 0)) {
+                    curLangStr = (CFStringRef)CFArrayGetValueAtIndex(mainBundleLangs, 0);
+                    foundOne = _CFBundleTryOnePreferredLprojNameInDirectory(alloc, pathUniChars, pathLen, version, infoDict, curLangStr, lprojNames);
                 }
-                CFRelease(mainBundleURL);
             }
+            CFRelease(mainBundleURL);
         }
     }
 
@@ -1618,35 +1523,21 @@ __private_extern__ void _CFBundleAddPreferredLprojNamesInDirectory(CFAllocatorRe
         // If we didn't find the main bundle's preferred language, look at the users' prefs again and find the best one.
         userLanguages = _CFBundleCopyUserLanguages(true);
         count = (userLanguages ? CFArrayGetCount(userLanguages) : 0);
-        for (idx = 0, startIdx = -1; !foundOne && idx < count; idx++) {
+        for (idx = 0; !foundOne && idx < count; idx++) {
             curLangStr = (CFStringRef)CFArrayGetValueAtIndex(userLanguages, idx);
-            nextLangStr = (idx + 1 < count) ? (CFStringRef)CFArrayGetValueAtIndex(userLanguages, idx + 1) : NULL;
-            if (nextLangStr && _CFBundleLocalizationsHaveCommonPrefix(curLangStr, nextLangStr)) {
-                foundOne = _CFBundleTryOnePreferredLprojNameInDirectory(alloc, pathUniChars, pathLen, version, infoDict, curLangStr, lprojNames, false);
-                if (startIdx < 0) startIdx = idx;
-            } else if (startIdx >= 0 && startIdx <= idx) {
-                foundOne = _CFBundleTryOnePreferredLprojNameInDirectory(alloc, pathUniChars, pathLen, version, infoDict, curLangStr, lprojNames, false);
-                for (; !foundOne && startIdx <= idx; startIdx++) {
-                    curLangStr = (CFStringRef)CFArrayGetValueAtIndex(userLanguages, startIdx);
-                    foundOne = _CFBundleTryOnePreferredLprojNameInDirectory(alloc, pathUniChars, pathLen, version, infoDict, curLangStr, lprojNames, true);
-                }
-                startIdx = -1;
-            } else {
-                foundOne = _CFBundleTryOnePreferredLprojNameInDirectory(alloc, pathUniChars, pathLen, version, infoDict, curLangStr, lprojNames, true);
-                startIdx = -1;
-            }
+            foundOne = _CFBundleTryOnePreferredLprojNameInDirectory(alloc, pathUniChars, pathLen, version, infoDict, curLangStr, lprojNames);
         }
         // use development region and U.S. English as backstops
-        if (!foundOne && devLang) foundOne = _CFBundleTryOnePreferredLprojNameInDirectory(alloc, pathUniChars, pathLen, version, infoDict, devLang, lprojNames, true);
-        if (!foundOne) foundOne = _CFBundleTryOnePreferredLprojNameInDirectory(alloc, pathUniChars, pathLen, version, infoDict, CFSTR("en_US"), lprojNames, true);
+        if (!foundOne && devLang) foundOne = _CFBundleTryOnePreferredLprojNameInDirectory(alloc, pathUniChars, pathLen, version, infoDict, devLang, lprojNames);
+        if (!foundOne) foundOne = _CFBundleTryOnePreferredLprojNameInDirectory(alloc, pathUniChars, pathLen, version, infoDict, CFSTR("en_US"), lprojNames);
         if (userLanguages) CFRelease(userLanguages);
     }
 }
 
-static Boolean _CFBundleTryOnePreferredLprojNameInArray(CFArrayRef array, CFStringRef curLangStr, CFMutableArrayRef lprojNames, Boolean fallBackToLanguage) {
-    Boolean foundOne = false, specifiesScript = false;
+static Boolean _CFBundleTryOnePreferredLprojNameInArray(CFArrayRef array, CFStringRef curLangStr, CFMutableArrayRef lprojNames) {
+    Boolean foundOne = false;
     CFRange range = CFRangeMake(0, CFArrayGetCount(array));
-    CFStringRef altLangStr = NULL, modifiedLangStr = NULL, languageAbbreviation = NULL, languageName = NULL, canonicalLanguageIdentifier = NULL, canonicalLanguageAbbreviation = NULL;
+    CFStringRef altLangStr = NULL, modifiedLangStr = NULL, languageAbbreviation = NULL, languageName = NULL, canonicalLanguageIdentifier = NULL;
     CFMutableDictionaryRef canonicalLanguageIdentifiers = NULL;
 
     if (range.length == 0) return foundOne;
@@ -1677,13 +1568,13 @@ static Boolean _CFBundleTryOnePreferredLprojNameInArray(CFArrayRef array, CFStri
             foundOne = true;
         }
     }
-    if (!specifiesScript && (foundOne || fallBackToLanguage) && !altLangStr && (languageAbbreviation = _CFBundleCopyLanguageAbbreviationForLocalization(curLangStr)) && !CFEqual(curLangStr, languageAbbreviation)) {
+    if (!altLangStr && (languageAbbreviation = _CFBundleCopyLanguageAbbreviationForLocalization(curLangStr)) && !CFEqual(curLangStr, languageAbbreviation)) {
         if (CFArrayContainsValue(array, range, languageAbbreviation)) {
             if (!CFArrayContainsValue(lprojNames, CFRangeMake(0, CFArrayGetCount(lprojNames)), languageAbbreviation)) CFArrayAppendValue(lprojNames, languageAbbreviation);
             foundOne = true;
         }
     }
-    if (!specifiesScript && (foundOne || fallBackToLanguage) && !altLangStr && (languageName = _CFBundleCopyLanguageNameForLocalization(curLangStr)) && !CFEqual(curLangStr, languageName)) {
+    if (!altLangStr && (languageName = _CFBundleCopyLanguageNameForLocalization(curLangStr)) && !CFEqual(curLangStr, languageName)) {
         if (CFArrayContainsValue(array, range, languageName)) {
             if (!CFArrayContainsValue(lprojNames, CFRangeMake(0, CFArrayGetCount(lprojNames)), languageName)) CFArrayAppendValue(lprojNames, languageName);
             foundOne = true;
@@ -1694,53 +1585,42 @@ static Boolean _CFBundleTryOnePreferredLprojNameInArray(CFArrayRef array, CFStri
     if (languageName) CFRelease(languageName);
     if (canonicalLanguageIdentifier) CFRelease(canonicalLanguageIdentifier);
     if (canonicalLanguageIdentifiers) CFRelease(canonicalLanguageIdentifiers);
-    if (canonicalLanguageAbbreviation) CFRelease(canonicalLanguageAbbreviation);
+
     return foundOne;
 }
 
 static CFArrayRef _CFBundleCopyLocalizationsForPreferences(CFArrayRef locArray, CFArrayRef prefArray, Boolean considerMain) {
     CFMutableArrayRef lprojNames = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, &kCFTypeArrayCallBacks);
     Boolean foundOne = false, releasePrefArray = false;
-    CFIndex idx, count, startIdx;
+    CFIndex idx, count;
     
     if (considerMain && !CFBundleAllowMixedLocalizations()) {
         CFBundleRef mainBundle = CFBundleGetMainBundle();
         if (mainBundle) {
             // If there is a main bundle, try to use the language it prefers.
             CFArrayRef mainBundleLangs = _CFBundleGetLanguageSearchList(mainBundle);
-            if (mainBundleLangs && (CFArrayGetCount(mainBundleLangs) > 0)) foundOne = _CFBundleTryOnePreferredLprojNameInArray(locArray, (CFStringRef)CFArrayGetValueAtIndex(mainBundleLangs, 0), lprojNames, true);
+            if (mainBundleLangs && (CFArrayGetCount(mainBundleLangs) > 0)) {
+                foundOne = _CFBundleTryOnePreferredLprojNameInArray(locArray, (CFStringRef)CFArrayGetValueAtIndex(mainBundleLangs, 0), lprojNames);
+            }
         }
     }
-    
     if (!foundOne) {
-        CFStringRef curLangStr, nextLangStr;
         if (!prefArray) {
             prefArray = _CFBundleCopyUserLanguages(true);
             if (prefArray) releasePrefArray = true;
         }
         count = (prefArray ? CFArrayGetCount(prefArray) : 0);
-        for (idx = 0, startIdx = -1; !foundOne && idx < count; idx++) {
-            curLangStr = (CFStringRef)CFArrayGetValueAtIndex(prefArray, idx);
-            nextLangStr = (idx + 1 < count) ? (CFStringRef)CFArrayGetValueAtIndex(prefArray, idx + 1) : NULL;
-            if (nextLangStr && _CFBundleLocalizationsHaveCommonPrefix(curLangStr, nextLangStr)) {
-                foundOne = _CFBundleTryOnePreferredLprojNameInArray(locArray, curLangStr, lprojNames, false);
-                if (startIdx < 0) startIdx = idx;
-            } else if (startIdx >= 0 && startIdx <= idx) {
-                foundOne = _CFBundleTryOnePreferredLprojNameInArray(locArray, curLangStr, lprojNames, false);
-                for (; !foundOne && startIdx <= idx; startIdx++) {
-                    curLangStr = (CFStringRef)CFArrayGetValueAtIndex(prefArray, startIdx);
-                    foundOne = _CFBundleTryOnePreferredLprojNameInArray(locArray, curLangStr, lprojNames, true);
-                }
-                startIdx = -1;
-            } else {
-                foundOne = _CFBundleTryOnePreferredLprojNameInArray(locArray, curLangStr, lprojNames, true);
-                startIdx = -1;
-            }
+        for (idx = 0; !foundOne && idx < count; idx++) {
+            foundOne = _CFBundleTryOnePreferredLprojNameInArray(locArray, (CFStringRef)CFArrayGetValueAtIndex(prefArray, idx), lprojNames);
         }
         // use U.S. English as backstop
-        if (!foundOne) foundOne = _CFBundleTryOnePreferredLprojNameInArray(locArray, CFSTR("en_US"), lprojNames, true);
+        if (!foundOne) {
+            foundOne = _CFBundleTryOnePreferredLprojNameInArray(locArray, CFSTR("en_US"), lprojNames);
+        }
         // use random entry as backstop
-        if (!foundOne && CFArrayGetCount(locArray) > 0) foundOne = _CFBundleTryOnePreferredLprojNameInArray(locArray, (CFStringRef)CFArrayGetValueAtIndex(locArray, 0), lprojNames, true);
+        if (!foundOne && CFArrayGetCount(lprojNames) > 0) {
+            foundOne = _CFBundleTryOnePreferredLprojNameInArray(locArray, (CFStringRef)CFArrayGetValueAtIndex(locArray, 0), lprojNames);
+        }
     }
     if (CFArrayGetCount(lprojNames) == 0) {
         // Total backstop behavior to avoid having an empty array. 
@@ -1752,13 +1632,9 @@ static CFArrayRef _CFBundleCopyLocalizationsForPreferences(CFArrayRef locArray, 
     return lprojNames;
 }
 
-CF_EXPORT CFArrayRef CFBundleCopyLocalizationsForPreferences(CFArrayRef locArray, CFArrayRef prefArray) {
-    return _CFBundleCopyLocalizationsForPreferences(locArray, prefArray, false);
-}
+CF_EXPORT CFArrayRef CFBundleCopyLocalizationsForPreferences(CFArrayRef locArray, CFArrayRef prefArray) {return _CFBundleCopyLocalizationsForPreferences(locArray, prefArray, false);}
 
-CF_EXPORT CFArrayRef CFBundleCopyPreferredLocalizationsFromArray(CFArrayRef locArray) {
-    return _CFBundleCopyLocalizationsForPreferences(locArray, NULL, true);
-}
+CF_EXPORT CFArrayRef CFBundleCopyPreferredLocalizationsFromArray(CFArrayRef locArray) {return _CFBundleCopyLocalizationsForPreferences(locArray, NULL, true);}
 
 __private_extern__ CFArrayRef _CFBundleCopyLanguageSearchListInDirectory(CFAllocatorRef alloc, CFURLRef url, uint8_t *version) {
     CFMutableArrayRef langs = CFArrayCreateMutable(alloc, 0, &kCFTypeArrayCallBacks);
@@ -1792,8 +1668,10 @@ CF_EXPORT Boolean _CFBundleURLLooksLikeBundle(CFURLRef url) {
 
 // Note that subDirName is expected to be the string for a URL
 CF_INLINE Boolean _CFBundleURLHasSubDir(CFURLRef url, CFStringRef subDirName) {
+    CFURLRef dirURL;
     Boolean isDir = false, result = false;
-    CFURLRef dirURL = CFURLCreateWithString(kCFAllocatorSystemDefault, subDirName, url);
+
+    dirURL = CFURLCreateWithString(kCFAllocatorSystemDefault, subDirName, url);
     if (dirURL) {
         if (_CFIsResourceAtURL(dirURL, &isDir) && isDir) result = true;
         CFRelease(dirURL);
@@ -1829,8 +1707,7 @@ __private_extern__ Boolean _CFBundleURLLooksLikeBundleVersion(CFURLRef url, uint
     CFRelease(absoluteURL);
 #endif /* READ_DIRECTORIES */
     if (localVersion == 3) {
-#if DEPLOYMENT_TARGET_EMBEDDED
-#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+#if DEPLOYMENT_TARGET_MACOSX
         if (CFStringHasSuffix(CFURLGetString(url), CFSTR(".framework/"))) {
             if (_CFBundleURLHasSubDir(url, _CFBundleResourcesURLFromBase0)) localVersion = 0;
             else if (_CFBundleURLHasSubDir(url, _CFBundleSupportFilesURLFromBase2)) localVersion = 2;
@@ -1840,22 +1717,10 @@ __private_extern__ Boolean _CFBundleURLLooksLikeBundleVersion(CFURLRef url, uint
             else if (_CFBundleURLHasSubDir(url, _CFBundleResourcesURLFromBase0)) localVersion = 0;
             else if (_CFBundleURLHasSubDir(url, _CFBundleSupportFilesURLFromBase1)) localVersion = 1;
         }
-#elif DEPLOYMENT_TARGET_WINDOWS
-        if (CFStringHasSuffix(CFURLGetString(url), CFSTR(".framework\\"))) {
-            if (_CFBundleURLHasSubDir(url, _CFBundleResourcesURLFromBase0)) localVersion = 0;
-            else if (_CFBundleURLHasSubDir(url, _CFBundleSupportFilesURLFromBase2)) localVersion = 2;
-            else if (_CFBundleURLHasSubDir(url, _CFBundleSupportFilesURLFromBase1)) localVersion = 1;
-        } else {
-            if (_CFBundleURLHasSubDir(url, _CFBundleSupportFilesURLFromBase2)) localVersion = 2;
-            else if (_CFBundleURLHasSubDir(url, _CFBundleResourcesURLFromBase0)) localVersion = 0;
-            else if (_CFBundleURLHasSubDir(url, _CFBundleSupportFilesURLFromBase1)) localVersion = 1;
-        }
-#else
-#error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
     }
     if (version) *version = localVersion;
-    return (localVersion != 3);
+    return !(localVersion == 3);
 }
 
 __private_extern__ CFDictionaryRef _CFBundleCopyInfoDictionaryInDirectory(CFAllocatorRef alloc, CFURLRef url, uint8_t *version) {
@@ -1915,18 +1780,35 @@ __private_extern__ CFDictionaryRef _CFBundleCopyInfoDictionaryInDirectoryWithVer
             infoURLFromBaseNoExtension = _CFBundleInfoURLFromBaseNoExtension2;
             infoURLFromBase = _CFBundleInfoURLFromBase2;
         } else if (3 == version) {
-            CFStringRef path = CFURLCopyFileSystemPath(url, kCFURLPOSIXPathStyle);
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX
+            CFStringRef posixPath = CFURLCopyFileSystemPath(url, kCFURLPOSIXPathStyle);
             // this test is necessary to exclude the case where a bundle is spuriously created from the innards of another bundle
-            if (path) {
-                if (!(CFStringHasSuffix(path, _CFBundleSupportFilesDirectoryName1) || CFStringHasSuffix(path, _CFBundleSupportFilesDirectoryName2) || CFStringHasSuffix(path, _CFBundleResourcesDirectoryName))) {
+            if (posixPath) {
+                if (!(CFStringHasSuffix(posixPath, _CFBundleSupportFilesDirectoryName1) || CFStringHasSuffix(posixPath, _CFBundleSupportFilesDirectoryName2) || CFStringHasSuffix(posixPath, _CFBundleResourcesDirectoryName))) {
 #if READ_DIRECTORIES
                     directoryURL = (CFURLRef)CFRetain(url);
 #endif /* READ_DIRECTORIES */    
                     infoURLFromBaseNoExtension = _CFBundleInfoURLFromBaseNoExtension3;
                     infoURLFromBase = _CFBundleInfoURLFromBase3;
                 }
-                CFRelease(path);
+                CFRelease(posixPath);
             }
+#elif DEPLOYMENT_TARGET_WINDOWS
+            CFStringRef windowsPath = CFURLCopyFileSystemPath(url, kCFURLWindowsPathStyle);
+            // this test is necessary to exclude the case where a bundle is spuriously created from the innards of another bundle
+            if (windowsPath) {
+                if (!(CFStringHasSuffix(windowsPath, _CFBundleSupportFilesDirectoryName1) || CFStringHasSuffix(windowsPath, _CFBundleSupportFilesDirectoryName2) || CFStringHasSuffix(windowsPath, _CFBundleResourcesDirectoryName))) {
+#if READ_DIRECTORIES
+                    directoryURL = (CFURLRef)CFRetain(url);
+#endif /* READ_DIRECTORIES */    
+                    infoURLFromBaseNoExtension = _CFBundleInfoURLFromBaseNoExtension3;
+                    infoURLFromBase = _CFBundleInfoURLFromBase3;
+                }
+                CFRelease(windowsPath);
+            }
+#else
+#error Unknown or unspecified DEPLOYMENT_TARGET
+#endif
         }
 #if READ_DIRECTORIES
         if (directoryURL) {
@@ -2078,19 +1960,19 @@ static Boolean _CFBundleGetPackageInfoInDirectoryWithInfoDictionary(CFAllocatorR
                 CFStringGetCharacters(urlStr, CFRangeMake(0, strLen), buff);
                 CFRelease(urlStr);
                 startOfExtension = _CFStartOfPathExtension(buff, strLen);
-                if ((strLen - startOfExtension == 4 || strLen - startOfExtension == 5) && buff[startOfExtension] == (UniChar)'.' && buff[startOfExtension+1] == (UniChar)'a' && buff[startOfExtension+2] == (UniChar)'p' && buff[startOfExtension+3] == (UniChar)'p' && (strLen - startOfExtension == 4 || buff[startOfExtension+4] == (UniChar)'/')) {
+                if (((strLen - startOfExtension == 4) || (strLen - startOfExtension == 5)) && (buff[startOfExtension] == (UniChar)'.') && (buff[startOfExtension+1] == (UniChar)'a') && (buff[startOfExtension+2] == (UniChar)'p') && (buff[startOfExtension+3] == (UniChar)'p') && ((strLen - startOfExtension == 4) || (buff[startOfExtension+4] == (UniChar)'/'))) {
                     // This is an app
                     *packageType = 0x4150504c;  // 'APPL'
-                } else if ((strLen - startOfExtension == 6 || strLen - startOfExtension == 7) && buff[startOfExtension] == (UniChar)'.' && buff[startOfExtension+1] == (UniChar)'d' && buff[startOfExtension+2] == (UniChar)'e' && buff[startOfExtension+3] == (UniChar)'b' && buff[startOfExtension+4] == (UniChar)'u' && buff[startOfExtension+5] == (UniChar)'g' && (strLen - startOfExtension == 6 || buff[startOfExtension+6] == (UniChar)'/')) {
+                } else if (((strLen - startOfExtension == 6) || (strLen - startOfExtension == 7)) && (buff[startOfExtension] == (UniChar)'.') && (buff[startOfExtension+1] == (UniChar)'d') && (buff[startOfExtension+2] == (UniChar)'e') && (buff[startOfExtension+3] == (UniChar)'b') && (buff[startOfExtension+4] == (UniChar)'u') && (buff[startOfExtension+5] == (UniChar)'g') && ((strLen - startOfExtension == 6) || (buff[startOfExtension+6] == (UniChar)'/'))) {
                     // This is an app (debug version)
                     *packageType = 0x4150504c;  // 'APPL'
-                } else if ((strLen - startOfExtension == 8 || strLen - startOfExtension == 9) && buff[startOfExtension] == (UniChar)'.' && buff[startOfExtension+1] == (UniChar)'p' && buff[startOfExtension+2] == (UniChar)'r' && buff[startOfExtension+3] == (UniChar)'o' && buff[startOfExtension+4] == (UniChar)'f' && buff[startOfExtension+5] == (UniChar)'i' && buff[startOfExtension+6] == (UniChar)'l' && buff[startOfExtension+7] == (UniChar)'e' && (strLen - startOfExtension == 8 || buff[startOfExtension+8] == (UniChar)'/')) {
+                } else if (((strLen - startOfExtension == 8) || (strLen - startOfExtension == 9)) && (buff[startOfExtension] == (UniChar)'.') && (buff[startOfExtension+1] == (UniChar)'p') && (buff[startOfExtension+2] == (UniChar)'r') && (buff[startOfExtension+3] == (UniChar)'o') && (buff[startOfExtension+4] == (UniChar)'f') && (buff[startOfExtension+5] == (UniChar)'i') && (buff[startOfExtension+6] == (UniChar)'l') && (buff[startOfExtension+7] == (UniChar)'e') && ((strLen - startOfExtension == 8) || (buff[startOfExtension+8] == (UniChar)'/'))) {
                     // This is an app (profile version)
                     *packageType = 0x4150504c;  // 'APPL'
-                } else if ((strLen - startOfExtension == 8 || strLen - startOfExtension == 9) && buff[startOfExtension] == (UniChar)'.' && buff[startOfExtension+1] == (UniChar)'s' && buff[startOfExtension+2] == (UniChar)'e' && buff[startOfExtension+3] == (UniChar)'r' && buff[startOfExtension+4] == (UniChar)'v' && buff[startOfExtension+5] == (UniChar)'i' && buff[startOfExtension+6] == (UniChar)'c' && buff[startOfExtension+7] == (UniChar)'e' && (strLen - startOfExtension == 8 || buff[startOfExtension+8] == (UniChar)'/')) {
+                } else if (((strLen - startOfExtension == 8) || (strLen - startOfExtension == 9)) && (buff[startOfExtension] == (UniChar)'.') && (buff[startOfExtension+1] == (UniChar)'s') && (buff[startOfExtension+2] == (UniChar)'e') && (buff[startOfExtension+3] == (UniChar)'r') && (buff[startOfExtension+4] == (UniChar)'v') && (buff[startOfExtension+5] == (UniChar)'i') && (buff[startOfExtension+6] == (UniChar)'c') && (buff[startOfExtension+7] == (UniChar)'e') && ((strLen - startOfExtension == 8) || (buff[startOfExtension+8] == (UniChar)'/'))) {
                     // This is a service
                     *packageType = 0x4150504c;  // 'APPL'
-                } else if ((strLen - startOfExtension == 10 || strLen - startOfExtension == 11) && buff[startOfExtension] == (UniChar)'.' && buff[startOfExtension+1] == (UniChar)'f' && buff[startOfExtension+2] == (UniChar)'r' && buff[startOfExtension+3] == (UniChar)'a' && buff[startOfExtension+4] == (UniChar)'m' && buff[startOfExtension+5] == (UniChar)'e' && buff[startOfExtension+6] == (UniChar)'w' && buff[startOfExtension+7] == (UniChar)'o' && buff[startOfExtension+8] == (UniChar)'r' && buff[startOfExtension+9] == (UniChar)'k' && (strLen - startOfExtension == 10 || buff[startOfExtension+10] == (UniChar)'/')) {
+                } else if (((strLen - startOfExtension == 10) || (strLen - startOfExtension == 11)) && (buff[startOfExtension] == (UniChar)'.') && (buff[startOfExtension+1] == (UniChar)'f') && (buff[startOfExtension+2] == (UniChar)'r') && (buff[startOfExtension+3] == (UniChar)'a') && (buff[startOfExtension+4] == (UniChar)'m') && (buff[startOfExtension+5] == (UniChar)'e') && (buff[startOfExtension+6] == (UniChar)'w') && (buff[startOfExtension+7] == (UniChar)'o') && (buff[startOfExtension+8] == (UniChar)'r') && (buff[startOfExtension+9] == (UniChar)'k') && ((strLen - startOfExtension == 10) || (buff[startOfExtension+10] == (UniChar)'/'))) {
                     // This is a framework
                     *packageType = 0x464d574b;  // 'FMWK'
                 } else {
@@ -2104,9 +1986,7 @@ static Boolean _CFBundleGetPackageInfoInDirectoryWithInfoDictionary(CFAllocatorR
     return retVal;
 }
 
-CF_EXPORT Boolean _CFBundleGetPackageInfoInDirectory(CFAllocatorRef alloc, CFURLRef url, UInt32 *packageType, UInt32 *packageCreator) {
-    return _CFBundleGetPackageInfoInDirectoryWithInfoDictionary(alloc, url, NULL, packageType, packageCreator);
-}
+CF_EXPORT Boolean _CFBundleGetPackageInfoInDirectory(CFAllocatorRef alloc, CFURLRef url, UInt32 *packageType, UInt32 *packageCreator) {return _CFBundleGetPackageInfoInDirectoryWithInfoDictionary(alloc, url, NULL, packageType, packageCreator);}
 
 CF_EXPORT void CFBundleGetPackageInfo(CFBundleRef bundle, UInt32 *packageType, UInt32 *packageCreator) {
     CFURLRef bundleURL = CFBundleCopyBundleURL(bundle);
@@ -2117,96 +1997,11 @@ CF_EXPORT void CFBundleGetPackageInfo(CFBundleRef bundle, UInt32 *packageType, U
     if (bundleURL) CFRelease(bundleURL);
 }
 
-CF_EXPORT Boolean CFBundleGetPackageInfoInDirectory(CFURLRef url, UInt32 *packageType, UInt32 *packageCreator) {
-    return _CFBundleGetPackageInfoInDirectory(kCFAllocatorSystemDefault, url, packageType, packageCreator);
-}
-
-static void _CFBundleCheckSupportedPlatform(CFMutableArrayRef mutableArray, UniChar *buff, CFIndex startLen, CFStringRef platformName, CFStringRef platformIdentifier) {
-    CFIndex buffLen = startLen, platformLen = CFStringGetLength(platformName), extLen = CFStringGetLength(_CFBundleInfoExtension);
-    CFMutableStringRef str;
-    Boolean isDir;
-    if (buffLen + platformLen + extLen < CFMaxPathSize) {
-        CFStringGetCharacters(platformName, CFRangeMake(0, platformLen), buff + buffLen);
-        buffLen += platformLen;
-        buff[buffLen++] = (UniChar)'.';
-        CFStringGetCharacters(_CFBundleInfoExtension, CFRangeMake(0, extLen), buff + buffLen);
-        buffLen += extLen;
-        str = CFStringCreateMutable(kCFAllocatorSystemDefault, 0);
-        CFStringAppendCharacters(str, buff, buffLen);
-        if (_CFIsResourceAtPath(str, &isDir) && !isDir && CFArrayGetFirstIndexOfValue(mutableArray, CFRangeMake(0, CFArrayGetCount(mutableArray)), platformIdentifier) < 0) CFArrayAppendValue(mutableArray, platformIdentifier);
-        CFRelease(str);
-    }
-}
-
-CF_EXPORT CFArrayRef _CFBundleGetSupportedPlatforms(CFBundleRef bundle) {
-    CFDictionaryRef infoDict = CFBundleGetInfoDictionary(bundle);
-    CFArrayRef platformArray = infoDict ? (CFArrayRef)CFDictionaryGetValue(infoDict, _kCFBundleSupportedPlatformsKey) : NULL;
-    if (platformArray && CFGetTypeID(platformArray) != CFArrayGetTypeID()) {
-        platformArray = NULL;
-        CFDictionaryRemoveValue((CFMutableDictionaryRef)infoDict, _kCFBundleSupportedPlatformsKey);
-    }
-    if (!platformArray) {
-        CFURLRef infoPlistURL = infoDict ? (CFURLRef)CFDictionaryGetValue(infoDict, _kCFBundleInfoPlistURLKey) : NULL, absoluteURL;
-        CFStringRef infoPlistPath;
-        UniChar buff[CFMaxPathSize];
-        CFIndex buffLen, infoLen = CFStringGetLength(_CFBundleInfoURLFromBaseNoExtension3), startLen, extLen = CFStringGetLength(_CFBundleInfoExtension);
-        if (infoPlistURL) {
-            CFMutableArrayRef mutableArray = CFArrayCreateMutable(CFGetAllocator(bundle), 0, &kCFTypeArrayCallBacks);
-            absoluteURL = CFURLCopyAbsoluteURL(infoPlistURL);
-            infoPlistPath = CFURLCopyFileSystemPath(absoluteURL, PLATFORM_PATH_STYLE);
-            CFRelease(absoluteURL);
-            buffLen = CFStringGetLength(infoPlistPath);
-            if (buffLen > CFMaxPathSize) buffLen = CFMaxPathSize;
-            CFStringGetCharacters(infoPlistPath, CFRangeMake(0, buffLen), buff);
-            CFRelease(infoPlistPath);
-            if (buffLen > 0) {
-                buffLen = _CFStartOfLastPathComponent(buff, buffLen);
-                if (buffLen > 0 && buffLen + infoLen + extLen < CFMaxPathSize) {
-                    CFStringGetCharacters(_CFBundleInfoURLFromBaseNoExtension3, CFRangeMake(0, infoLen), buff + buffLen);
-                    buffLen += infoLen;
-                    buff[buffLen++] = (UniChar)'-';
-                    startLen = buffLen;
-                    _CFBundleCheckSupportedPlatform(mutableArray, buff, startLen, CFSTR("macos"), CFSTR("MacOS"));
-                    _CFBundleCheckSupportedPlatform(mutableArray, buff, startLen, CFSTR("macosx"), CFSTR("MacOS"));
-                    _CFBundleCheckSupportedPlatform(mutableArray, buff, startLen, CFSTR("iphoneos"), CFSTR("iPhoneOS"));
-                    _CFBundleCheckSupportedPlatform(mutableArray, buff, startLen, CFSTR("windows"), CFSTR("Windows"));
-                }
-            }
-            if (CFArrayGetCount(mutableArray) > 0) {
-                platformArray = (CFArrayRef)mutableArray;
-                CFDictionarySetValue((CFMutableDictionaryRef)infoDict, _kCFBundleSupportedPlatformsKey, platformArray);
-            }
-            CFRelease(mutableArray);
-        }
-    }
-    return platformArray;
-}
-
-CF_EXPORT CFStringRef _CFBundleGetCurrentPlatform(void) {
-#if DEPLOYMENT_TARGET_MACOSX
-    return CFSTR("MacOS");
-#elif DEPLOYMENT_TARGET_EMBEDDED
-    return CFSTR("iPhoneOS");
-#elif DEPLOYMENT_TARGET_WINDOWS
-    return CFSTR("Windows");
-#elif DEPLOYMENT_TARGET_SOLARIS
-    return CFSTR("Solaris");
-#elif DEPLOYMENT_TARGET_HPUX
-    return CFSTR("HPUX");
-#elif DEPLOYMENT_TARGET_LINUX
-    return CFSTR("Linux");
-#elif DEPLOYMENT_TARGET_FREEBSD
-    return CFSTR("FreeBSD");
-#else
-#error Unknown or unspecified DEPLOYMENT_TARGET
-#endif
-}
+CF_EXPORT Boolean CFBundleGetPackageInfoInDirectory(CFURLRef url, UInt32 *packageType, UInt32 *packageCreator) {return _CFBundleGetPackageInfoInDirectory(kCFAllocatorSystemDefault, url, packageType, packageCreator);}
 
 __private_extern__ CFStringRef _CFBundleGetPlatformExecutablesSubdirectoryName(void) {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX
     return CFSTR("MacOS");
-#elif DEPLOYMENT_TARGET_WINDOWS
-    return CFSTR("Windows");
 #elif DEPLOYMENT_TARGET_SOLARIS
     return CFSTR("Solaris");
 #elif DEPLOYMENT_TARGET_HPUX
@@ -2215,16 +2010,16 @@ __private_extern__ CFStringRef _CFBundleGetPlatformExecutablesSubdirectoryName(v
     return CFSTR("Linux");
 #elif DEPLOYMENT_TARGET_FREEBSD
     return CFSTR("FreeBSD");
+#elif DEPLOYMENT_TARGET_WINDOWS
+    return CFSTR("Windows");
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
 }
 
 __private_extern__ CFStringRef _CFBundleGetAlternatePlatformExecutablesSubdirectoryName(void) {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX
     return CFSTR("Mac OS X");
-#elif DEPLOYMENT_TARGET_WINDOWS
-    return CFSTR("WinNT");
 #elif DEPLOYMENT_TARGET_SOLARIS
     return CFSTR("Solaris");
 #elif DEPLOYMENT_TARGET_HPUX
@@ -2233,16 +2028,16 @@ __private_extern__ CFStringRef _CFBundleGetAlternatePlatformExecutablesSubdirect
     return CFSTR("Linux");
 #elif DEPLOYMENT_TARGET_FREEBSD
     return CFSTR("FreeBSD");
+#elif DEPLOYMENT_TARGET_WINDOWS
+    return CFSTR("Windows");
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
 }
 
 __private_extern__ CFStringRef _CFBundleGetOtherPlatformExecutablesSubdirectoryName(void) {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX
     return CFSTR("MacOSClassic");
-#elif DEPLOYMENT_TARGET_WINDOWS
-    return CFSTR("Other");
 #elif DEPLOYMENT_TARGET_HPUX
     return CFSTR("Other");
 #elif DEPLOYMENT_TARGET_SOLARIS
@@ -2250,6 +2045,8 @@ __private_extern__ CFStringRef _CFBundleGetOtherPlatformExecutablesSubdirectoryN
 #elif DEPLOYMENT_TARGET_LINUX
     return CFSTR("Other");
 #elif DEPLOYMENT_TARGET_FREEBSD
+    return CFSTR("Other");
+#elif DEPLOYMENT_TARGET_WINDOWS
     return CFSTR("Other");
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
@@ -2257,10 +2054,8 @@ __private_extern__ CFStringRef _CFBundleGetOtherPlatformExecutablesSubdirectoryN
 }
 
 __private_extern__ CFStringRef _CFBundleGetOtherAlternatePlatformExecutablesSubdirectoryName(void) {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX
     return CFSTR("Mac OS 8");
-#elif DEPLOYMENT_TARGET_WINDOWS
-    return CFSTR("Other");
 #elif DEPLOYMENT_TARGET_HPUX
     return CFSTR("Other");
 #elif DEPLOYMENT_TARGET_SOLARIS
@@ -2269,14 +2064,14 @@ __private_extern__ CFStringRef _CFBundleGetOtherAlternatePlatformExecutablesSubd
     return CFSTR("Other");
 #elif DEPLOYMENT_TARGET_FREEBSD
     return CFSTR("Other");
+#elif DEPLOYMENT_TARGET_WINDOWS
+    return CFSTR("Other");
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
 }
 
-__private_extern__ CFArrayRef _CFBundleCopyBundleRegionsArray(CFBundleRef bundle) {
-    return CFBundleCopyBundleLocalizations(bundle);
-}
+__private_extern__ CFArrayRef _CFBundleCopyBundleRegionsArray(CFBundleRef bundle) {return CFBundleCopyBundleLocalizations(bundle);}
 
 CF_EXPORT CFArrayRef CFBundleCopyBundleLocalizations(CFBundleRef bundle) {
     CFDictionaryRef infoDict = CFBundleGetInfoDictionary(bundle);
@@ -2362,6 +2157,7 @@ CF_EXPORT CFArrayRef CFBundleCopyBundleLocalizations(CFBundleRef bundle) {
         }
     }
     if (resourcesURL) CFRelease(resourcesURL);
+
     return result;
 }
 

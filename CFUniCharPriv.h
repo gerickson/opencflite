@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,9 +30,8 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFUniCharPriv.h
-	Copyright (c) 1998-2009, Apple Inc. All rights reserved.
+	Copyright (c) 1998-2007, Apple Inc. All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFUNICHARPRIV__)
@@ -41,8 +40,8 @@
 #include <CoreFoundation/CFBase.h>
 #include <CoreFoundation/CFUniChar.h>
 
-#define kCFUniCharRecursiveDecompositionFlag	(1UL << 30)
-#define kCFUniCharNonBmpFlag			(1UL << 31)
+#define kCFUniCharRecursiveDecompositionFlag	(1 << 30)
+#define kCFUniCharNonBmpFlag			(1 << 31)
 #define CFUniCharConvertCountToFlag(count)	((count & 0x1F) << 24)
 #define CFUniCharConvertFlagToCount(flag)	((flag >> 24) & 0x1F)
 

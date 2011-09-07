@@ -149,22 +149,10 @@ typedef void* UCalendar;
  * @stable ICU 2.0
  */
 enum UCalendarType {
-  /**
-   * Despite the name, UCAL_TRADITIONAL designates the locale's default calendar,
-   * which may be the Gregorian calendar or some other calendar.
-   * @stable ICU 2.0
-   */
+  /** A traditional calendar for the locale */
   UCAL_TRADITIONAL,
-  /**
-   * Unambiguously designates the Gregorian calendar for the locale.
-   * @stable ICU 2.0
-   */
-  UCAL_GREGORIAN,
-  /**
-   * A better name for UCAL_TRADITIONAL.
-   * @draft ICU 4.2
-   */
-  UCAL_DEFAULT = UCAL_TRADITIONAL
+  /** The Gregorian calendar */
+  UCAL_GREGORIAN
 };
 
 /** @stable ICU 2.0 */
@@ -613,11 +601,7 @@ ucal_getNow(void);
  * @param zoneID The desired TimeZone ID.  If 0, use the default time zone.
  * @param len The length of zoneID, or -1 if null-terminated.
  * @param locale The desired locale
- * @param type The type of UCalendar to open. This can be UCAL_GREGORIAN to open the Gregorian
- * calendar for the locale, or UCAL_DEFAULT to open the default calendar for the locale (the
- * default calendar may also be Gregorian). To open a specific non-Gregorian calendar for the
- * locale, use uloc_setKeywordValue to set the value of the calendar keyword for the locale
- * and then pass the locale to ucal_open with UCAL_DEFAULT as the type.
+ * @param type The type of UCalendar to open.
  * @param status A pointer to an UErrorCode to receive any errors
  * @return A pointer to a UCalendar, or 0 if an error occurred.
  * @stable ICU 2.0
@@ -1113,7 +1097,7 @@ ucal_getLocaleByType(const UCalendar *cal, ULocDataLocaleType type, UErrorCode* 
  * Returns the timezone data version currently used by ICU.
  * @param status error code for the operation
  * @return the version string, such as "2007f"
- * @stable ICU 3.8
+ * @stable ICU 4.0
  */
 U_DRAFT const char * U_EXPORT2
 ucal_getTZDataVersion(UErrorCode* status);
@@ -1139,23 +1123,6 @@ ucal_getTZDataVersion(UErrorCode* status);
 U_DRAFT int32_t U_EXPORT2
 ucal_getCanonicalTimeZoneID(const UChar* id, int32_t len,
                             UChar* result, int32_t resultCapacity, UBool *isSystemID, UErrorCode* status);
-/**
- * Get the resource keyword value string designating the calendar type for the UCalendar.
- * @param cal The UCalendar to query.
- * @param status The error code for the operation.
- * @return The resource keyword value string.
- * @draft ICU 4.2
- */
-U_DRAFT const char * U_EXPORT2
-ucal_getType(const UCalendar *cal, UErrorCode* status);
-
-/**
- * The following is a temporary Apple-specific API to help InternationalPrefs
- * transition to the updated version of the above ICU API. It will be removed soon.
- */
-U_DRAFT const char * U_EXPORT2
-ucal_getTypeWithError(const UCalendar *cal, UErrorCode* status);
-
 #endif /* #if !UCONFIG_NO_FORMATTING */
 
 #endif

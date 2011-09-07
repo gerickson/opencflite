@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,9 +30,8 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFStreamPriv.h
-	Copyright (c) 2000-2009, Apple Inc. All rights reserved.
+	Copyright (c) 2000-2007, Apple Inc. All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFSTREAMPRIV__)
@@ -182,11 +181,11 @@ CFWriteStreamRef _CFWriteStreamCreateFromFileDescriptor(CFAllocatorRef alloc, in
 #define SECURITY_SSLv32 (3)
 #define SECURITY_TLS    (4)    
 
-#if (TARGET_OS_MAC && !(TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)) || (TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)
+#if defined (__MACH__)
 // This symbol is exported from CFNetwork (see CFSocketStream.i).  Only __MACH__ systems will
 // get this symbol from CoreFoundation.
 extern const int kCFStreamErrorDomainSSL;
-#endif
+#endif //__MACH__
 
 /*
  * Additional SPI for CFNetwork for select side read buffering
@@ -197,13 +196,11 @@ Boolean __CFSocketGetBytesAvailable(CFSocketRef s, CFIndex* ctBytesAvailable);
 CF_EXPORT
 CFIndex __CFSocketRead(CFSocketRef s, UInt8* buffer, CFIndex length, int* error);
 
-/*
- * This define can be removed once 6030579 is removed
- */
-#define CFNETWORK_6030579	1
+CF_EXPORT
+void __CFSocketSetReadBufferLength(CFSocketRef s, CFIndex length);
 
 CF_EXPORT
-void __CFSocketSetSocketReadBufferAttrs(CFSocketRef s, CFTimeInterval timeout, CFIndex length);
+void __CFSocketSetReadBufferTimeout(CFSocketRef s, CFTimeInterval timeout);
 
 CF_EXTERN_C_END
 

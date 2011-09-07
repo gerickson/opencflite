@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,9 +30,8 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFData.h
-	Copyright (c) 1998-2009, Apple Inc. All rights reserved.
+	Copyright (c) 1998-2007, Apple Inc. All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFDATA__)
@@ -90,17 +89,6 @@ void CFDataReplaceBytes(CFMutableDataRef theData, CFRange range, const UInt8 *ne
 
 CF_EXPORT
 void CFDataDeleteBytes(CFMutableDataRef theData, CFRange range);
-
-#if MAC_OS_X_VERSION_10_6 <= MAC_OS_X_VERSION_MAX_ALLOWED
-enum {
-    kCFDataSearchBackwards = 1UL << 0,
-    kCFDataSearchAnchored = 1UL << 1
-};
-#endif
-typedef CFOptionFlags CFDataSearchFlags;
-
-CF_EXPORT
-CFRange CFDataFind(CFDataRef theData, CFDataRef dataToFind, CFRange searchRange, CFDataSearchFlags compareOptions) AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
 
 CF_EXTERN_C_END
 

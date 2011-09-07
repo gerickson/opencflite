@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,16 +30,19 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFUUID.c
-	Copyright (c) 1999-2009, Apple Inc.  All rights reserved.
+	Copyright (c) 1999-2007 Apple Inc.  All rights reserved.
 	Responsibility: Doug Davidson
 */
 
 #include <CoreFoundation/CFUUID.h>
 #include "CFInternal.h"
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX
 #include <uuid/uuid.h>
+#elif DEPLOYMENT_TARGET_WINDOWS
+#include <objbase.h>
+#include <stdlib.h>
+#define strtoul_l(a,b,c,d) strtoul(a,b,c)
 #endif
 
 static CFMutableDictionaryRef _uniquedUUIDs = NULL;
@@ -61,10 +64,10 @@ static CFHashCode __CFhashUUIDBytes(const void *ptr) {
     return CFHashBytes((uint8_t *)ptr, 16);
 }
 
-/*
- * GC implementation of a weak set specifically designed for UUID
- */
- 
+#if !defined(_MSC_VER)
+#include "auto_stubs.h"
+#endif
+
 #define LOCK() __CFSpinLock(&CFUUIDGlobalDataLock)
 #define UNLOCK() __CFSpinUnlock(&CFUUIDGlobalDataLock)
 
@@ -72,134 +75,41 @@ static CFHashCode __CFhashUUIDBytes(const void *ptr) {
 #define FREE(x) CFAllocatorDeallocate(kCFAllocatorSystemDefault, x)
 #define HASH(x) CFHashBytes((uint8_t *)x, 16)
 
-#define READWEAK(location) auto_read_weak_reference(auto_zone(), (void**)location)
-#define WRITEWEAK(location, value) auto_assign_weak_reference(auto_zone(), value, (void **)location, NULL)
-
-typedef struct {
-    unsigned long count, size;
-    struct __CFUUID **weakPtrs;
-} _UUIDWeakSet_t;
-
-static _UUIDWeakSet_t _UUIDWeakSet;
-
-static void grow_has_lock(void);
-
-// enter if not already present
-static void enter_has_lock(struct __CFUUID *candidate) {
-    if (!candidate) return;
-    _UUIDWeakSet_t *table = &_UUIDWeakSet;
-    if (!table->size) grow_has_lock();
-    unsigned long int hashValue = HASH(&candidate->_bytes) & (table->size-1);
-    struct __CFUUID *result = table->weakPtrs[hashValue];
-    while (1) {
-        if (result == (void *)0x1 || result == NULL) {
-            table->weakPtrs[hashValue] = NULL;  // so that we don't try to unregister 0x1
-            WRITEWEAK(&table->weakPtrs[hashValue], (void *)candidate);
-            ++table->count;
-            break;
-        }
-        if (result) result = (struct __CFUUID *)READWEAK(&table->weakPtrs[hashValue]);
-        if (result) {
-            // see if it is equal to candidate
-            if (__CFisEqualUUIDBytes(&result->_bytes, &candidate->_bytes)) {
-                // keep first one.  There is a race if two threads both fail to find
-                // a candidate uuid then both try decide to create and enter one.
-                // Under non-GC one of them simply leaks.
-                break;
-            }
-        } else {
-            // was zeroed by collector.  Use this slot.
-            continue;
-        }
-        // move on
-        if (++hashValue >= table->size) hashValue = 0;
-        result = table->weakPtrs[hashValue];
-    }
-}
-
-static void *find_has_lock(CFUUIDBytes *bytes) {
-    if (!bytes) return NULL;
-    _UUIDWeakSet_t *table = &_UUIDWeakSet;
-    if (!table->size) return NULL;  // no entries
-    unsigned long int hashValue = HASH(bytes) & (table->size-1);
-    struct __CFUUID *result = table->weakPtrs[hashValue];
-    while (1) {
-        if (result == (void *)0x1) break;
-        if (result) result = (struct __CFUUID *)READWEAK(&table->weakPtrs[hashValue]);
-        if (result) {
-            // see if it is equal to bytes
-            if (__CFisEqualUUIDBytes(&result->_bytes, bytes)) return result;
-        }
-        // move on
-        if (++hashValue >= table->size) hashValue = 0;
-        result = table->weakPtrs[hashValue];
-    }
-    return NULL;
-}
-
-
-static void grow_has_lock() {
-    _UUIDWeakSet_t *table = &_UUIDWeakSet;
-    if (table->size == 0) {
-        table->size = 16;
-        table->weakPtrs = (struct __CFUUID **)MALLOC(sizeof(struct __CFUUID *)*table->size);
-        for (size_t i = 0; i < table->size; ++i) table->weakPtrs[i] = (struct __CFUUID *)0x1;
-        table->count = 0;
-        return;
-    }
-    table->count = 0;
-    table->size = table->size*2;
-    struct __CFUUID **oldPtrs = table->weakPtrs;
-    table->weakPtrs = (struct __CFUUID **)MALLOC(sizeof(struct __CFUUID *)*table->size);
-    for (size_t i = 0; i < table->size; ++i) table->weakPtrs[i] = (struct __CFUUID *)0x1;
-    for (size_t i = 0; i < table->size / 2; ++i) {
-        if (oldPtrs[i] == (struct __CFUUID *)0x1) continue; // available field, ignore
-        if (oldPtrs[i] == NULL) continue;  // zero'ed by collector, ignore
-        enter_has_lock((struct __CFUUID *)READWEAK(&oldPtrs[i]));  // read, then enter (but enter must check for NULL)
-        WRITEWEAK(&oldPtrs[i], NULL);  // unregister
-    }
-    FREE(oldPtrs);
-}
 
 /***** end of weak set */
 
 static void __CFUUIDAddUniqueUUID(CFUUIDRef uuid) {
+    __CFSpinLock(&CFUUIDGlobalDataLock);
+        
     CFDictionaryKeyCallBacks __CFUUIDBytesDictionaryKeyCallBacks = {0, NULL, NULL, NULL, __CFisEqualUUIDBytes, __CFhashUUIDBytes};
     CFDictionaryValueCallBacks __CFnonRetainedUUIDDictionaryValueCallBacks = {0, NULL, NULL, CFCopyDescription, CFEqual};
 
-    __CFSpinLock(&CFUUIDGlobalDataLock);
-    if (kCFUseCollectableAllocator) {
-        enter_has_lock((struct __CFUUID *)uuid);
-        if (_UUIDWeakSet.count > (3 * _UUIDWeakSet.size / 4)) grow_has_lock();
-        __CFSpinUnlock(&CFUUIDGlobalDataLock);
-        return;
+    if (_uniquedUUIDs == NULL) {
+        _uniquedUUIDs = CFDictionaryCreateMutable(kCFAllocatorSystemDefault, 0, &__CFUUIDBytesDictionaryKeyCallBacks, &__CFnonRetainedUUIDDictionaryValueCallBacks);
     }
-    if (!_uniquedUUIDs) _uniquedUUIDs = CFDictionaryCreateMutable(kCFAllocatorSystemDefault, 0, &__CFUUIDBytesDictionaryKeyCallBacks, &__CFnonRetainedUUIDDictionaryValueCallBacks);
     CFDictionarySetValue(_uniquedUUIDs, &(uuid->_bytes), uuid);
     __CFSpinUnlock(&CFUUIDGlobalDataLock);
 }
 
 static void __CFUUIDRemoveUniqueUUID(CFUUIDRef uuid) {
     __CFSpinLock(&CFUUIDGlobalDataLock);
-    if (_uniquedUUIDs) CFDictionaryRemoveValue(_uniquedUUIDs, &(uuid->_bytes));
+    if (_uniquedUUIDs != NULL) {
+        CFDictionaryRemoveValue(_uniquedUUIDs, &(uuid->_bytes));
+    }
     __CFSpinUnlock(&CFUUIDGlobalDataLock);
 }
 
 static CFUUIDRef __CFUUIDGetUniquedUUID(CFUUIDBytes *bytes) {
     CFUUIDRef uuid = NULL;
     __CFSpinLock(&CFUUIDGlobalDataLock);
-    if (kCFUseCollectableAllocator) {
-        uuid = (CFUUIDRef)find_has_lock(bytes);
-    } else if (_uniquedUUIDs) {
+    if (_uniquedUUIDs != NULL) {
         uuid = (CFUUIDRef)CFDictionaryGetValue(_uniquedUUIDs, bytes);
     }
     __CFSpinUnlock(&CFUUIDGlobalDataLock);
     return uuid;
 }
 
-static void __CFUUIDDeallocate(CFTypeRef cf) {
-    if (kCFUseCollectableAllocator) return;
-    
+static void __CFUUIDDeallocate(CFTypeRef cf) {    
     struct __CFUUID *uuid = (struct __CFUUID *)cf;
     __CFUUIDRemoveUniqueUUID(uuid);
 }
@@ -239,24 +149,23 @@ CFTypeID CFUUIDGetTypeID(void) {
 
 static CFUUIDRef __CFUUIDCreateWithBytesPrimitive(CFAllocatorRef allocator, CFUUIDBytes bytes, Boolean isConst) {
     struct __CFUUID *uuid = (struct __CFUUID *)__CFUUIDGetUniquedUUID(&bytes);
-    if (!uuid) {
+
+    if (uuid == NULL) {
         size_t size;
         size = sizeof(struct __CFUUID) - sizeof(CFRuntimeBase);
-        uuid = (struct __CFUUID *)_CFRuntimeCreateInstance(kCFUseCollectableAllocator ? kCFAllocatorSystemDefault : allocator, __kCFUUIDTypeID, (CFIndex)size, NULL);
+        uuid = (struct __CFUUID *)_CFRuntimeCreateInstance(allocator, __kCFUUIDTypeID, (CFIndex)size, NULL);
 
-        if (!uuid) return NULL;
+        if (NULL == uuid) return NULL;
 
         uuid->_bytes = bytes;
+
         __CFUUIDAddUniqueUUID(uuid);
     } else if (!isConst) {
         CFRetain(uuid);
     }
+    
     return (CFUUIDRef)uuid;
 }
-
-#if DEPLOYMENT_TARGET_WINDOWS
-#include <Rpc.h>
-#endif
 
 CFUUIDRef CFUUIDCreate(CFAllocatorRef alloc) {
     /* Create a new bytes struct and then call the primitive. */
@@ -264,28 +173,27 @@ CFUUIDRef CFUUIDCreate(CFAllocatorRef alloc) {
     uint32_t retval = 0;
     
     __CFSpinLock(&CFUUIDGlobalDataLock);
-#if DEPLOYMENT_TARGET_WINDOWS
-    UUID u;
-    long rStatus = UuidCreate(&u);
-    if (RPC_S_OK != rStatus && RPC_S_UUID_LOCAL_ONLY != rStatus) retval = 1;
-    memmove(&bytes, &u, sizeof(bytes));
-#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     static Boolean useV1UUIDs = false, checked = false;
-    uuid_t uuid;
     if (!checked) {
-        const char *value = __CFgetenv("CFUUIDVersionNumber");
+        const char *value = getenv("CFUUIDVersionNumber");
         if (value) {
-            if (1 == strtoul_l(value, NULL, 0, NULL)) useV1UUIDs = true;
+            if (1 == strtoul(value, NULL, 0)) useV1UUIDs = true;
         } else {
             if (!_CFExecutableLinkedOnOrAfter(CFSystemVersionTiger)) useV1UUIDs = true;
         }
         checked = true;
     }
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX
+    uuid_t uuid;
     if (useV1UUIDs) uuid_generate_time(uuid); else uuid_generate_random(uuid);
-    memcpy(&bytes, uuid, sizeof(uuid));
+#elif DEPLOYMENT_TARGET_WINDOWS
+    UUID uuidData;
+    UUID* uuid = &uuidData;
+    if (useV1UUIDs) UuidCreateSequential(uuid); else UuidCreate(uuid);
 #else
-    retval = 1;
+    #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
+    memcpy(&bytes, (const void*)uuid, sizeof(uuid));
     __CFSpinUnlock(&CFUUIDGlobalDataLock);
 
     return (retval == 0) ? __CFUUIDCreateWithBytesPrimitive(alloc, bytes, false) : NULL;
@@ -380,24 +288,30 @@ CFUUIDRef CFUUIDCreateFromString(CFAllocatorRef alloc, CFStringRef uuidStr) {
     memset((void *)&bytes, 0, sizeof(bytes));
 
     /* Skip initial random stuff */
-    while (!_isHexChar(chars[i]) && i < len) i++;
+    while (!_isHexChar(chars[i]) && (i < len)) {
+        i++;
+    }
 
     READ_A_BYTE(bytes.byte0);
     READ_A_BYTE(bytes.byte1);
     READ_A_BYTE(bytes.byte2);
     READ_A_BYTE(bytes.byte3);
+
     i++;
 
     READ_A_BYTE(bytes.byte4);
     READ_A_BYTE(bytes.byte5);
+
     i++;
 
     READ_A_BYTE(bytes.byte6);
     READ_A_BYTE(bytes.byte7);
+
     i++;
 
     READ_A_BYTE(bytes.byte8);
     READ_A_BYTE(bytes.byte9);
+
     i++;
 
     READ_A_BYTE(bytes.byte10);

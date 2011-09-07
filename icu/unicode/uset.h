@@ -97,6 +97,8 @@ enum {
     USET_SERIALIZED_STATIC_ARRAY_CAPACITY=8
 };
 
+#ifndef U_HIDE_DRAFT_API
+
 /**
  * Argument values for whether span() and similar functions continue while
  * the current character is contained vs. not contained in the set.
@@ -205,6 +207,8 @@ typedef enum USetSpanCondition {
      */
     USET_SPAN_CONDITION_COUNT
 } USetSpanCondition;
+
+#endif /* U_HIDE_DRAFT_API */
 
 /**
  * A serialized form of a Unicode set.  Limited manipulations are

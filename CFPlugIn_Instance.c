@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,9 +30,8 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFPlugIn_Instance.c
-	Copyright (c) 1999-2009, Apple Inc.  All rights reserved.
+	Copyright (c) 1999-2007 Apple Inc.  All rights reserved.
 	Responsibility: Doug Davidson
 */
 
@@ -74,7 +73,9 @@ static void __CFPlugInInstanceDeallocate(CFTypeRef cf) {
         (void)INVOKE_CALLBACK1(instance->deallocateInstanceDataFunction, (void *)(&instance->_instanceData[0]));
     }
 
-    if (instance->factory) _CFPFactoryRemoveInstance(instance->factory);
+    if (instance->factory) {
+        _CFPFactoryRemoveInstance(instance->factory);
+    }
 }
 
 static const CFRuntimeClass __CFPlugInInstanceClass = {
@@ -96,16 +97,19 @@ __private_extern__ void __CFPlugInInstanceInitialize(void) {
 CFTypeID CFPlugInInstanceGetTypeID(void) {
     return __kCFPlugInInstanceTypeID;
 }
-
 CF_EXPORT CFPlugInInstanceRef CFPlugInInstanceCreateWithInstanceDataSize(CFAllocatorRef allocator, CFIndex instanceDataSize, CFPlugInInstanceDeallocateInstanceDataFunction deallocateInstanceFunction, CFStringRef factoryName, CFPlugInInstanceGetInterfaceFunction getInterfaceFunction) {
     CFPlugInInstanceRef instance;
     UInt32 size;
     size = sizeof(struct __CFPlugInInstance) + instanceDataSize - sizeof(CFRuntimeBase);
     instance = (CFPlugInInstanceRef)_CFRuntimeCreateInstance(allocator, __kCFPlugInInstanceTypeID, size, NULL);
-    if (!instance) return NULL;
+    if (NULL == instance) {
+        return NULL;
+    }
 
     instance->factory = _CFPFactoryFind((CFUUIDRef)factoryName, true);
-    if (instance->factory) _CFPFactoryAddInstance(instance->factory);
+    if (instance->factory) {
+        _CFPFactoryAddInstance(instance->factory);
+    }
     instance->getInterfaceFunction = getInterfaceFunction;
     instance->deallocateInstanceDataFunction = deallocateInstanceFunction;
 
@@ -120,7 +124,9 @@ CF_EXPORT Boolean CFPlugInInstanceGetInterfaceFunctionTable(CFPlugInInstanceRef 
         FAULT_CALLBACK((void **)&(instance->getInterfaceFunction));
         result = INVOKE_CALLBACK3(instance->getInterfaceFunction, instance, interfaceName, &myFtbl) ? true : false;
     }
-    if (ftbl) *ftbl = (result ? myFtbl : NULL);
+    if (ftbl) {
+        *ftbl = (result ? myFtbl : NULL);
+    }
     return result;
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,19 +30,16 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFSocket.h
-	Copyright (c) 1999-2009, Apple Inc.  All rights reserved.
+	Copyright (c) 1999-2007, Apple Inc.  All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFSOCKET__)
 #define __COREFOUNDATION_CFSOCKET__ 1
 
-#include <TargetConditionals.h>
-
-#if TARGET_OS_WIN32
-#include <stdint.h>
-typedef uintptr_t CFSocketNativeHandle;
+#ifdef WIN32
+// Avoid actually including <winsock2.h>, as it can screw up lots of data type definitions
+typedef unsigned int CFSocketNativeHandle;
 #else
 typedef int CFSocketNativeHandle;
 #endif
@@ -167,9 +164,6 @@ enum {
     kCFSocketAutomaticallyReenableAcceptCallBack = 2,
     kCFSocketAutomaticallyReenableDataCallBack = 3,
     kCFSocketAutomaticallyReenableWriteCallBack = 8,
-#if MAC_OS_X_VERSION_10_5 <= MAC_OS_X_VERSION_MAX_ALLOWED
-    kCFSocketLeaveErrors = 64,
-#endif
     kCFSocketCloseOnInvalidate = 128
 };
 #endif

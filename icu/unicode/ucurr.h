@@ -232,7 +232,7 @@ ucurr_openISOCurrencies(uint32_t currType, UErrorCode *pErrorCode);
  *               codes couldn't be found for the input
  *               values are invalid.
  * @draft ICU 4.0
- */
+ */ 
 U_DRAFT int32_t U_EXPORT2
 ucurr_countCurrencies(const char* locale, 
                  UDate date, 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,9 +30,8 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFDateFormatter.h
-	Copyright (c) 2003-2009, Apple Inc. All rights reserved.
+	Copyright (c) 2003-2007, Apple Inc. All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFDATEFORMATTER__)
@@ -49,10 +48,6 @@ CF_EXTERN_C_BEGIN
 typedef struct __CFDateFormatter *CFDateFormatterRef;
 
 // CFDateFormatters are not thread-safe.  Do not use one from multiple threads!
-
-CF_EXPORT
-CFStringRef CFDateFormatterCreateDateFormatFromTemplate(CFAllocatorRef allocator, CFStringRef tmplate, CFOptionFlags options, CFLocaleRef locale) AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER;
-	// no options defined, pass 0 for now
 
 CF_EXPORT
 CFTypeID CFDateFormatterGetTypeID(void) AVAILABLE_MAC_OS_X_VERSION_10_3_AND_LATER;
@@ -164,7 +159,6 @@ CF_EXPORT const CFStringRef kCFDateFormatterShortQuarterSymbols AVAILABLE_MAC_OS
 CF_EXPORT const CFStringRef kCFDateFormatterStandaloneQuarterSymbols AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER; // CFArray of CFString
 CF_EXPORT const CFStringRef kCFDateFormatterShortStandaloneQuarterSymbols AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER; // CFArray of CFString
 CF_EXPORT const CFStringRef kCFDateFormatterGregorianStartDate AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER; // CFDate
-CF_EXPORT const CFStringRef kCFDateFormatterDoesRelativeDateFormattingKey AVAILABLE_MAC_OS_X_VERSION_10_6_AND_LATER; // CFBoolean
 
 // See CFLocale.h for these calendar constants:
 //	const CFStringRef kCFGregorianCalendar;
@@ -174,10 +168,6 @@ CF_EXPORT const CFStringRef kCFDateFormatterDoesRelativeDateFormattingKey AVAILA
 //	const CFStringRef kCFIslamicCivilCalendar;
 //	const CFStringRef kCFHebrewCalendar;
 //	const CFStringRef kCFChineseCalendar;
-//	const CFStringRef kCFRepublicOfChinaCalendar;
-//	const CFStringRef kCFPersianCalendar;
-//	const CFStringRef kCFIndianCalendar;
-//	const CFStringRef kCFISO8601Calendar;   not yet implemented
 
 CF_EXTERN_C_END
 

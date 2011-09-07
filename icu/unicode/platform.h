@@ -22,13 +22,23 @@
  */
 
 /* Define the platform we're on. */
+#ifdef DEPLOYMENT_TARGET_MACOSX
+#ifndef U_DARWIN
+#define U_DARWIN
+#endif
+#elif DEPLOYMENT_TARGET_WIN32
 #ifndef U_CYGWIN
 #define U_CYGWIN
+#endif
 #endif
 
 /* Define whether inttypes.h is available */
 #ifndef U_HAVE_INTTYPES_H
+#ifdef DEPLOYMENT_TARGET_MACOSX
+#define U_HAVE_INTTYPES_H 1
+#else
 #define U_HAVE_INTTYPES_H 0
+#endif
 #endif
 
 /*
@@ -51,35 +61,67 @@
 
 /* Determines whether specific types are available */
 #ifndef U_HAVE_INT8_T
+#ifdef DEPLOYMENT_TARGET_MACOSX
+#define U_HAVE_INT8_T 1
+#else
 #define U_HAVE_INT8_T 0
+#endif
 #endif
 
 #ifndef U_HAVE_UINT8_T
+#ifdef DEPLOYMENT_TARGET_MACOSX
+#define U_HAVE_UINT8_T 1
+#else
 #define U_HAVE_UINT8_T 0
+#endif
 #endif
 
 #ifndef U_HAVE_INT16_T
+#ifdef DEPLOYMENT_TARGET_MACOSX
+#define U_HAVE_INT16_T 1
+#else
 #define U_HAVE_INT16_T 0
+#endif
 #endif
 
 #ifndef U_HAVE_UINT16_T
+#ifdef DEPLOYMENT_TARGET_MACOSX
+#define U_HAVE_UINT16_T 1
+#else
 #define U_HAVE_UINT16_T 0
+#endif
 #endif
 
 #ifndef U_HAVE_INT32_T
+#ifdef DEPLOYMENT_TARGET_MACOSX
+#define U_HAVE_INT32_T 1
+#else
 #define U_HAVE_INT32_T 0
+#endif
 #endif
 
 #ifndef U_HAVE_UINT32_T
+#ifdef DEPLOYMENT_TARGET_MACOSX
+#define U_HAVE_UINT32_T 1
+#else
 #define U_HAVE_UINT32_T 0
+#endif
 #endif
 
 #ifndef U_HAVE_INT64_T
+#ifdef DEPLOYMENT_TARGET_MACOSX
+#define U_HAVE_INT64_T 1
+#else
 #define U_HAVE_INT64_T 0
+#endif
 #endif
 
 #ifndef U_HAVE_UINT64_T
+#ifdef DEPLOYMENT_TARGET_MACOSX
+#define U_HAVE_UINT64_T 1
+#else
 #define U_HAVE_UINT64_T 0
+#endif
 #endif
 
 /*===========================================================================*/
@@ -185,21 +227,33 @@ typedef unsigned int uint32_t;
 /* Determine whether to disable renaming or not. This overrides the
    setting in umachine.h which is for all platforms. */
 #ifndef U_DISABLE_RENAMING
+#if DEPLOYMENT_TARGET_MACOSX
+#define U_DISABLE_RENAMING 1
+#else
 #define U_DISABLE_RENAMING 0
+#endif
 #endif
 
 /* Determine whether to override new and delete. */
 #ifndef U_OVERRIDE_CXX_ALLOCATION
+#if DEPLOYMENT_TARGET_MACOSX
+#define U_OVERRIDE_CXX_ALLOCATION 1
+#else
 #define U_OVERRIDE_CXX_ALLOCATION 0
+#endif
 #endif
 /* Determine whether to override placement new and delete for STL. */
 #ifndef U_HAVE_PLACEMENT_NEW
+#if DEPLOYMENT_TARGET_MACOSX
+#define U_HAVE_PLACEMENT_NEW 1
+#else
 #define U_HAVE_PLACEMENT_NEW 0
+#endif
 #endif
 
 /* Determine whether to enable tracing. */
 #ifndef U_ENABLE_TRACING
-#define U_ENABLE_TRACING 0
+#define U_ENABLE_TRACING 1
 #endif
 
 /* Do we allow ICU users to use the draft APIs by default? */
@@ -225,6 +279,11 @@ typedef unsigned int uint32_t;
 /*===========================================================================*/
 
 #define U_HAVE_WCHAR_H      1
+#if DEPLOYMENT_TARGET_MACOSX
+#define U_SIZEOF_WCHAR_T    4
+
+#define U_HAVE_WCSCPY       1
+#else
 #define U_SIZEOF_WCHAR_T    2
 
 #define U_HAVE_WCSCPY       0
@@ -254,8 +313,15 @@ typedef unsigned int uint32_t;
 /* Information about POSIX support                                           */
 /*===========================================================================*/
 
+#if DEPLOYMENT_TARGET_MACOSX
+#define U_HAVE_NL_LANGINFO          1
+#define U_HAVE_NL_LANGINFO_CODESET  1
+#define U_NL_LANGINFO_CODESET       CODESET
+#else
+#define U_HAVE_NL_LANGINFO          0
 #define U_HAVE_NL_LANGINFO_CODESET  0
 #define U_NL_LANGINFO_CODESET       -1
+#endif
 
 #if 1
 #define U_TZSET         tzset
@@ -263,18 +329,27 @@ typedef unsigned int uint32_t;
 #if 1
 #define U_TIMEZONE      timezone
 #endif
-#if 0
-#define U_TZNAME        
+#if DEPLOYMENT_TARGET_MACOSX
+#define U_TZNAME        tzname
 #endif
 
+#if DEPLOYMENT_TARGET_MACOSX
+#define U_HAVE_MMAP     1
+#define U_HAVE_POPEN    1
+#else
 #define U_HAVE_MMAP     0
 #define U_HAVE_POPEN    0
+#endif
 
 /*===========================================================================*/
 /* Symbol import-export control                                              */
 /*===========================================================================*/
 
-#if 0
+#if defined(U_DARWIN) && defined(__GNUC__) && (__GNUC__ >= 4)
+#define USE_GCC_VISIBILITY_ATTRIBUTE 1
+#endif
+
+#ifdef USE_GCC_VISIBILITY_ATTRIBUTE
 #define U_EXPORT __attribute__((visibility("default")))
 #elif (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x550) \
    || (defined(__SUNPRO_C) && __SUNPRO_C >= 0x550) 

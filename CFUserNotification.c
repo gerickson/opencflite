@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,9 +30,8 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFUserNotification.c
-	Copyright (c) 2000-2009, Apple Inc.  All rights reserved.
+	Copyright (c) 2000-2007 Apple Inc.  All rights reserved.
 	Responsibility: Doug Davidson
 */
 
@@ -54,13 +53,10 @@
 #else
 #include <unistd.h>
 #endif
-#include <stdio.h>
 #if DEPLOYMENT_TARGET_MACOSX
 #include <mach/mach.h>
 #include <mach/error.h>
 #include <bootstrap_priv.h>
-#include <limits.h>
-#include <errno.h>
 #include <pthread.h>
 #endif
 
@@ -98,8 +94,6 @@ CONST_STRING_DECL(kCFUserNotificationCheckBoxTitlesKey, "CheckBoxTitles")
 CONST_STRING_DECL(kCFUserNotificationTextFieldValuesKey, "TextFieldValues")
 CONST_STRING_DECL(kCFUserNotificationPopUpSelectionKey, "PopUpSelection")
 CONST_STRING_DECL(kCFUserNotificationKeyboardTypesKey, "KeyboardTypes")
-CONST_STRING_DECL(kCFUserNotificationAlertTopMostKey, "AlertTopMost") // boolean value
-
 
 static CFTypeID __kCFUserNotificationTypeID = _kCFRuntimeNotATypeID;
 
@@ -132,9 +126,7 @@ static CFStringRef __CFUserNotificationCopyDescription(CFTypeRef cf) {
 #define MESSAGE_TIMEOUT 100
 #if DEPLOYMENT_TARGET_MACOSX
 #define NOTIFICATION_PORT_NAME "com.apple.UNCUserNotification"
-#elif DEPLOYMENT_TARGET_EMBEDDED
-#define NOTIFICATION_PORT_NAME "com.apple.SBUserNotification"
-#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+#elif DEPLOYMENT_TARGET_WINDOWS
 #define NOTIFICATION_PORT_NAME "com.apple.SBUserNotification"
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
@@ -239,15 +231,14 @@ static SInt32 _CFUserNotificationSendRequest(CFAllocatorRef allocator, CFStringR
     mach_port_t bootstrapPort = MACH_PORT_NULL, serverPort = MACH_PORT_NULL;
     CFIndex size;
     char namebuffer[MAX_PORT_NAME_LENGTH + 1];
-    
     strlcpy(namebuffer, NOTIFICATION_PORT_NAME, sizeof(namebuffer));
     if (sessionID) {
-        char sessionid[MAX_PORT_NAME_LENGTH + 1];
-        CFIndex len = MAX_PORT_NAME_LENGTH - sizeof(NOTIFICATION_PORT_NAME) - sizeof(NOTIFICATION_PORT_NAME_SUFFIX);
+	char sessionid[MAX_PORT_NAME_LENGTH + 1];
+	CFIndex len = MAX_PORT_NAME_LENGTH - sizeof(NOTIFICATION_PORT_NAME) - sizeof(NOTIFICATION_PORT_NAME_SUFFIX);
         CFStringGetBytes(sessionID, CFRangeMake(0, CFStringGetLength(sessionID)), kCFStringEncodingUTF8, 0, false, (uint8_t *)sessionid, len, &size);
-        sessionid[len - 1] = '\0';
-        strlcat(namebuffer, NOTIFICATION_PORT_NAME_SUFFIX, sizeof(namebuffer));
-        strlcat(namebuffer, sessionid, sizeof(namebuffer));
+	sessionid[len - 1] = '\0';
+	strlcat(namebuffer, NOTIFICATION_PORT_NAME_SUFFIX, sizeof(namebuffer));
+	strlcat(namebuffer, sessionid, sizeof(namebuffer));
     }
 
     retval = task_get_bootstrap_port(mach_task_self(), &bootstrapPort);
@@ -293,12 +284,13 @@ CFUserNotificationRef CFUserNotificationCreate(CFAllocatorRef allocator, CFTimeI
     CFUserNotificationRef userNotification = NULL;
     SInt32 retval = ERR_SUCCESS;
     static uint16_t tokenCounter = 0;
-    SInt32 token = ((getpid() << 16) | (tokenCounter++));
+    SInt32 token = ((getpid()<<16) | (tokenCounter++));
     CFStringRef sessionID = (dictionary ? (CFStringRef)CFDictionaryGetValue(dictionary, kCFUserNotificationSessionIDKey) : NULL);
 #if DEPLOYMENT_TARGET_MACOSX
     mach_port_t replyPort = MACH_PORT_NULL;
 
     if (!allocator) allocator = __CFGetDefaultAllocator();
+
     retval = mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &replyPort);
     if (ERR_SUCCESS == retval && MACH_PORT_NULL != replyPort) retval = _CFUserNotificationSendRequest(allocator, sessionID, replyPort, token, timeout, flags, dictionary);
 #else
@@ -410,9 +402,13 @@ CFStringRef CFUserNotificationGetResponseValue(CFUserNotificationRef userNotific
     if (userNotification && userNotification->_responseDictionary) {
         value = CFDictionaryGetValue(userNotification->_responseDictionary, key);
         if (CFGetTypeID(value) == CFStringGetTypeID()) {
-            if (0 == idx) retval = (CFStringRef)value;
+            if (0 == idx) {
+                retval = (CFStringRef)value;
+            }
         } else if (CFGetTypeID(value) == CFArrayGetTypeID()) {
-            if (0 <= idx && idx < CFArrayGetCount((CFArrayRef)value)) retval = (CFStringRef)CFArrayGetValueAtIndex((CFArrayRef)value, idx);
+            if (0 <= idx && idx < CFArrayGetCount((CFArrayRef)value)) {
+                retval = (CFStringRef)CFArrayGetValueAtIndex((CFArrayRef)value, idx);
+            }
         }
     }
     return retval;
@@ -451,7 +447,7 @@ CFRunLoopSourceRef CFUserNotificationCreateRunLoopSource(CFAllocatorRef allocato
 #if DEPLOYMENT_TARGET_MACOSX
     if (userNotification && callout && !userNotification->_machPort && MACH_PORT_NULL != userNotification->_replyPort) {
         CFMachPortContext context = {0, userNotification, NULL, NULL, NULL};
-        userNotification->_machPort = CFMachPortCreateWithPort(CFGetAllocator(userNotification), (mach_port_t)userNotification->_replyPort, _CFUserNotificationMachPortCallBack, &context, NULL);
+        userNotification->_machPort = CFMachPortCreateWithPort(CFGetAllocator(userNotification), (mach_port_t)userNotification->_replyPort, _CFUserNotificationMachPortCallBack, &context, false);
     }
     if (userNotification && userNotification->_machPort) {
         source = CFMachPortCreateRunLoopSource(allocator, userNotification->_machPort, order);

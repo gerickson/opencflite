@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
+ * Copyright (c) 2008-2009 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,16 +30,9 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
-
 /*	CFXMLParser.h
-	Copyright (c) 1998-2009, Apple Inc. All rights reserved.
+	Copyright (c) 1998-2007, Apple Inc. All rights reserved.
 */
-
-/*  CFXMLParser will be officially deprecated in a future release of Mac OS X. Clients should be
-    aware of the fact that CFXMLParser has some serious deficiencies in terms of both performance
-    and standards compliance and should migrate their XML parsing to NSXMLParser, NSXMLDocument, or
-    other XML parsing technologies that will suit their needs better than CFXMLParser.
- */
 
 #if !defined(__COREFOUNDATION_CFXMLPARSER__)
 #define __COREFOUNDATION_CFXMLPARSER__ 1
@@ -87,12 +80,12 @@ kCFXMLParserAddImpliedAttributes -
 */
 
 enum {
-    kCFXMLParserValidateDocument = (1UL << 0),
-    kCFXMLParserSkipMetaData = (1UL << 1),
-    kCFXMLParserReplacePhysicalEntities = (1UL << 2),
-    kCFXMLParserSkipWhitespace = (1UL << 3),
-    kCFXMLParserResolveExternalEntities = (1UL << 4),
-    kCFXMLParserAddImpliedAttributes = (1UL << 5),
+    kCFXMLParserValidateDocument = (1 << 0),
+    kCFXMLParserSkipMetaData = (1 << 1),
+    kCFXMLParserReplacePhysicalEntities = (1 << 2),
+    kCFXMLParserSkipWhitespace = (1 << 3),
+    kCFXMLParserResolveExternalEntities = (1 << 4),
+    kCFXMLParserAddImpliedAttributes = (1 << 5),
     kCFXMLParserAllOptions = 0x00FFFFFF,
     kCFXMLParserNoOptions = 0
 };

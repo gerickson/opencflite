@@ -1,6 +1,46 @@
                       Changes and What's New in OpenCFLite
                       ------------------------------------
 
+2011-09-07 v476.19.0
+
+  * Address a bug in CFSetApplyFunction that can result in it
+    accessing and modifying deallocated key memory when iterating over
+    a mutable set while simultaneously mutating it where those
+    mutations might lead to the growth or shrinkage of the set.
+
+  * Remove support, on Linux, for using the malloc_usable_size
+    introspection method when instantiating CoreFoundation runtime
+    instances.
+
+  * Add support for performing debug consistency checks in Linux on
+    memory deallocated by the system allocator.
+
+  * Upgrade the AssertMacros.h from CarbonHeaders-8A428 to that from
+    CarbonHeaders-18.1 to address rdar://problem/4822326 where
+    executing verify*action with break or continue ends up failing to
+    actually work as expected or intended.
+
+  * Added ARM support.
+
+  * Only define __kCFCharacterSetDir if it is not already defined.
+
+  * Address a number of compiler warnings and errors.
+
+  * Fixed run loop symbol visibility under Linux.
+
+  * Use strtoul rathern than strtoul_l when passing NULL as the
+    extended locale.
+
+  * Limited symbol and function visiblity based on appropriate
+    preprocessor definitions.
+
+  * Merged change to ensure that the right LDFLAGS are passed when
+    testing for the existing of uuid_compare in libuuid with using
+    --with-uuid and friends from trunk.
+
+  * Reconfigured following update to configure.ac for pushing/popping
+    UUID_LDFLAGS when testing uuid_compare in -luuid.
+
 2009-03-11 v476.17.2
 
   * Fixed run loop timer support for Linux.

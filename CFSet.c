@@ -1089,15 +1089,14 @@ void CFSetApplyFunction(CFHashRef hc, CFSetApplierFunction applier, any_pointer_
     if (CFDictionary) CF_OBJC_FUNCDISPATCH2(__kCFHashTypeID, void, hc, "_apply:context:", applier, context);
     if (CFSet) CF_OBJC_FUNCDISPATCH2(__kCFHashTypeID, void, hc, "_applyValues:context:", applier, context);
     __CFGenericValidateType(hc, __kCFHashTypeID);
-    any_t *keys = hc->_keys;
     for (CFIndex idx = 0, nbuckets = hc->_bucketsNum; idx < nbuckets; idx++) {
-        if (__CFHashKeyIsValue(hc, keys[idx])) {
+        if (__CFHashKeyIsValue(hc, hc->_keys[idx])) {
             for (CFIndex cnt = __CFHashGetOccurrenceCount(hc, idx); cnt--;) {
 #if CFDictionary
-                INVOKE_CALLBACK3(applier, (const_any_pointer_t)keys[idx], (const_any_pointer_t)hc->_values[idx], context);
+                INVOKE_CALLBACK3(applier, (const_any_pointer_t)hc->_keys[idx], (const_any_pointer_t)hc->_values[idx], context);
 #endif
 #if CFSet || CFBag
-                INVOKE_CALLBACK2(applier, (const_any_pointer_t)keys[idx], context);
+                INVOKE_CALLBACK2(applier, (const_any_pointer_t)hc->_keys[idx], context);
 #endif
             }
         }

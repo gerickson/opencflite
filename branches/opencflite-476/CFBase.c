@@ -44,6 +44,7 @@
 #include <mach/mach.h>
 #include <dlfcn.h>
 #elif DEPLOYMENT_TARGET_LINUX
+#include <mcheck.h>
 #include <pthread.h>
 #elif DEPLOYMENT_TARGET_WINDOWS
 #include <windows.h>
@@ -269,7 +270,7 @@ static void __CFAllocatorSystemDeallocate(void *ptr, void *info) {
     malloc_zone_free((malloc_zone_t*)info, ptr);
 }
 
-#endif
+#endif /* DEPLOYMENT_TARGET_MACOSX */
 
 #if DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 static void *__CFAllocatorSystemAllocate(CFIndex size, CFOptionFlags hint, void *info) {
@@ -281,6 +282,14 @@ static void *__CFAllocatorSystemReallocate(void *ptr, CFIndex newsize, CFOptionF
 }
 
 static void __CFAllocatorSystemDeallocate(void *ptr, void *info) {
+#if defined(DEBUG)
+    const enum mcheck_status status = mprobe(ptr);
+
+    CFAssert3(status == MCHECK_OK || status == MCHECK_DISABLED,
+              __kCFLogAssertion, "%s: ptr %p status %d",
+              __PRETTY_FUNCTION__, ptr, status);
+#endif
+
     free(ptr);
 }
 #endif
@@ -676,7 +685,7 @@ void *CFAllocatorReallocate(CFAllocatorRef allocator, void *ptr, CFIndex newsize
 	    malloc_zone_free((malloc_zone_t *)allocator, ptr);
 	    return NULL;
 	}
-#endif
+#endif /* DEPLOYMENT_TARGET_MACOSX */
 	deallocateFunc = __CFAllocatorGetDeallocateFunction(&allocator->_context);
 	if (NULL != deallocateFunc) {
 	    INVOKE_CALLBACK2(deallocateFunc, ptr, allocator->_context.info);
@@ -713,7 +722,7 @@ void CFAllocatorDeallocate(CFAllocatorRef allocator, void *ptr) {
 #endif
 	return malloc_zone_free((malloc_zone_t *)allocator, ptr);
     }
-#endif
+#endif /* DEPLOYMENT_TARGET_MACOSX */
     deallocateFunc = __CFAllocatorGetDeallocateFunction(&allocator->_context);
     if (NULL != ptr && NULL != deallocateFunc) {
 	INVOKE_CALLBACK2(deallocateFunc, ptr, allocator->_context.info);

@@ -73,11 +73,6 @@ __kCFReleaseEvent = 29
 CF_INLINE size_t malloc_size(void* memblock) {
     return _msize(memblock);
 }
-#elif DEPLOYMENT_TARGET_LINUX
-#include <malloc.h>
-CF_INLINE size_t malloc_size(const void *memblock) {
-    return malloc_usable_size((void *)memblock);
-}
 #endif
 
 extern void __HALT(void);
@@ -167,6 +162,7 @@ void* (*__CFObjCMemmoveCollectable)(void *dst, const void *, size_t) = memmove;
 
 // GC: to be moved to objc if necessary.
 static void objc_WriteBarrierRange_none(void *ptr, size_t size) {}
+static void objc_WriteBarrierRange_auto(void *ptr, size_t size) { auto_zone_write_barrier_range(__CFCollectableZone, ptr, size); }
 void (*__CFObjCWriteBarrierRange)(void *, size_t) = objc_WriteBarrierRange_none;
 
 // Compiler uses this symbol name; must match compiler built-in decl
@@ -234,6 +230,7 @@ void _CFRuntimeUnregisterClassWithTypeID(CFTypeID typeID) {
 static uint32_t __CFZombieLevel = 0x0;
 static uint8_t __CFZombieEnabled = 0;
 static uint8_t __CFDeallocateZombies = 0;
+static void *_original_objc_dealloc = 0;
 
 #endif /* DEBUG */
 
@@ -262,12 +259,21 @@ CFTypeRef _CFRuntimeCreateInstance(CFAllocatorRef allocator, CFTypeID typeID, CF
     if (NULL == memory) {
 	return NULL;
     }
-#if DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
+#if DEPLOYMENT_TARGET_WINDOWS
     // malloc_size won't work if the memory address has been moved
     // (such as a custom allocator that adds its own metadata
     // (e.g. under/overflow guard data), so don't attempt to call it
     // on the allocation return.
     size_t msize = (usesSystemDefaultAllocator) ? malloc_size(memory) : size;
+#elif DEPLOYMENT_TARGET_LINUX
+    // On Linux, across various architectures and versions of the GNU
+    // C Library, malloc_usable_size has been observed to at times return
+    // incorrect values. Since the introspection value-add it provides to
+    // CoreFoundation seems to be of limited utility, we eliminate it and
+    // simpy use the caller-requested size. In addition, memsetting this
+    // small tail block has also been found to cause heap consistency
+    // problems.
+    size_t msize = size;
 #else
     size_t msize = malloc_size(memory);
 #endif
@@ -664,11 +670,13 @@ extern void __CFMachPortInitialize(void);
 #if DEPLOYMENT_TARGET_MACOSX
 extern void __CFMessagePortInitialize(void);
 #endif
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_WINDOWS
 extern void __CFRunLoopInitialize(void);
 extern void __CFRunLoopObserverInitialize(void);
 extern void __CFRunLoopSourceInitialize(void);
 extern void __CFRunLoopTimerInitialize(void);
 extern void __CFSocketInitialize(void);
+#endif
 extern void __CFBundleInitialize(void);
 extern void __CFPlugInInitialize(void);
 extern void __CFPlugInInstanceInitialize(void);
@@ -1094,6 +1102,7 @@ CF_EXPORT void _CFRelease(CFTypeRef cf) {
 	usesSystemDefaultAllocator = (allocator == kCFAllocatorSystemDefault);
 
 	if (__CFZombieLevel & (1 << 0)) {
+#if !DEPLOYMENT_TARGET_LINUX
 	    uint8_t *ptr = (uint8_t *)cf - (usesSystemDefaultAllocator ? 0 : sizeof(CFAllocatorRef));
 	    size_t size = malloc_size(ptr);
 	    uint8_t byte = 0xFC;
@@ -1105,6 +1114,7 @@ CF_EXPORT void _CFRelease(CFTypeRef cf) {
 		byte = (__CFZombieLevel >> 8) & 0xFF;
 	    }
 	    memset(ptr, byte, size);
+#endif /* !DEPLOYMENT_TARGET_LINUX */
 	}
 	if (!(__CFZombieLevel & (1 << 4))) {
 	    CFAllocatorDeallocate(allocator, (uint8_t *)cf - (usesSystemDefaultAllocator ? 0 : sizeof(CFAllocatorRef)));

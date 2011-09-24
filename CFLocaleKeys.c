@@ -11,7 +11,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2009 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -33,8 +33,14 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
+/*	CFLocaleKeys.c
+	Copyright (c) 2008-2011, Apple Inc. All rights reserved.
+	Responsibility: Christopher Kane
+*/
+
 #include <CoreFoundation/CFLocale.h>
-#include "CFInternal.h"
+#include <CoreFoundation/CoreFoundation_Prefix.h>
+#include <CoreFoundation/CFInternal.h>
 #include "CFLocaleInternal.h"
 
 // Remember to keep the names such that they would make sense for the user locale,

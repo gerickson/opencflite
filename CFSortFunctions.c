@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -32,17 +32,16 @@
  */
 
 /*	CFSortFunctions.c
-	Copyright (c) 1999-2009, Apple Inc. All rights reserved.
+	Copyright (c) 1999-2011, Apple Inc. All rights reserved.
 	Responsibility: Christopher Kane
 */
 
 #include <CoreFoundation/CFBase.h>
+#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 #include <dispatch/dispatch.h>
-#include <sys/sysctl.h>
 #endif
-
 
 enum {
     kCFSortConcurrent = (1 << 0),
@@ -299,11 +298,11 @@ static void __CFSortIndexesN(VALUE_TYPE listp[], INDEX_TYPE count, int32_t ncore
 
     STACK_BUFFER_DECL(VALUE_TYPE *, stack_tmps, num_sect);
     for (INDEX_TYPE idx = 0; idx < num_sect; idx++) {
-        stack_tmps[idx] = malloc(sz * sizeof(VALUE_TYPE));
+        stack_tmps[idx] = (VALUE_TYPE *)malloc(sz * sizeof(VALUE_TYPE));
     }
     VALUE_TYPE **tmps = stack_tmps;
 
-    dispatch_queue_t q = dispatch_get_concurrent_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT);
+    dispatch_queue_t q = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, DISPATCH_QUEUE_OVERCOMMIT);
     dispatch_apply(num_sect, q, ^(size_t sect) {
             INDEX_TYPE sect_len = (sect < num_sect - 1) ? sz : last_sect_len;
             __CFSimpleMergeSort(listp + sect * sz, sect_len, tmps[sect], cmp); // naturally stable
@@ -342,16 +341,13 @@ static void __CFSortIndexesN(VALUE_TYPE listp[], INDEX_TYPE count, int32_t ncore
 #endif
 
 #if __BLOCKS__
-// returns an array of indexes (of length count) giving the indexes 0 - count-1, as sorted by the comparator block
-CFIndex *CFSortIndexes(CFIndex count, CFOptionFlags opts, CFComparisonResult (^cmp)(CFIndex, CFIndex)) {
-    if (count < 1) return NULL;
-    if (INTPTR_MAX / sizeof(CFIndex) < count) return NULL;
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+// fills an array of indexes (of length count) giving the indexes 0 - count-1, as sorted by the comparator block
+void CFSortIndexes(CFIndex *indexBuffer, CFIndex count, CFOptionFlags opts, CFComparisonResult (^cmp)(CFIndex, CFIndex)) {
+    if (count < 1) return;
+    if (INTPTR_MAX / sizeof(CFIndex) < count) return;
     int32_t ncores = 0;
     if (opts & kCFSortConcurrent) {
-        int32_t mib[2] = {CTL_HW, HW_AVAILCPU};
-        size_t len = sizeof(ncores);
-        sysctl(mib, 2, &ncores, &len, NULL, 0);
+        ncores = __CFActiveProcessorCount();
         if (count < 160 || ncores < 2) {
             opts = (opts & ~kCFSortConcurrent);
         } else if (count < 640 && 2 < ncores) {
@@ -365,58 +361,57 @@ CFIndex *CFSortIndexes(CFIndex count, CFOptionFlags opts, CFComparisonResult (^c
             ncores = 16;
         }
     }
-    CFIndex *idxs = malloc_zone_memalign(malloc_default_zone(), 64, count * sizeof(CFIndex));
-    if (!idxs) return NULL;
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS
     if (count <= 65536) {
-        for (CFIndex idx = 0; idx < count; idx++) idxs[idx] = idx;
+        for (CFIndex idx = 0; idx < count; idx++) indexBuffer[idx] = idx;
     } else {
         /* Specifically hard-coded to 8; the count has to be very large before more chunks and/or cores is worthwhile. */
         CFIndex sz = ((((size_t)count + 15) / 16) * 16) / 8;
-        dispatch_apply(8, dispatch_get_concurrent_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT), ^(size_t n) {
+        dispatch_apply(8, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, DISPATCH_QUEUE_OVERCOMMIT), ^(size_t n) {
                 CFIndex idx = n * sz, lim = __CFMin(idx + sz, count);
-                for (; idx < lim; idx++) idxs[idx] = idx;
+                for (; idx < lim; idx++) indexBuffer[idx] = idx;
             });
     }
-    if (opts & kCFSortConcurrent) {
-        __CFSortIndexesN(idxs, count, ncores, cmp); // naturally stable
-        return idxs;
-    }
 #else
-    CFIndex *idxs = (CFIndex *)malloc(count * sizeof(CFIndex));
-    if (!idxs) return NULL;
-    for (CFIndex idx = 0; idx < count; idx++) idxs[idx] = idx;
+    for (CFIndex idx = 0; idx < count; idx++) indexBuffer[idx] = idx;
 #endif
-    STACK_BUFFER_DECL(VALUE_TYPE, local, count <= 16384 ? count : 1);
-    VALUE_TYPE *tmp = (count <= 16384) ? local : (VALUE_TYPE *)malloc(count * sizeof(VALUE_TYPE));
-    __CFSimpleMergeSort(idxs, count, tmp, cmp); // naturally stable
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS
+    if (opts & kCFSortConcurrent) {
+        __CFSortIndexesN(indexBuffer, count, ncores, cmp); // naturally stable
+        return;
+    }
+#endif
+    STACK_BUFFER_DECL(VALUE_TYPE, local, count <= 4096 ? count : 1);
+    VALUE_TYPE *tmp = (count <= 4096) ? local : (VALUE_TYPE *)malloc(count * sizeof(VALUE_TYPE));
+    __CFSimpleMergeSort(indexBuffer, count, tmp, cmp); // naturally stable
     if (local != tmp) free(tmp);
-    return idxs;
 }
 #else // No blocks
 // returns an array of indexes (of length count) giving the indexes 0 - count-1, as sorted by the comparator block
-CFIndex *CFSortIndexes(CFIndex count, CFOptionFlags opts, void *list, CFIndex elementSize, CFComparatorFunction comparator, void *context) {
-    if (count < 1) return NULL;
-    if (INTPTR_MAX / sizeof(CFIndex) < count) return NULL;
-    CFIndex *idxs = (CFIndex *)malloc(count * sizeof(CFIndex));
-    if (!idxs) return NULL;
-    for (CFIndex idx = 0; idx < count; idx++) idxs[idx] = idx;
+void CFSortIndexes(CFIndex *indexBuffer, CFIndex count, CFOptionFlags opts, void *list, CFIndex elementSize, CFComparatorFunction comparator, void *context) {
+    if (count < 1) return;
+    if (INTPTR_MAX / sizeof(CFIndex) < count) return;
+    if (!indexBuffer) return;
+    for (CFIndex idx = 0; idx < count; idx++) indexBuffer[idx] = idx;
     STACK_BUFFER_DECL(VALUE_TYPE, local, count <= 16384 ? count : 1);
     VALUE_TYPE *tmp = (count <= 16384) ? local : (VALUE_TYPE *)malloc(count * sizeof(VALUE_TYPE));
-    __CFSimpleMergeSort(idxs, count, tmp, list, elementSize, comparator, context);
+    __CFSimpleMergeSort(indexBuffer, count, tmp, list, elementSize, comparator, context);
     if (local != tmp) free(tmp);
-    return idxs;
 }
 #endif
 
 /* Comparator is passed the address of the values. */
 void CFQSortArray(void *list, CFIndex count, CFIndex elementSize, CFComparatorFunction comparator, void *context) {
-    if (count < 1 || elementSize < 1) return;
+    if (count < 2 || elementSize < 1) return;
+    STACK_BUFFER_DECL(CFIndex, locali, count <= 4096 ? count : 1);
+    CFIndex *indexes = (count <= 4096) ? locali : (CFIndex *)malloc(count * sizeof(CFIndex));
 #if __BLOCKS__
-    CFIndex *indexes = CFSortIndexes(count, 0, ^(CFIndex a, CFIndex b) { return comparator((char *)list + a * elementSize, (char *)list + b * elementSize, context); }); // naturally stable
+    CFSortIndexes(indexes, count, 0, ^(CFIndex a, CFIndex b) { return comparator((char *)list + a * elementSize, (char *)list + b * elementSize, context); });
 #else
-    CFIndex *indexes = CFSortIndexes(count, 0, list, elementSize, comparator, context);
+    CFSortIndexes(indexes, count, 0, list, elementSize, comparator, context);
 #endif
-    void *store = malloc(count * elementSize);
+    STACK_BUFFER_DECL(uint8_t, locals, count <= (16 * 1024 / elementSize) ? count * elementSize : 1);
+    void *store = (count <= (16 * 1024 / elementSize)) ? locals : malloc(count * elementSize);
     for (CFIndex idx = 0; idx < count; idx++) {
         if (sizeof(uintptr_t) == elementSize) {
             uintptr_t *a = (uintptr_t *)list + indexes[idx];
@@ -428,19 +423,22 @@ void CFQSortArray(void *list, CFIndex count, CFIndex elementSize, CFComparatorFu
     }
     // no swapping or modification of the original list has occurred until this point
     objc_memmove_collectable(list, store, count * elementSize);
-    free(store);
-    free(indexes);
+    if (locals != store) free(store);
+    if (locali != indexes) free(indexes);
 }
 
 /* Comparator is passed the address of the values. */
 void CFMergeSortArray(void *list, CFIndex count, CFIndex elementSize, CFComparatorFunction comparator, void *context) {
-    if (count < 1 || elementSize < 1) return;
+    if (count < 2 || elementSize < 1) return;
+    STACK_BUFFER_DECL(CFIndex, locali, count <= 4096 ? count : 1);
+    CFIndex *indexes = (count <= 4096) ? locali : (CFIndex *)malloc(count * sizeof(CFIndex));
 #if __BLOCKS__
-    CFIndex *indexes = CFSortIndexes(count, kCFSortStable, ^(CFIndex a, CFIndex b) { return comparator((char *)list + a * elementSize, (char *)list + b * elementSize, context); }); // naturally stable
+    CFSortIndexes(indexes, count, kCFSortStable, ^(CFIndex a, CFIndex b) { return comparator((char *)list + a * elementSize, (char *)list + b * elementSize, context); });
 #else
-    CFIndex *indexes = CFSortIndexes(count, kCFSortStable, list, elementSize, comparator, context);
+    CFSortIndexes(indexes, count, kCFSortStable, list, elementSize, comparator, context);
 #endif
-    void *store = malloc(count * elementSize);
+    STACK_BUFFER_DECL(uint8_t, locals, count <= (16 * 1024 / elementSize) ? count * elementSize : 1);
+    void *store = (count <= (16 * 1024 / elementSize)) ? locals : malloc(count * elementSize);
     for (CFIndex idx = 0; idx < count; idx++) {
         if (sizeof(uintptr_t) == elementSize) {
             uintptr_t *a = (uintptr_t *)list + indexes[idx];
@@ -452,8 +450,8 @@ void CFMergeSortArray(void *list, CFIndex count, CFIndex elementSize, CFComparat
     }
     // no swapping or modification of the original list has occurred until this point
     objc_memmove_collectable(list, store, count * elementSize);
-    free(store);
-    free(indexes);
+    if (locals != store) free(store);
+    if (locali != indexes) free(indexes);
 }
 
 

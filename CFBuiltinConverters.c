@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -32,7 +32,7 @@
  */
 
 /*	CFBuiltinConverters.c
-	Copyright (c) 1999-2009, Apple Inc. All rights reserved.
+	Copyright (c) 1999-2011, Apple Inc. All rights reserved.
 	Responsibility: Aki Inoue
 */
 
@@ -41,6 +41,7 @@
 #include "CFUnicodeDecomposition.h"
 #include "CFUnicodePrecomposition.h"
 #include "CFStringEncodingConverterPriv.h"
+#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 
 #define ParagraphSeparator 0x2029

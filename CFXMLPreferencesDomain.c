@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -32,15 +32,17 @@
  */
 
 /*	CFXMLPreferencesDomain.c
-	Copyright (c) 1998-2009, Apple Inc. All rights reserved.
-	Responsibility: Chris Parker
+	Copyright (c) 1998-2011, Apple Inc. All rights reserved.
+	Responsibility: David Smith
 */
+
 
 #include <CoreFoundation/CFPreferences.h>
 #include <CoreFoundation/CFURLAccess.h>
 #include <CoreFoundation/CFPropertyList.h>
 #include <CoreFoundation/CFNumber.h>
 #include <CoreFoundation/CFDate.h>
+#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include <time.h>
 #if DEPLOYMENT_TARGET_MACOSX
@@ -330,12 +332,7 @@ static Boolean _writeXMLFile(CFURLRef url, CFMutableDictionaryRef dict, Boolean 
         if (val) CFRelease(val);
     } else {
         CFPropertyListFormat desiredFormat = __CFPreferencesShouldWriteXML() ? kCFPropertyListXMLFormat_v1_0 : kCFPropertyListBinaryFormat_v1_0;
-        CFWriteStreamRef binStream = CFWriteStreamCreateWithAllocatedBuffers(alloc, alloc);
-        CFWriteStreamOpen(binStream);
-        CFPropertyListWriteToStream(dict, binStream, desiredFormat, NULL);
-        CFWriteStreamClose(binStream);
-        CFDataRef data = (CFDataRef) CFWriteStreamCopyProperty(binStream, kCFStreamPropertyDataWritten);
-        CFRelease(binStream);
+        CFDataRef data = CFPropertyListCreateData(alloc, dict, desiredFormat, 0, NULL);
         if (data) {
             SInt32 mode;
 #if DEPLOYMENT_TARGET_MACOSX
@@ -538,7 +535,7 @@ static Boolean synchronizeXMLDomain(CFTypeRef context, void *xmlDomain) {
         }
         success = _writeXMLFile((CFURLRef )context, domain->_domainDict, domain->_isWorldReadable, &tryAgain);
         if (tryAgain) {
-            __CFMilliSleep((((uint32_t)__CFReadTSR() & 0xf) + 1) * 50);
+            __CFMilliSleep(50);
         }
     } while (tryAgain);
     CFRelease(cachedDict);
@@ -549,5 +546,4 @@ static Boolean synchronizeXMLDomain(CFTypeRef context, void *xmlDomain) {
     __CFSpinUnlock(&domain->_lock);
     return success;
 }
-
 

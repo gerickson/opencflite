@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -32,8 +32,8 @@
  */
 
 /*  CFLocale.c
-    Copyright (c) 2002-2009, Apple Inc. All rights reserved.
-    Responsibility: Christopher Kane
+    Copyright (c) 2002-2011, Apple Inc. All rights reserved.
+    Responsibility: David Smith
 */
 
 // Note the header file is in the OpenSource set (stripped to almost nothing), but not the .c file
@@ -45,17 +45,18 @@
 #include <CoreFoundation/CFPreferences.h>
 #include <CoreFoundation/CFCalendar.h>
 #include <CoreFoundation/CFNumber.h>
+#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include "CFLocaleInternal.h"
 #include <unicode/uloc.h>           // ICU locales
 #include <unicode/ulocdata.h>       // ICU locale data
+#include <unicode/ucal.h>
 #include <unicode/ucurr.h>          // ICU currency functions
 #include <unicode/uset.h>           // ICU Unicode sets
 #include <unicode/putil.h>          // ICU low-level utilities
 #include <unicode/umsg.h>           // ICU message formatting
 #include <CoreFoundation/CFNumberFormatter.h>
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-#include <dispatch/dispatch.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unicode/ucol.h>
@@ -64,6 +65,7 @@
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
+#include <string.h>
 
 CONST_STRING_DECL(kCFLocaleCurrentLocaleDidChangeNotification, "kCFLocaleCurrentLocaleDidChangeNotification")
 
@@ -205,7 +207,7 @@ static Boolean __CFLocaleEqual(CFTypeRef cf1, CFTypeRef cf2) {
     if (NULL != locale1->_overrides && NULL == locale2->_overrides) return false;
     if (NULL != locale1->_overrides && !CFEqual(locale1->_overrides, locale2->_overrides)) return false;
     if (__kCFLocaleUser == __CFLocaleGetType(locale1)) {
-    return CFEqual(locale1->_prefs, locale2->_prefs);
+        return CFEqual(locale1->_prefs, locale2->_prefs);
     }
     return true;
 }
@@ -249,7 +251,7 @@ static const CFRuntimeClass __CFLocaleClass = {
     __CFLocaleCopyDescription
 };
 
-__private_extern__ void __CFLocaleInitialize(void) {
+static void __CFLocaleInitialize(void) {
     CFIndex idx;
     __kCFLocaleTypeID = _CFRuntimeRegisterClass(&__CFLocaleClass);
     for (idx = 0; idx < __kCFLocaleKeyTableCount; idx++) {
@@ -295,7 +297,7 @@ static CFLocaleRef __CFLocaleCurrent = NULL;
 #define FALLBACK_LOCALE_NAME CFSTR("")
 #elif DEPLOYMENT_TARGET_EMBEDDED
 #define FALLBACK_LOCALE_NAME CFSTR("en_US")
-#elif DEPLOYMENT_TARGET_WINDOWS  || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #define FALLBACK_LOCALE_NAME CFSTR("en_US")
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
@@ -318,6 +320,8 @@ CFLocaleRef CFLocaleCopyCurrent(void) {
     uint32_t size = sizeof(struct __CFLocale) - sizeof(CFRuntimeBase);
     locale = (struct __CFLocale *)_CFRuntimeCreateInstance(kCFAllocatorSystemDefault, CFLocaleGetTypeID(), size, NULL);
     if (NULL == locale) {
+	if (prefs) CFRelease(prefs);
+	if (identifier) CFRelease(identifier);
 	return NULL;
     }
     __CFLocaleSetType(locale, __kCFLocaleUser);
@@ -345,6 +349,7 @@ CFLocaleRef CFLocaleCopyCurrent(void) {
 }
 
 __private_extern__ CFDictionaryRef __CFLocaleGetPrefs(CFLocaleRef locale) {
+    CF_OBJC_FUNCDISPATCH0(CFLocaleGetTypeID(), CFDictionaryRef, locale, "_prefs");
     return locale->_prefs;
 }
 
@@ -365,7 +370,7 @@ CFLocaleRef CFLocaleCreate(CFAllocatorRef allocator, CFStringRef identifier) {
     // We only use cached objects if the allocator is the system
     // default allocator.
     if (!allocator) allocator = __CFGetDefaultAllocator();
-    Boolean canCache = (kCFAllocatorSystemDefault == allocator);
+    Boolean canCache = _CFAllocatorIsSystemDefault(allocator);
     if (canCache && __CFLocaleCache) {
 	CFLocaleRef locale = (CFLocaleRef)CFDictionaryGetValue(__CFLocaleCache, localeIdentifier);
 	if (locale) {
@@ -411,6 +416,7 @@ CFStringRef CFLocaleGetIdentifier(CFLocaleRef locale) {
 }
 
 CFTypeRef CFLocaleGetValue(CFLocaleRef locale, CFStringRef key) {
+#if DEPLOYMENT_TARGET_MACOSX
     if (!_CFExecutableLinkedOnOrAfter(CFSystemVersionSnowLeopard)) {
 	// Hack for Opera, which is using the hard-coded string value below instead of
         // the perfectly good public kCFLocaleCountryCode constant, for whatever reason.
@@ -418,6 +424,7 @@ CFTypeRef CFLocaleGetValue(CFLocaleRef locale, CFStringRef key) {
 	    key = kCFLocaleCountryCodeKey;
 	}
     }
+#endif
     CF_OBJC_FUNCDISPATCH1(CFLocaleGetTypeID(), CFTypeRef, locale, "objectForKey:", key);
     CFIndex idx, slot = -1;
     for (idx = 0; idx < __kCFLocaleKeyTableCount; idx++) {
@@ -525,11 +532,9 @@ CFArrayRef CFLocaleCopyAvailableLocaleIdentifiers(void) {
     for (locale = 0; locale < localeCount; ++locale) {
         const char *localeID = uloc_getAvailable(locale);
         CFStringRef string1 = CFStringCreateWithCString(kCFAllocatorSystemDefault, localeID, kCFStringEncodingASCII);
-	CFStringRef string2 = CFLocaleCreateCanonicalLocaleIdentifierFromString(kCFAllocatorSystemDefault, string1);
-	CFSetAddValue(working, string1);
 	// do not include canonicalized version as IntlFormats cannot cope with that in its popup
+	CFSetAddValue(working, string1);
         CFRelease(string1);
-        CFRelease(string2);
     }
     CFIndex cnt = CFSetGetCount(working);
     STACK_BUFFER_DECL(const void *, buffer, cnt);
@@ -791,8 +796,31 @@ static bool __CFLocaleCopyICUKeyword(CFLocaleRef locale, bool user, CFTypeRef *c
     return false;
 }
 
+static bool __CFLocaleCopyICUCalendarID(CFLocaleRef locale, bool user, CFTypeRef *cf, CFStringRef context, const char *keyword) {
+#if 0
+    char localeID[ULOC_FULLNAME_CAPACITY+ULOC_KEYWORD_AND_VALUES_CAPACITY];
+    if (CFStringGetCString(locale->_identifier, localeID, sizeof(localeID)/sizeof(char), kCFStringEncodingASCII)) {
+        UErrorCode icuStatus = U_ZERO_ERROR;
+	UEnumeration *en = ucal_getKeywordValuesForLocale(keyword, localeID, TRUE, &icuStatus);
+	int32_t len;
+	const char *value = uenum_next(en, &len, &icuStatus);
+	if (U_SUCCESS(icuStatus)) {
+            *cf = (CFTypeRef) CFStringCreateWithCString(kCFAllocatorSystemDefault, value, kCFStringEncodingASCII);
+	    uenum_close(en);
+            return true;
+        }
+	uenum_close(en);
+    }
+    *cf = NULL;
+#endif
+    return false;
+}
+
 static bool __CFLocaleCopyCalendarID(CFLocaleRef locale, bool user, CFTypeRef *cf, CFStringRef context) {
     bool succeeded = __CFLocaleCopyICUKeyword(locale, user, cf, context, kCalendarKeyword);
+    if (!succeeded) {
+	succeeded = __CFLocaleCopyICUCalendarID(locale, user, cf, context, kCalendarKeyword);
+    }
     if (succeeded) {
 	if (CFEqual(*cf, kCFCalendarIdentifierGregorian)) {
 	    CFRelease(*cf);
@@ -918,27 +946,25 @@ static bool __CFLocaleCopyCollationID(CFLocaleRef locale, bool user, CFTypeRef *
 static bool __CFLocaleCopyCollatorID(CFLocaleRef locale, bool user, CFTypeRef *cf, CFStringRef context) {
     CFStringRef canonLocaleCFStr = NULL;
     if (user) {
-		if (locale->_prefs) {
-			CFStringRef pref = (CFStringRef)CFDictionaryGetValue(locale->_prefs, CFSTR("AppleCollationOrder"));
-			if (pref) {
-				// Canonicalize pref string in case it's not in the canonical format.
-				canonLocaleCFStr = CFLocaleCreateCanonicalLanguageIdentifierFromString(kCFAllocatorSystemDefault, pref);
-			} else {
-				CFArrayRef languagesArray = (CFArrayRef)CFDictionaryGetValue(locale->_prefs, CFSTR("AppleLanguages"));
-				if (languagesArray && (CFArrayGetTypeID() == CFGetTypeID(languagesArray))) {
-					if (0 < CFArrayGetCount(languagesArray)) {
-						CFStringRef str = (CFStringRef)CFArrayGetValueAtIndex(languagesArray, 0);
-						if (str && (CFStringGetTypeID() == CFGetTypeID(str))) {
-							canonLocaleCFStr = CFLocaleCreateCanonicalLanguageIdentifierFromString(kCFAllocatorSystemDefault, str);
-						}
-					}
-				}
-			}
+	CFStringRef pref = (CFStringRef)CFDictionaryGetValue(locale->_prefs, CFSTR("AppleCollationOrder"));
+	if (pref) {
+	    // Canonicalize pref string in case it's not in the canonical format.
+	    canonLocaleCFStr = CFLocaleCreateCanonicalLanguageIdentifierFromString(kCFAllocatorSystemDefault, pref);
+	} else {
+	    CFArrayRef languagesArray = (CFArrayRef)CFDictionaryGetValue(locale->_prefs, CFSTR("AppleLanguages"));
+	    if (languagesArray && (CFArrayGetTypeID() == CFGetTypeID(languagesArray))) {
+		if (0 < CFArrayGetCount(languagesArray)) {
+		    CFStringRef str = (CFStringRef)CFArrayGetValueAtIndex(languagesArray, 0);
+		    if (str && (CFStringGetTypeID() == CFGetTypeID(str))) {
+			canonLocaleCFStr = CFLocaleCreateCanonicalLanguageIdentifierFromString(kCFAllocatorSystemDefault, str);
+		    }
 		}
+	    }
 	}
-	if (!canonLocaleCFStr) {
-		canonLocaleCFStr = CFLocaleGetIdentifier(locale);
-		CFRetain(canonLocaleCFStr);
+    }
+    if (!canonLocaleCFStr) {
+	canonLocaleCFStr = CFLocaleGetIdentifier(locale);
+	CFRetain(canonLocaleCFStr);
     }
     *cf = canonLocaleCFStr;
     return canonLocaleCFStr ? true : false;
@@ -961,9 +987,6 @@ static bool __CFLocaleCopyUsesMetric(CFLocaleRef locale, bool user, CFTypeRef *c
 	    }
 	}
     }
-#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-#else
-#error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
     if (!done) {
         char localeID[ULOC_FULLNAME_CAPACITY+ULOC_KEYWORD_AND_VALUES_CAPACITY];
@@ -1183,3 +1206,4 @@ static bool __CFLocaleNoName(const char *locale, const char *value, CFStringRef 
 }
 
 #undef kMaxICUNameSize
+

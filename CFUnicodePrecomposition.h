@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -36,7 +36,7 @@
  *  CoreFoundation
  *
  *  Created by aki on Wed Oct 03 2001.
- *  Copyright (c) 2001-2009, Apple Inc. All rights reserved.
+ *  Copyright (c) 2001-2011, Apple Inc. All rights reserved.
  *
  */
 

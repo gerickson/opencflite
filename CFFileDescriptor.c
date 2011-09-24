@@ -21,6 +21,7 @@
 
 #include <CoreFoundation/CFRunLoop.h>
 #include "CFPriv.h"
+#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include "CFFileDescriptor.h"
 

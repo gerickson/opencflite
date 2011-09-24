@@ -10,7 +10,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -33,7 +33,7 @@
  */
 
 /*	CFURLAccess.c
-	Copyright (c) 1999-2009, Apple Inc. All rights reserved.
+	Copyright (c) 1999-2011, Apple Inc. All rights reserved.
 	Responsibility: Chris Linn
 */
 
@@ -41,6 +41,7 @@
 CFData read/write routines
 -------*/
 
+#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include <CoreFoundation/CFBase.h>
 #include <CoreFoundation/CFURL.h>
@@ -58,7 +59,6 @@ CFData read/write routines
 #include <sys/types.h>
 #include <pwd.h>
 #include <fcntl.h>
-#include <dlfcn.h>
 #elif DEPLOYMENT_TARGET_WINDOWS
 //#include <winsock2.h>
 #include <io.h>
@@ -71,7 +71,9 @@ CFData read/write routines
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
-
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#include <dlfcn.h>
+#endif
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 

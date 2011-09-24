@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -32,15 +32,15 @@
  */
 
 /*	CFStringUtilities.c
-	Copyright (c) 1999-2009, Apple Inc. All rights reserved.
+	Copyright (c) 1999-2011, Apple Inc. All rights reserved.
 	Responsibility: Aki Inoue
 */
 
+#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include <CoreFoundation/CFStringEncodingConverterExt.h>
 #include <CoreFoundation/CFUniChar.h>
 #include <CoreFoundation/CFStringEncodingExt.h>
-#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFStringEncodingDatabase.h"
 #include "CFICUConverters.h"
 #include <CoreFoundation/CFPreferences.h>
@@ -396,14 +396,16 @@ static UCollator *__CFStringCopyDefaultCollator(CFLocaleRef compareLocale) {
 
     if (compareLocale != __CFDefaultCollatorLocale) {
         currentLocale = CFLocaleCopyCurrent();
-        CFRelease(currentLocale);
-        if (compareLocale != currentLocale) return NULL;
+        if (compareLocale != currentLocale) {
+	    CFRelease(currentLocale);
+	    return NULL;
+	}
     }
 
     __CFSpinLock(&__CFDefaultCollatorLock);
     if ((NULL != currentLocale) && (__CFDefaultCollatorLocale != currentLocale)) {
         while (__CFDefaultCollatorsCount > 0) ucol_close(__CFDefaultCollators[--__CFDefaultCollatorsCount]);
-        __CFDefaultCollatorLocale = currentLocale;
+        __CFDefaultCollatorLocale = CFRetain(currentLocale);
     }
 
     if (__CFDefaultCollatorsCount > 0) collator = __CFDefaultCollators[--__CFDefaultCollatorsCount];
@@ -413,14 +415,16 @@ static UCollator *__CFStringCopyDefaultCollator(CFLocaleRef compareLocale) {
 	collator = __CFStringCreateCollator(compareLocale);
     }
 
+    if (NULL != currentLocale) CFRelease(currentLocale);
+
     return collator;
 }
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 static void __collatorFinalize(UCollator *collator) {
-    CFLocaleRef locale = pthread_getspecific(__CFTSDKeyCollatorLocale);
-    pthread_setspecific(__CFTSDKeyCollatorUCollator, NULL);
-    pthread_setspecific(__CFTSDKeyCollatorLocale, NULL);
+    CFLocaleRef locale = _CFGetTSD(__CFTSDKeyCollatorLocale);
+    _CFSetTSD(__CFTSDKeyCollatorUCollator, NULL, NULL);
+    _CFSetTSD(__CFTSDKeyCollatorLocale, NULL, NULL);
     __CFSpinLock(&__CFDefaultCollatorLock);
     if ((__CFDefaultCollatorLocale == locale) && (__CFDefaultCollatorsCount < kCFMaxCachedDefaultCollators)) {
         __CFDefaultCollators[__CFDefaultCollatorsCount++] = collator;
@@ -599,8 +603,8 @@ __private_extern__ CFComparisonResult _CFCompareStringsWithLocale(CFStringInline
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
     // First we try to use the last one used on this thread, if the locale is the same,
     // otherwise we try to check out a default one, or then we create one.
-    UCollator *threadCollator = pthread_getspecific(__CFTSDKeyCollatorUCollator);
-    CFLocaleRef threadLocale = pthread_getspecific(__CFTSDKeyCollatorLocale);
+    UCollator *threadCollator = _CFGetTSD(__CFTSDKeyCollatorUCollator);
+    CFLocaleRef threadLocale = _CFGetTSD(__CFTSDKeyCollatorLocale);
     if (compareLocale == threadLocale) {
 	collator = threadCollator;
     } else {
@@ -727,11 +731,10 @@ __private_extern__ CFComparisonResult _CFCompareStringsWithLocale(CFStringInline
     if (collator == threadCollator) {
 	// do nothing, already cached
     } else {
-	if (threadLocale) __collatorFinalize((UCollator *)pthread_getspecific(__CFTSDKeyCollatorUCollator)); // need to dealloc collators
+	if (threadLocale) __collatorFinalize((UCollator *)_CFGetTSD(__CFTSDKeyCollatorUCollator)); // need to dealloc collators
 
-        pthread_key_init_np(__CFTSDKeyCollatorUCollator, (void *)__collatorFinalize);
-	pthread_setspecific(__CFTSDKeyCollatorUCollator, collator);
-	pthread_setspecific(__CFTSDKeyCollatorLocale, CFRetain(compareLocale));
+	_CFSetTSD(__CFTSDKeyCollatorUCollator, collator, (void *)__collatorFinalize);
+	_CFSetTSD(__CFTSDKeyCollatorLocale, (void *)CFRetain(compareLocale), NULL);
     }
 #endif
 

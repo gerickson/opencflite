@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -32,7 +32,7 @@
  */
 
 /*	CFMachPort.c
-	Copyright (c) 1998-2010, Apple Inc. All rights reserved.
+	Copyright (c) 1998-2011, Apple Inc. All rights reserved.
 	Responsibility: Christopher Kane
 */
 
@@ -42,7 +42,6 @@
 #include <CoreFoundation/CFRunLoop.h>
 #include <CoreFoundation/CFArray.h>
 #include <dispatch/dispatch.h>
-#include <libkern/OSAtomic.h>
 #include <mach/mach.h>
 #include <dlfcn.h>
 #include "CFInternal.h"
@@ -237,7 +236,7 @@ static __CFPointerArray *__CFAllMachPorts = nil;
 static Boolean __CFMachPortCheck(mach_port_t port) {
     mach_port_type_t type = 0;
     kern_return_t ret = mach_port_type(mach_task_self(), port, &type);
-    return (KERN_SUCCESS != ret || (type & MACH_PORT_TYPE_DEAD_NAME)) ? false : true;
+    return (KERN_SUCCESS != ret || (0 == (type & MACH_PORT_TYPE_PORT_RIGHTS))) ? false : true;
 }
 
 static void __CFMachPortChecker(Boolean fromTimer) { // only call on __portQueue()
@@ -334,7 +333,7 @@ CFMachPortRef _CFMachPortCreateWithPort2(CFAllocatorRef allocator, mach_port_t p
 
     mach_port_type_t type = 0;
     kern_return_t ret = mach_port_type(mach_task_self(), port, &type);
-    if (KERN_SUCCESS != ret || (type & ~(MACH_PORT_TYPE_SEND|MACH_PORT_TYPE_SEND_ONCE|MACH_PORT_TYPE_RECEIVE|MACH_PORT_TYPE_DNREQUEST))) {
+    if (KERN_SUCCESS != ret || (0 == (type & MACH_PORT_TYPE_PORT_RIGHTS))) {
         if (type & ~MACH_PORT_TYPE_DEAD_NAME) {
             CFLog(kCFLogLevelError, CFSTR("*** CFMachPortCreateWithPort(): bad Mach port parameter (0x%lx) or unsupported mysterious kind of Mach port (%d, %ld)"), (unsigned long)port, ret, (unsigned long)type);
         }
@@ -343,17 +342,16 @@ CFMachPortRef _CFMachPortCreateWithPort2(CFAllocatorRef allocator, mach_port_t p
 
     __block CFMachPortRef mp = NULL;
     dispatch_sync(__portQueue(), ^{
-            static Boolean portCheckerGoing = false;
-            if (!portCheckerGoing) {
+            static dispatch_source_t timerSource = NULL;
+            if (timerSource == NULL) {
                 uint64_t nanos = 63 * 1000 * 1000 * 1000ULL;
                 uint64_t leeway = 9 * 1000ULL;
-                dispatch_source_t timerSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, __portQueue());
+                timerSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, __portQueue());
                 dispatch_source_set_timer(timerSource, dispatch_time(DISPATCH_TIME_NOW, nanos), nanos, leeway);
                 dispatch_source_set_event_handler(timerSource, ^{
-                        __CFMachPortChecker(true);
-                    });
+                    __CFMachPortChecker(true);
+                });
                 dispatch_resume(timerSource);
-                portCheckerGoing = true;
             }
 
 #if defined(AVOID_WEAK_COLLECTIONS)
@@ -412,10 +410,10 @@ CFMachPortRef _CFMachPortCreateWithPort2(CFAllocatorRef allocator, mach_port_t p
                 dispatch_source_t theSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_MACH_SEND, port, DISPATCH_MACH_SEND_DEAD, __portQueue());
                 dispatch_source_set_cancel_handler(theSource, ^{
                     dispatch_release(theSource);
-                    });
+                });
                 dispatch_source_set_event_handler(theSource, ^{
-                        __CFMachPortChecker(false);
-                    });
+                    __CFMachPortChecker(false);
+                });
                 memory->_dsrc = theSource;
                 dispatch_resume(theSource);
             }
@@ -547,11 +545,6 @@ Boolean CFMachPortIsValid(CFMachPortRef mp) {
     mach_port_type_t type = 0;
     kern_return_t ret = mach_port_type(mach_task_self(), mp->_port, &type);
     if (KERN_SUCCESS != ret || (type & ~(MACH_PORT_TYPE_SEND|MACH_PORT_TYPE_SEND_ONCE|MACH_PORT_TYPE_RECEIVE|MACH_PORT_TYPE_DNREQUEST))) {
-        CFRetain(mp);
-        dispatch_async(dispatch_get_global_queue(0, 0), ^{
-           CFMachPortInvalidate(mp);
-           CFRelease(mp);
-        });
 	return false;
     }
     return true;
@@ -595,19 +588,19 @@ static void *__CFMachPortPerform(void *msg, CFIndex size, CFAllocatorRef allocat
     CHECK_FOR_FORK_RET(NULL);
     CFMachPortRef mp = (CFMachPortRef)info;
     __block Boolean isValid = false;
+    __block void *context_info = NULL;
+    __block void (*context_release)(const void *) = NULL;
     dispatch_sync(__portQueue(), ^{
             isValid = __CFMachPortIsValid(mp);
+            if (!isValid) return;
+            if (mp->_context.retain) {
+                context_info = (void *)mp->_context.retain(mp->_context.info);
+                context_release = mp->_context.release;
+            } else {
+                context_info = mp->_context.info;
+            }
         });
     if (!isValid) return NULL;
-
-    void *context_info = NULL;
-    void (*context_release)(const void *) = NULL;
-    if (mp->_context.retain) {
-        context_info = (void *)mp->_context.retain(mp->_context.info);
-        context_release = mp->_context.release;
-    } else {
-        context_info = mp->_context.info;
-    }
 
     mp->_callout(mp, msg, size, context_info);
 

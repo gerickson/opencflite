@@ -10,7 +10,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -33,19 +33,22 @@
  */
 
 /*	CFRunLoop.c
-	Copyright (c) 1998-2009, Apple Inc. All rights reserved.
-	Responsibility: Christopher Kane
+	Copyright (c) 1998-2011, Apple Inc. All rights reserved.
+	Responsibility: Tony Parker
 */
 
 #include <CoreFoundation/CFRunLoop.h>
 #include <CoreFoundation/CFSet.h>
 #include <CoreFoundation/CFBag.h>
+#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include <math.h>
 #include <stdio.h>
 #include <limits.h>
+#include <pthread.h>
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 #include <dispatch/dispatch.h>
+#include <CoreFoundation/CFUserNotification.h>
 #include <mach/mach.h>
 #include <mach/clock_types.h>
 #include <mach/clock.h>
@@ -80,9 +83,9 @@ static int _LogCFRunLoop = 0;
 #define HANDLE_DISPATCH_ON_BASE_INVOCATION_ONLY 0
 
 #if DEPLOYMENT_TARGET_WINDOWS
-static pthread_t kNilPthreadT = { nil, nil };
 static pthread_t __kCFMainThread = { nil, nil };
 
+static pthread_t kNilPthreadT = { nil, nil };
 #define pthreadPointer(a) a.p
 
 static DWORD __CFTSDKeyRunLoopKey = ~0;
@@ -102,21 +105,13 @@ bool __CFIsNonMachRunLoopMarryMsgQueueEnabled(void) {
     return gMARRY_MESSAGE_QUEUE;
 }
 
-extern int pthread_main_np (void) {
-    if (0 == pthreadPointer(__kCFMainThread)) {
-        __kCFMainThread = pthread_self();
-        return 1;
-    }
-
-    return (pthreadPointer(__kCFMainThread) == pthreadPointer(pthread_self()));
-}
-
 #elif DEPLOYMENT_TARGET_LINUX
 static pthread_t kNilPthreadT = (pthread_t)0;
 static pthread_t __kCFMainThread = (pthread_t)0;
 #define pthreadPointer(a) (void *)a
 #define lockCount(a) a.lock
 #else
+
 static pthread_t kNilPthreadT = (pthread_t)0;
 #define pthreadPointer(a) a
 #define lockCount(a) a
@@ -151,6 +146,93 @@ CF_EXPORT bool CFDictionaryGetKeyIfPresent(CFDictionaryRef dict, const void *key
 // In order to reuse most of the code across Mach and Windows v1 RunLoopSources, we define a
 // simple abstraction layer spanning Mach ports and Windows HANDLES
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+
+__private_extern__ uint32_t __CFGetProcessPortCount(void) {
+    ipc_info_space_t info;
+    ipc_info_name_array_t table = 0;
+    mach_msg_type_number_t tableCount = 0;
+    ipc_info_tree_name_array_t tree = 0;
+    mach_msg_type_number_t treeCount = 0;
+    
+    kern_return_t ret = mach_port_space_info(mach_task_self(), &info, &table, &tableCount, &tree, &treeCount);
+    if (ret != KERN_SUCCESS) {
+        return (uint32_t)0;
+    }
+    if (table != NULL) {
+        ret = vm_deallocate(mach_task_self(), (vm_address_t)table, tableCount * sizeof(*table));
+    }
+    if (tree != NULL) {
+        ret = vm_deallocate(mach_task_self(), (vm_address_t)tree, treeCount * sizeof(*tree));
+    }
+    return (uint32_t)tableCount;
+}
+
+__private_extern__ CFArrayRef __CFStopAllThreads(void) {
+    CFMutableArrayRef suspended_list = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, NULL);
+    mach_port_t my_task = mach_task_self();
+    mach_port_t my_thread = mach_thread_self();
+    thread_act_array_t thr_list = 0;
+    mach_msg_type_number_t thr_cnt = 0;
+
+    // really, should loop doing the stopping until no more threads get added to the list N times in a row
+    kern_return_t ret = task_threads(my_task, &thr_list, &thr_cnt);
+    if (ret == KERN_SUCCESS) {
+        for (CFIndex idx = 0; idx < thr_cnt; idx++) {
+            thread_act_t thread = thr_list[idx];
+            if (thread == my_thread) continue;
+            if (CFArrayContainsValue(suspended_list, CFRangeMake(0, CFArrayGetCount(suspended_list)), (const void *)(uintptr_t)thread)) continue;
+            ret = thread_suspend(thread);
+            if (ret == KERN_SUCCESS) {
+                CFArrayAppendValue(suspended_list, (const void *)(uintptr_t)thread);
+            } else {
+                mach_port_deallocate(my_task, thread);
+            }
+        }
+        vm_deallocate(my_task, (vm_address_t)thr_list, sizeof(thread_t) * thr_cnt);
+    }
+    mach_port_deallocate(my_task, my_thread);
+    return suspended_list;
+}
+
+__private_extern__ void __CFRestartAllThreads(CFArrayRef threads) {
+    for (CFIndex idx = 0; idx < CFArrayGetCount(threads); idx++) {
+        thread_act_t thread = (thread_act_t)(uintptr_t)CFArrayGetValueAtIndex(threads, idx);
+        kern_return_t ret = thread_resume(thread);
+        if (ret != KERN_SUCCESS) HALT;
+        mach_port_deallocate(mach_task_self(), thread);
+    }
+}
+
+static uint32_t __CF_last_warned_port_count = 0;
+
+static void foo() __attribute__((unused));
+static void foo() {
+    uint32_t pcnt = __CFGetProcessPortCount();
+    if (__CF_last_warned_port_count + 1000 < pcnt) {
+        CFArrayRef threads = __CFStopAllThreads();
+
+
+// do stuff here
+CFOptionFlags responseFlags = 0;
+SInt32 result = CFUserNotificationDisplayAlert(0.0, kCFUserNotificationCautionAlertLevel, NULL, NULL, NULL, CFSTR("High Mach Port Usage"), CFSTR("This application is using a lot of Mach ports."), CFSTR("Default"), CFSTR("Altern"), CFSTR("Other b"), &responseFlags);
+if (0 != result) {
+    CFLog(3, CFSTR("ERROR"));
+} else {
+    switch (responseFlags) {
+    case kCFUserNotificationDefaultResponse: CFLog(3, CFSTR("DefaultR")); break;
+    case kCFUserNotificationAlternateResponse: CFLog(3, CFSTR("AltR")); break;
+    case kCFUserNotificationOtherResponse: CFLog(3, CFSTR("OtherR")); break;
+    case kCFUserNotificationCancelResponse: CFLog(3, CFSTR("CancelR")); break;
+    }
+}
+
+
+        __CFRestartAllThreads(threads);
+        CFRelease(threads);
+        __CF_last_warned_port_count = pcnt;
+    }
+}
+
 
 typedef mach_port_t __CFPort;
 #define CFPORT_NULL MACH_PORT_NULL
@@ -192,11 +274,17 @@ CF_INLINE __CFPortSet __CFPortSetAllocate(void) {
 }
 
 CF_INLINE Boolean __CFPortSetInsert(__CFPort port, __CFPortSet portSet) {
+    if (MACH_PORT_NULL == port) {
+        return false;
+    }
     kern_return_t ret = mach_port_insert_member(mach_task_self(), port, portSet);
     return (KERN_SUCCESS == ret);
 }
 
 CF_INLINE Boolean __CFPortSetRemove(__CFPort port, __CFPortSet portSet) {
+    if (MACH_PORT_NULL == port) {
+        return false;
+    }
     kern_return_t ret = mach_port_extract_member(mach_task_self(), port, portSet);
     return (KERN_SUCCESS == ret);
 }
@@ -338,6 +426,21 @@ static Boolean __CFPortSetRemove(__CFPort port, __CFPortSet portSet) {
     return false;
 }
 
+#endif
+
+#if !defined(__MACTYPES__) && !defined(_OS_OSTYPES_H)
+#if defined(__BIG_ENDIAN__)
+typedef	struct UnsignedWide {
+    UInt32		hi;
+    UInt32		lo;
+} UnsignedWide;
+#elif defined(__LITTLE_ENDIAN__)
+typedef	struct UnsignedWide {
+    UInt32		lo;
+    UInt32		hi;
+} UnsignedWide;
+#endif
+typedef UnsignedWide		AbsoluteTime;
 #endif
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
@@ -1240,7 +1343,7 @@ static const CFRuntimeClass __CFRunLoopClass = {
     __CFRunLoopCopyDescription
 };
 
-static void __CFFinalizeRunLoop(uintptr_t data);
+__private_extern__ void __CFFinalizeRunLoop(uintptr_t data);
 
 __private_extern__ void __CFRunLoopInitialize(void) {
     __kCFRunLoopTypeID = _CFRuntimeRegisterClass(&__CFRunLoopClass);
@@ -1344,10 +1447,11 @@ CF_EXPORT CFRunLoopRef _CFRunLoopGet0(pthread_t t) {
         //#if MARRY_MESSAGE_QUEUE
         if (__CFIsNonMachRunLoopMarryMsgQueueEnabled()) {
 #ifdef _DEBUG
-            __CFGetThreadSpecificData_inline()->_messageHook = SetWindowsHookExW(WH_GETMESSAGE, (HOOKPROC)pumpRunLoopFromMessageQueue, GetModuleHandleW((LPCWSTR)L"CFLite_debug.dll" /*L"CoreFoundation_debug.dll"*/), loop->_threadID); 
+            HHOOK hook = SetWindowsHookExW(WH_GETMESSAGE, (HOOKPROC)pumpRunLoopFromMessageQueue, GetModuleHandleW((LPCWSTR)L"CFLite_debug.dll" /*L"CoreFoundation_debug.dll"*/), loop->_threadID); 
 #else
-            __CFGetThreadSpecificData_inline()->_messageHook = SetWindowsHookExW(WH_GETMESSAGE, (HOOKPROC)pumpRunLoopFromMessageQueue, GetModuleHandleW((LPCWSTR)L"CFLite.dll" /*L"CoreFoundation.dll"*/), loop->_threadID); 
+            HHOOK hook = SetWindowsHookExW(WH_GETMESSAGE, (HOOKPROC)pumpRunLoopFromMessageQueue, GetModuleHandleW((LPCWSTR)L"CFLite.dll" /*L"CoreFoundation.dll"*/), loop->_threadID); 
 #endif
+            _CFSetTSD(__CFTSDKeyMessageHook, hook, 0);
         }
         //#endif
 #endif
@@ -1373,7 +1477,7 @@ CFRunLoopRef _CFRunLoopGet0b(pthread_t t) {
 static void __CFRunLoopRemoveAllSources(CFRunLoopRef rl, CFStringRef modeName);
 
 // Called for each thread as it exits
-static void __CFFinalizeRunLoop(uintptr_t data) {
+__private_extern__ void __CFFinalizeRunLoop(uintptr_t data) {
     CFRunLoopRef rl = NULL;
     if (data <= 1) {
 	__CFSpinLock(&loopsLock);
@@ -1453,8 +1557,8 @@ void _CFRunLoopSetCurrent(CFRunLoopRef rl) {
 	}
         __CFSpinUnlock(&loopsLock);
 	CFRelease(currentLoop);
-        pthread_setspecific(__CFTSDKeyRunLoop, NULL);
-        pthread_setspecific(__CFTSDKeyRunLoopCntr, 0);
+        _CFSetTSD(__CFTSDKeyRunLoop, NULL, NULL);
+        _CFSetTSD(__CFTSDKeyRunLoopCntr, 0, (void (*)(void *))__CFFinalizeRunLoop);
     }
 }
 #endif
@@ -3837,7 +3941,8 @@ CF_EXPORT LRESULT CALLBACK pumpRunLoopFromMessageQueue(int nCode, WPARAM wParam,
             CFRelease(currMode);
         }
     } 
-    return CallNextHookEx(__CFGetThreadSpecificData_inline()->_messageHook, nCode, wParam, lParam); 
+    HHOOK hook = (HHOOK)_CFGetTSD(__CFTSDKeyMessageHook);
+    return CallNextHookEx(hook, nCode, wParam, lParam); 
 } 
 
 void __CFRunLoopMsgWaitThread(void *theRL) {

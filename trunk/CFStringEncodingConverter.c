@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -32,10 +32,11 @@
  */
 
 /*	CFStringEncodingConverter.c
-	Copyright (c) 1998-2009, Apple Inc. All rights reserved.
+	Copyright (c) 1998-2011, Apple Inc. All rights reserved.
 	Responsibility: Aki Inoue
 */
 
+#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include <CoreFoundation/CFArray.h>
 #include <CoreFoundation/CFDictionary.h>
@@ -917,9 +918,9 @@ __private_extern__ CFIndex CFStringEncodingByteLengthForCharacters(uint32_t enco
         if (1 == converter->definition->maxBytesPerChar) return numChars;
 
         if (NULL == converter->definition->toBytesLen) {
-            CFIndex usedCharLen;
+            CFIndex usedByteLen;
 
-            return ((kCFStringEncodingConversionSuccess == CFStringEncodingUnicodeToBytes(encoding, flags, characters, numChars, &usedCharLen, NULL, 0, NULL)) ? usedCharLen : 0);
+            return ((kCFStringEncodingConversionSuccess == CFStringEncodingUnicodeToBytes(encoding, flags, characters, numChars, NULL, NULL, 0, &usedByteLen)) ? usedByteLen : 0);
         } else {
             return converter->definition->toBytesLen(flags, characters, numChars);
         }

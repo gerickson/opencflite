@@ -10,7 +10,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -33,7 +33,7 @@
  */
 
 /*	CFTimeZone.c
-	Copyright 1998-2002, Apple, Inc. All rights reserved.
+	Copyright (c) 1998-2011, Apple Inc. All rights reserved.
 	Responsibility: Christopher Kane
 */
 
@@ -42,6 +42,7 @@
 #include <CoreFoundation/CFPropertyList.h>
 #include <CoreFoundation/CFDateFormatter.h>
 #include <CoreFoundation/CFPriv.h>
+#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include <math.h>
 #include <limits.h>
@@ -55,9 +56,7 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <sys/fcntl.h>
-#include <tzfile.h>
 #elif DEPLOYMENT_TARGET_WINDOWS
-#include <objc/objc.h>
 #include <windows.h>
 #include <winreg.h>
 #include <time.h>
@@ -65,11 +64,28 @@
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
-
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-#import <Foundation/NSEnumerator.h>
-#endif
+#include <tzfile.h>
+#elif DEPLOYMENT_TARGET_LINUX
+#ifndef TZDIR
+#define TZDIR	"/usr/share/zoneinfo" /* Time zone object file directory */
+#endif /* !defined TZDIR */
 
+#ifndef TZDEFAULT
+#define TZDEFAULT	"/etc/localtime"
+#endif /* !defined TZDEFAULT */
+
+struct tzhead {
+    char	tzh_magic[4];		/* TZ_MAGIC */
+    char	tzh_reserved[16];	/* reserved for future use */
+    char	tzh_ttisgmtcnt[4];	/* coded number of trans. time flags */
+    char	tzh_ttisstdcnt[4];	/* coded number of trans. time flags */
+    char	tzh_leapcnt[4];		/* coded number of leap seconds */
+    char	tzh_timecnt[4];		/* coded number of transition times */
+    char	tzh_typecnt[4];		/* coded number of local time types */
+    char	tzh_charcnt[4];		/* coded number of abbr. chars */
+};
+#endif
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX
 #define TZZONELINK	TZDEFAULT
@@ -82,6 +98,13 @@ static char *__tzDir = NULL;
 static void __InitTZStrings(void);
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
+#endif
+
+#if DEPLOYMENT_TARGET_LINUX
+// Symbol aliases
+CF_EXPORT CFStringRef const kCFDateFormatterTimeZone __attribute__((weak, alias ("kCFDateFormatterTimeZoneKey")));
+#elif DEPLOYMENT_TARGET_WINDOWS
+CONST_STRING_DECL(kCFDateFormatterTimeZone, "kCFDateFormatterTimeZoneKey")
 #endif
 
 CONST_STRING_DECL(kCFTimeZoneSystemTimeZoneDidChangeNotification, "kCFTimeZoneSystemTimeZoneDidChangeNotification")
@@ -161,7 +184,7 @@ static CFMutableArrayRef __CFCopyWindowsTimeZoneList() {
     RegCloseKey(hkResult);
     return result;
 }
-#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED  || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
+#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
 static CFMutableArrayRef __CFCopyRecursiveDirectoryList() {
     CFMutableArrayRef result = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, &kCFTypeArrayCallBacks);
 #if DEPLOYMENT_TARGET_WINDOWS
@@ -1064,25 +1087,17 @@ CFDictionaryRef CFTimeZoneCopyAbbreviationDictionary(void) {
     return dict;
 }
 
+void _removeFromCache(const void *key, const void *value, void *context) {
+    CFDictionaryRemoveValue(__CFTimeZoneCache, (CFStringRef)key);
+}
+
 void CFTimeZoneSetAbbreviationDictionary(CFDictionaryRef dict) {
     __CFGenericValidateType(dict, CFDictionaryGetTypeID());
     __CFTimeZoneLockGlobal();
     if (dict != __CFTimeZoneAbbreviationDict) {
 	if (dict) CFRetain(dict);
 	if (__CFTimeZoneAbbreviationDict) {
-#if defined(__OBJC__)
-	    for (id key in (id)__CFTimeZoneAbbreviationDict) {
-		CFDictionaryRemoveValue(__CFTimeZoneCache, (CFStringRef)key);
-	    }
-#else
-		CFIndex cnt = CFDictionaryGetCount(__CFTimeZoneAbbreviationDict);
-		STACK_BUFFER_DECL(CFStringRef, keys, cnt);
-		STACK_BUFFER_DECL(CFStringRef, values, cnt);
-		CFDictionaryGetKeysAndValues(__CFTimeZoneAbbreviationDict, (const void **)keys, (const void **)values);
-        for (CFIndex idx = 0; idx < cnt; idx++) {
-            CFDictionaryRemoveValue(__CFTimeZoneCache, (CFStringRef)keys[idx]);
-        }
-#endif
+	    CFDictionaryApplyFunction(__CFTimeZoneAbbreviationDict, _removeFromCache, NULL);
 	    CFRelease(__CFTimeZoneAbbreviationDict);
 	}
 	__CFTimeZoneAbbreviationDict = dict;
@@ -1466,16 +1481,11 @@ BOOL __CFTimeZoneGetWin32SystemTime(SYSTEMTIME * sys_time, CFAbsoluteTime time)
     else
         return FALSE;
 }
-#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-#else
-#error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
 
 CFTimeInterval CFTimeZoneGetSecondsFromGMT(CFTimeZoneRef tz, CFAbsoluteTime at) {
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     CFIndex idx;
-    CF_OBJC_FUNCDISPATCH1(CFTimeZoneGetTypeID(), CFTimeInterval, tz, "_secondsFromGMTForAbsoluteTime:", at);
     __CFGenericValidateType(tz, CFTimeZoneGetTypeID());
     idx = __CFBSearchTZPeriods(tz, at);
     return __CFTZPeriodGMTOffset(&(tz->_periods[idx]));
@@ -1572,7 +1582,6 @@ CFIndex __CFTimeZoneInitAbbrev(CFTimeZoneRef tz) {
 CFStringRef CFTimeZoneCopyAbbreviation(CFTimeZoneRef tz, CFAbsoluteTime at) {
     CFStringRef result;
     CFIndex idx;
-    CF_OBJC_FUNCDISPATCH1(CFTimeZoneGetTypeID(), CFStringRef, tz, "_abbreviationForAbsoluteTime:", at);
     __CFGenericValidateType(tz, CFTimeZoneGetTypeID());
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     idx = __CFBSearchTZPeriods(tz, at);
@@ -1592,7 +1601,6 @@ CFStringRef CFTimeZoneCopyAbbreviation(CFTimeZoneRef tz, CFAbsoluteTime at) {
 Boolean CFTimeZoneIsDaylightSavingTime(CFTimeZoneRef tz, CFAbsoluteTime at) {
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS_SYNC || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     CFIndex idx;
-    CF_OBJC_FUNCDISPATCH1(CFTimeZoneGetTypeID(), Boolean, tz, "_isDaylightSavingTimeForAbsoluteTime:", at);
     __CFGenericValidateType(tz, CFTimeZoneGetTypeID());
     idx = __CFBSearchTZPeriods(tz, at);
     return __CFTZPeriodIsDST(&(tz->_periods[idx]));

@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -32,8 +32,8 @@
  */
 
 /*	CFSystemDirectories.c
-	Copyright (c) 1997-2009, Apple Inc. All rights reserved.
-	Responsibility: Ali Ozer
+	Copyright (c) 1997-2011, Apple Inc. All rights reserved.
+	Responsibility: Kevin Perry
 */
 
 /*
@@ -44,6 +44,7 @@
 */
 
 #include <CoreFoundation/CFPriv.h>
+#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED

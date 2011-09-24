@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -32,7 +32,7 @@
  */
 
 /*	CFUserNotification.h
-	Copyright (c) 2000-2009, Apple Inc.  All rights reserved.
+	Copyright (c) 2000-2011, Apple Inc.  All rights reserved.
 */
 
 #if !defined(__COREFOUNDATION_CFUSERNOTIFICATION__)
@@ -196,10 +196,8 @@ const CFStringRef kCFUserNotificationCheckBoxTitlesKey;
 CF_EXPORT
 const CFStringRef kCFUserNotificationTextFieldValuesKey;
 
-#if MAC_OS_X_VERSION_10_3 <= MAC_OS_X_VERSION_MAX_ALLOWED
 CF_EXPORT
-const CFStringRef kCFUserNotificationPopUpSelectionKey	AVAILABLE_MAC_OS_X_VERSION_10_3_AND_LATER;
-#endif
+const CFStringRef kCFUserNotificationPopUpSelectionKey	CF_AVAILABLE(10_3, NA);
 
 #if (TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)
 CF_EXPORT

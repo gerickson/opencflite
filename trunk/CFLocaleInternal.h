@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -33,7 +33,7 @@
 
 /*	
  CFLocaleInternal.h
- Copyright (c) 2008-2009, Apple Inc. All rights reserved.
+ Copyright (c) 2008-2011, Apple Inc. All rights reserved.
  */
 
 /*

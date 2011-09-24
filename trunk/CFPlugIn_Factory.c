@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -32,11 +32,12 @@
  */
 
 /*	CFPlugIn_Factory.c
-	Copyright (c) 1999-2009, Apple Inc.  All rights reserved.
-	Responsibility: Doug Davidson
+	Copyright (c) 1999-2011, Apple Inc.  All rights reserved.
+        Responsibility: David Smith
 */
 
 #include "CFBundle_Internal.h"
+#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 
 static CFSpinLock_t CFPlugInGlobalDataLock = CFSpinLockInit;
@@ -149,12 +150,6 @@ __private_extern__ void *_CFPFactoryCreateInstance(CFAllocatorRef allocator, _CF
         if (!factory->_func) {
             factory->_func = (CFPlugInFactoryFunction)CFBundleGetFunctionPointerForName(factory->_plugIn, factory->_funcName);
             if (!factory->_func) CFLog(__kCFLogPlugIn, CFSTR("Cannot find function pointer %@ for factory %@ in %@"), factory->_funcName, factory->_uuid, factory->_plugIn);
-#if BINARY_SUPPORT_CFM
-            if (factory->_func) {
-                // return values from CFBundleGetFunctionPointerForName will always be dyld, but we must force-fault them because pointers to glue code do not fault correctly
-                factory->_func = (void *)((uint32_t)(factory->_func) | 0x1);
-            }
-#endif /* BINARY_SUPPORT_CFM */
         }
         if (factory->_func) {
             // UPPGOOP

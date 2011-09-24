@@ -39,6 +39,7 @@
 #if DEPLOYMENT_TARGET_WINDOWS
 
 #include "CFWindowsMessageQueue.h"
+#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 
 extern DWORD __CFRunLoopGetWindowsMessageQueueMask(CFRunLoopRef rl, CFStringRef mode);

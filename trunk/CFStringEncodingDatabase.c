@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  *
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -31,26 +31,17 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
-/*
- *  CFStringEncodingDatabase.c
- *  CoreFoundation
- *
- *  Created by Aki Inoue on 07/12/05.
- *  Copyright 2007-2009, Apple Inc. All rights reserved.
- *
- */
+/*	CFStringEncodingDatabase.c
+	Copyright (c) 2005-2011, Apple Inc. All rights reserved.
+	Responsibility: Aki Inoue
+*/
 
+#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include <CoreFoundation/CFStringEncodingExt.h>
-#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFStringEncodingConverterPriv.h"
 #include "CFStringEncodingDatabase.h"
 #include <stdio.h>
-
-#if DEPLOYMENT_TARGET_WINDOWS
-#define strncasecmp_l(a, b, c, d) _strnicmp(a, b, c)
-#define snprintf _snprintf
-#endif
 
 #define ISO8859CODEPAGE_BASE (28590)
 

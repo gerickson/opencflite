@@ -10,7 +10,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -33,20 +33,47 @@
  */
 
 /*	CFStorage.c
-	Copyright (c) 1999-2009, Apple Inc. All rights reserved.
-	Responsibility: Ali Ozer
-*/
+ Copyright (c) 1999-2011, Apple Inc. All rights reserved.
+ Responsibility: Ali Ozer
+ */
 
 /*
-2-3 tree storing arbitrary sized values.
+ 2-3 tree storing arbitrary sized values.
+ 
+ ??? Currently elementSize cannot be greater than storage->maxLeafCapacity, which is less than or equal to __CFStorageMaxLeafCapacity
+ 
+ CFStorage is thread-safe for multiple readers, but not thread safe for simultaneous reading and  writing.
+ */
 
-??? Currently elementSize cannot be greater than storage->maxLeafCapacity, which is less than or equal to __CFStorageMaxLeafCapacity
 
-CFStorage is thread-safe for multiple readers, but not thread safe for simultaneous reading and  writing.
-*/
+/* pammon notes on FrozenStorage
+ A CFStorage can be frozen, or more specifically, some or all of the nodes can be frozen.  Frozen nodes can be safely shared between CFStorage instances.  CFStorages containing frozen nodes are still considered mutable: frozen nodes are discarded and recreated on demand.  It is a form of copy-on-write.
+ 
+ Freezing is usually one-way: there is no going back.   However, if a node's reference count is 1, we know that no other CFStorage can reference it; and if we are in a mutating function, we know that it can be safely unfrozen.
+ 
+ If a node is frozen, all of its descendants should be considered frozen.  
+ 
+ The root node, which is defined inline within the CFStorage struct itself, can never be frozen.
+ 
+ */
 
-#include "CFStorage.h"
+#define NO_SHIFTER ((uint32_t)(-1))
+
+#include <CoreFoundation/CFStorage.h>
+#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED //|| DEPLOYMENT_TARGET_WINDOWS
+#include <dispatch/dispatch.h>
+#endif
+
+#if DEPLOYMENT_TARGET_WINDOWS
+// No C99 support
+#define restrict
+
+// Replace bzero
+#define bzero(dst, size)    ZeroMemory(dst, size)
+
+#endif
 
 #if !defined(PAGE_SIZE)
 #define PAGE_SIZE 4096
@@ -74,10 +101,10 @@ CF_INLINE int32_t roundToPage(int32_t num) {
     return (num + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
 }
 
-
+typedef const struct __CFStorage *ConstCFStorageRef;
 
 /* Each node in the storage.  isLeaf determines whether the node is a leaf node or a node inside the tree. If latter, number of children are determined by the number of non-NULL entries in child[]. (NULL entries are at the end.)
-*/
+ */
 typedef struct __CFStorageNode {
     CFIndex numBytes;	/* Number of actual bytes in this node and all its children */
     bool isLeaf;
@@ -106,7 +133,7 @@ typedef struct {
 } CFStorageAccessCacheParts;
 
 /* The CFStorage object.
-*/
+ */
 struct __CFStorage {
     CFRuntimeBase base;
     CFIndex valueSize;
@@ -131,6 +158,8 @@ static void __CFStorageAllocLeafNodeMemoryAux(CFAllocatorRef allocator, CFStorag
     __CFSpinUnlock(&(storage->cacheReaderMemoryAllocationLock));
 }
 
+/* Allocates the memory and initializes the capacity in a leaf.   This locks not for mutations (mutations are not thread-safe in general), but for lazy allocation of storage during reading.
+ */
 CF_INLINE void __CFStorageAllocLeafNodeMemory(CFAllocatorRef allocator, CFStorageRef storage, CFStorageNode *node, CFIndex cap, bool compact) {
     if (cap > PAGE_LIMIT) {
         cap = roundToPage(cap);
@@ -200,8 +229,8 @@ CF_INLINE Boolean __CFStorageGetCache(CFStorageRef storage, CFRange *cachedRange
 }
 
 /* Gets the location for the specified absolute loc from the cached info.
-   Returns NULL if the location is not in the cache.
-*/
+ Returns NULL if the location is not in the cache.
+ */
 CF_INLINE uint8_t *__CFStorageGetFromCache(CFStorageRef storage, CFIndex loc, CFRange *validConsecutiveValueRange) {
     CFRange cachedRange = {0, 0};
     CFStorageNode *cachedNode = 0;
@@ -223,13 +252,11 @@ CF_INLINE uint8_t *__CFStorageGetFromCache(CFStorageRef storage, CFIndex loc, CF
 }
 
 
-
-
 /* Returns the number of the child containing the desired value and the relative index of the value in that child.
-   forInsertion = true means that we are looking for the child in which to insert; this changes the behavior when the index is at the end of a child
-   relativeByteNum (not optional, for performance reasons) returns the relative byte number of the specified byte in the child.
-   Don't call with leaf nodes!
-*/
+ forInsertion = true means that we are looking for the child in which to insert or delete; this changes the behavior when the index is at the end of a child
+ relativeByteNum (not optional, for performance reasons) returns the relative byte number of the specified byte in the child.
+ Don't call with leaf nodes!
+ */
 CF_INLINE void __CFStorageFindChild(CFStorageNode *node, CFIndex byteNum, bool forInsertion, CFIndex *childNum, CFIndex *relativeByteNum) {
     if (forInsertion) byteNum--;	/* If for insertion, we do <= checks, not <, so this accomplishes the same thing */
     if (byteNum < node->info.notLeaf.child[0]->numBytes) *childNum = 0;
@@ -402,7 +429,7 @@ static void __CFStorageDelete(CFAllocatorRef allocator, CFStorageRef storage, CF
                         CFStorageNode *newNode = __CFStorageCreateNode(allocator, false, 0);
                         __CFAssignWithWriteBarrier((void **)&node->info.notLeaf.child[cCnt], newNode);
                         Boolean GC = CF_IS_COLLECTABLE_ALLOCATOR(allocator);
-                        if (GC) auto_zone_release(auto_zone(), newNode);
+                        if (GC) auto_zone_release(objc_collectableZone(), newNode);
                     }
                     for (cnt = 0; cnt < sCnt; cnt++) {
                         node->info.notLeaf.child[cCnt]->numBytes += gChildren[gCnt]->numBytes;
@@ -482,7 +509,7 @@ static CFStorageNode *__CFStorageInsert(CFAllocatorRef allocator, CFStorageRef s
                 if (childNum == 0) __CFAssignWithWriteBarrier((void **)&node->info.notLeaf.child[2], node->info.notLeaf.child[1]);	// Make room
                 __CFAssignWithWriteBarrier((void **)&node->info.notLeaf.child[childNum + 1], newNode);
                 Boolean GC = CF_IS_COLLECTABLE_ALLOCATOR(allocator);
-                if (GC) auto_zone_release(auto_zone(), newNode);
+                if (GC) auto_zone_release(objc_collectableZone(), newNode);
                 node->numBytes += size;
                 return NULL;
             } else {
@@ -502,7 +529,7 @@ static CFStorageNode *__CFStorageInsert(CFAllocatorRef allocator, CFStorageRef s
                     node->info.notLeaf.child[2] = NULL;
                 }
                 if (CF_IS_COLLECTABLE_ALLOCATOR(allocator)) {
-                    auto_zone_release(auto_zone(), newNode);
+                    auto_zone_release(objc_collectableZone(), newNode);
                 }
                 node->numBytes = node->info.notLeaf.child[0]->numBytes + node->info.notLeaf.child[1]->numBytes;
                 anotherNode->numBytes = anotherNode->info.notLeaf.child[0]->numBytes + anotherNode->info.notLeaf.child[1]->numBytes;
@@ -684,8 +711,8 @@ void CFStorageInsertValues(CFStorageRef storage, CFRange range) {
             __CFAssignWithWriteBarrier((void **)&storage->rootNode.info.notLeaf.child[0], tempRootNode);
             __CFAssignWithWriteBarrier((void **)&storage->rootNode.info.notLeaf.child[1], newNode);
             if (CF_IS_COLLECTABLE_ALLOCATOR(allocator)) {
-                auto_zone_release(auto_zone(), tempRootNode);
-                auto_zone_release(auto_zone(), newNode);
+                auto_zone_release(objc_collectableZone(), tempRootNode);
+                auto_zone_release(objc_collectableZone(), newNode);
             }
             storage->rootNode.info.notLeaf.child[2] = NULL;
             storage->rootNode.numBytes = tempRootNode->numBytes + newNode->numBytes;
@@ -792,7 +819,7 @@ static void __CFStorageNodeSetUnscanned(CFStorageNode *node, auto_zone_t *zone) 
 
 __private_extern__ void _CFStorageSetWeak(CFStorageRef storage) {
     storage->nodeHint = 0;
-    __CFStorageNodeSetUnscanned(&storage->rootNode, (auto_zone_t *)auto_zone());
+    __CFStorageNodeSetUnscanned(&storage->rootNode, (auto_zone_t *)objc_collectableZone());
 }
 
 #undef COPYMEM

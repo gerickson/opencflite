@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  * 
- * Copyright (c) 2010 Apple Inc. All rights reserved.
+ * Copyright (c) 2011 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -32,14 +32,16 @@
  */
 
 /*	CFUserNotification.c
-	Copyright (c) 2000-2009, Apple Inc.  All rights reserved.
-	Responsibility: Doug Davidson
+	Copyright (c) 2000-2011, Apple Inc.  All rights reserved.
+	Original Author: Doug Davidson
+	Responsibility: Kevin Perry
 */
 
 #include <CoreFoundation/CFUserNotification.h>
 #include <CoreFoundation/CFPropertyList.h>
 #include <CoreFoundation/CFNumber.h>
 #include <CoreFoundation/CFRunLoop.h>
+#include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include <CoreFoundation/CFMachPort.h>
 #include <stdlib.h>

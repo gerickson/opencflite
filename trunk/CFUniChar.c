@@ -126,11 +126,11 @@ CF_INLINE void __CFUniCharCharacterSetPath(wchar_t *wpath) {
 #elif DEPLOYMENT_TARGET_LINUX
     strlcpy(cpath, __kCFCharacterSetDir, MAXPATHLEN);
 #elif DEPLOYMENT_TARGET_WINDOWS
-    wchar_t frameworkPath[MAXPATHLEN];
+    //wchar_t frameworkPath[MAXPATHLEN];
     //_CFGetFrameworkPath(frameworkPath, MAXPATHLEN);
+    //wcsncpy(wpath, frameworkPath, MAXPATHLEN);
     wcsncpy(wpath, _CFDLLPath(), MAXPATHLEN);
-    wcsncpy(wpath, frameworkPath, MAXPATHLEN);
-    wcsncat(wpath, L"\\CoreFoundation.resources\\", MAXPATHLEN - wcslen(wpath));
+    wcsncat(wpath, L"\\CFLite.resources\\", MAXPATHLEN - wcslen(wpath));
 #else
     strlcpy(cpath, __kCFCharacterSetDir, MAXPATHLEN);
     strlcat(cpath, "/CharacterSets/", MAXPATHLEN);
@@ -473,6 +473,7 @@ bool CFUniCharIsMemberOf(UTF32Char theChar, uint32_t charset) {
 }
 
 const uint8_t *CFUniCharGetBitmapPtrForPlane(uint32_t charset, uint32_t plane) {
+
     if (NULL == __CFUniCharBitmapDataArray) __CFUniCharLoadBitmapData();
 
     charset = __CFUniCharMapCompatibilitySetID(charset);

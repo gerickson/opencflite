@@ -840,10 +840,6 @@ __private_extern__ void __CFFinalizeWindowsThreadData();
 extern void __CFStreamInitialize(void);
 extern void __CFCalendarInitialize();
 extern void __CFTimeZoneInitialize();
-#if DEPLOYMENT_TARGET_LINUX
-extern void __CFCalendarInitialize();
-extern void __CFTimeZoneInitialize();
-#endif
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 __private_extern__ uint8_t __CF120290 = false;

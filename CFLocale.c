@@ -946,21 +946,23 @@ static bool __CFLocaleCopyCollationID(CFLocaleRef locale, bool user, CFTypeRef *
 static bool __CFLocaleCopyCollatorID(CFLocaleRef locale, bool user, CFTypeRef *cf, CFStringRef context) {
     CFStringRef canonLocaleCFStr = NULL;
     if (user) {
-	CFStringRef pref = (CFStringRef)CFDictionaryGetValue(locale->_prefs, CFSTR("AppleCollationOrder"));
-	if (pref) {
-	    // Canonicalize pref string in case it's not in the canonical format.
-	    canonLocaleCFStr = CFLocaleCreateCanonicalLanguageIdentifierFromString(kCFAllocatorSystemDefault, pref);
-	} else {
-	    CFArrayRef languagesArray = (CFArrayRef)CFDictionaryGetValue(locale->_prefs, CFSTR("AppleLanguages"));
-	    if (languagesArray && (CFArrayGetTypeID() == CFGetTypeID(languagesArray))) {
-		if (0 < CFArrayGetCount(languagesArray)) {
-		    CFStringRef str = (CFStringRef)CFArrayGetValueAtIndex(languagesArray, 0);
-		    if (str && (CFStringGetTypeID() == CFGetTypeID(str))) {
-			canonLocaleCFStr = CFLocaleCreateCanonicalLanguageIdentifierFromString(kCFAllocatorSystemDefault, str);
-		    }
-		}
-	    }
-	}
+        if (locale->_prefs) { // FIXME: This OpenCFLite change has to be re-applied every major CF update!
+	        CFStringRef pref = (CFStringRef)CFDictionaryGetValue(locale->_prefs, CFSTR("AppleCollationOrder"));
+	        if (pref) {
+	            // Canonicalize pref string in case it's not in the canonical format.
+	            canonLocaleCFStr = CFLocaleCreateCanonicalLanguageIdentifierFromString(kCFAllocatorSystemDefault, pref);
+	        } else {
+	            CFArrayRef languagesArray = (CFArrayRef)CFDictionaryGetValue(locale->_prefs, CFSTR("AppleLanguages"));
+	            if (languagesArray && (CFArrayGetTypeID() == CFGetTypeID(languagesArray))) {
+		            if (0 < CFArrayGetCount(languagesArray)) {
+		                CFStringRef str = (CFStringRef)CFArrayGetValueAtIndex(languagesArray, 0);
+		                if (str && (CFStringGetTypeID() == CFGetTypeID(str))) {
+			                canonLocaleCFStr = CFLocaleCreateCanonicalLanguageIdentifierFromString(kCFAllocatorSystemDefault, str);
+		                }
+		            }
+	            }
+	        }
+        }
     }
     if (!canonLocaleCFStr) {
 	canonLocaleCFStr = CFLocaleGetIdentifier(locale);

@@ -107,7 +107,7 @@ __private_extern__ UCalendar *__CFCalendarCreateUCalendar(CFStringRef calendarID
     if (calendarID) {
 	CFDictionaryRef components = CFLocaleCreateComponentsFromLocaleIdentifier(kCFAllocatorSystemDefault, localeID);
 	CFMutableDictionaryRef mcomponents = CFDictionaryCreateMutableCopy(kCFAllocatorSystemDefault, 0, components);
-	CFDictionarySetValue(mcomponents, kCFLocaleCalendarIdentifier, calendarID);
+	CFDictionarySetValue(mcomponents, kCFLocaleCalendarIdentifierKey, calendarID);
 	localeID = CFLocaleCreateLocaleIdentifierFromComponents(kCFAllocatorSystemDefault, mcomponents);
 	CFRelease(mcomponents);
 	CFRelease(components);
@@ -146,7 +146,7 @@ static void __CFCalendarZapCal(CFCalendarRef calendar) {
 
 CFCalendarRef CFCalendarCopyCurrent(void) {
     CFLocaleRef locale = CFLocaleCopyCurrent();
-    CFCalendarRef calID = (CFCalendarRef)CFLocaleGetValue(locale, kCFLocaleCalendarIdentifier);
+    CFCalendarRef calID = (CFCalendarRef)CFLocaleGetValue(locale, kCFLocaleCalendarIdentifierKey);
     if (calID) {
         CFCalendarRef calendar = CFCalendarCreateWithIdentifier(kCFAllocatorSystemDefault, (CFStringRef)calID);
         CFCalendarSetLocale(calendar, locale);
@@ -161,15 +161,15 @@ CFCalendarRef CFCalendarCreateWithIdentifier(CFAllocatorRef allocator, CFStringR
     __CFGenericValidateType(allocator, CFAllocatorGetTypeID());
     __CFGenericValidateType(identifier, CFStringGetTypeID());
     // return NULL until Chinese calendar is available
-    if (identifier != kCFGregorianCalendar && identifier != kCFBuddhistCalendar && identifier != kCFJapaneseCalendar && identifier != kCFIslamicCalendar && identifier != kCFIslamicCivilCalendar && identifier != kCFHebrewCalendar) {
-//    if (identifier != kCFGregorianCalendar && identifier != kCFBuddhistCalendar && identifier != kCFJapaneseCalendar && identifier != kCFIslamicCalendar && identifier != kCFIslamicCivilCalendar && identifier != kCFHebrewCalendar && identifier != kCFChineseCalendar) {
-	if (CFEqual(kCFGregorianCalendar, identifier)) identifier = kCFGregorianCalendar;
-	else if (CFEqual(kCFBuddhistCalendar, identifier)) identifier = kCFBuddhistCalendar;
-	else if (CFEqual(kCFJapaneseCalendar, identifier)) identifier = kCFJapaneseCalendar;
-	else if (CFEqual(kCFIslamicCalendar, identifier)) identifier = kCFIslamicCalendar;
-	else if (CFEqual(kCFIslamicCivilCalendar, identifier)) identifier = kCFIslamicCivilCalendar;
-	else if (CFEqual(kCFHebrewCalendar, identifier)) identifier = kCFHebrewCalendar;
-//	else if (CFEqual(kCFChineseCalendar, identifier)) identifier = kCFChineseCalendar;
+    if (identifier != kCFCalendarIdentifierGregorian && identifier != kCFCalendarIdentifierBuddhist && identifier != kCFCalendarIdentifierJapanese && identifier != kCFCalendarIdentifierIslamic && identifier != kCFCalendarIdentifierIslamicCivil && identifier != kCFCalendarIdentifierHebrew) {
+//    if (identifier != kCFCalendarIdentifierGregorian && identifier != kCFCalendarIdentifierBuddhist && identifier != kCFCalendarIdentifierJapanese && identifier != kCFCalendarIdentifierIslamic && identifier != kCFCalendarIdentifierIslamicCivil && identifier != kCFCalendarIdentifierHebrew && identifier != kCFCalendarIdentifierChinese) {
+	if (CFEqual(kCFCalendarIdentifierGregorian, identifier)) identifier = kCFCalendarIdentifierGregorian;
+	else if (CFEqual(kCFCalendarIdentifierBuddhist, identifier)) identifier = kCFCalendarIdentifierBuddhist;
+	else if (CFEqual(kCFCalendarIdentifierJapanese, identifier)) identifier = kCFCalendarIdentifierJapanese;
+	else if (CFEqual(kCFCalendarIdentifierIslamic, identifier)) identifier = kCFCalendarIdentifierIslamic;
+	else if (CFEqual(kCFCalendarIdentifierIslamicCivil, identifier)) identifier = kCFCalendarIdentifierIslamicCivil;
+	else if (CFEqual(kCFCalendarIdentifierHebrew, identifier)) identifier = kCFCalendarIdentifierHebrew;
+//	else if (CFEqual(kCFCalendarIdentifierChinese, identifier)) identifier = kCFCalendarIdentifierChinese;
 	else return NULL;
     }
     struct __CFCalendar *calendar = NULL;

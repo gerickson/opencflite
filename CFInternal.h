@@ -224,9 +224,6 @@ enum {
 	__CFTSDKeyAutoreleaseData2 = 61,
 	__CFTSDKeyAutoreleaseData1 = 62,
 	__CFTSDKeyExceptionData = 63,
-#if DEPLOYMENT_TARGET_WINDOWS
-	__CFTSDKeyMessageHook = 64,
-#endif
 };
 
 #define __kCFAllocatorTypeID_CONST	2

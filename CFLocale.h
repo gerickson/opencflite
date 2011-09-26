@@ -141,14 +141,14 @@ CFDictionaryRef CFLocaleCreateComponentsFromLocaleIdentifier(CFAllocatorRef allo
 	// will correspond to constants where available.
 	// Example: "en_US@calendar=japanese" yields a dictionary with three
 	// entries: kCFLocaleLanguageCode=en, kCFLocaleCountryCode=US, and
-	// kCFLocaleCalendarIdentifier=kCFJapaneseCalendar.
+	// kCFLocaleCalendarIdentifierKey=kCFCalendarIdentifierJapanese.
 
 CF_EXPORT
 CFStringRef CFLocaleCreateLocaleIdentifierFromComponents(CFAllocatorRef allocator, CFDictionaryRef dictionary);
 	// Reverses the actions of CFLocaleCreateDictionaryFromLocaleIdentifier,
 	// creating a single string from the data in the dictionary. The
 	// dictionary {kCFLocaleLanguageCode=en, kCFLocaleCountryCode=US,
-	// kCFLocaleCalendarIdentifier=kCFJapaneseCalendar} becomes
+	// kCFLocaleCalendarIdentifierKey=kCFCalendarIdentifierJapanese} becomes
 	// "en_US@calendar=japanese".
 
 CF_EXPORT
@@ -189,7 +189,7 @@ CF_EXPORT const CFStringRef kCFLocaleScriptCode;
 CF_EXPORT const CFStringRef kCFLocaleVariantCode;
 
 CF_EXPORT const CFStringRef kCFLocaleExemplarCharacterSet;
-CF_EXPORT const CFStringRef kCFLocaleCalendarIdentifier;
+CF_EXPORT const CFStringRef kCFLocaleCalendarIdentifierKey;
 CF_EXPORT const CFStringRef kCFLocaleCalendar;
 CF_EXPORT const CFStringRef kCFLocaleCollationIdentifier;
 CF_EXPORT const CFStringRef kCFLocaleUsesMetricSystem;
@@ -204,18 +204,18 @@ CF_EXPORT const CFStringRef kCFLocaleQuotationEndDelimiterKey CF_AVAILABLE(10_6,
 CF_EXPORT const CFStringRef kCFLocaleAlternateQuotationBeginDelimiterKey CF_AVAILABLE(10_6, 4_0);
 CF_EXPORT const CFStringRef kCFLocaleAlternateQuotationEndDelimiterKey CF_AVAILABLE(10_6, 4_0);
 
-// Values for kCFLocaleCalendarIdentifier
-CF_EXPORT const CFStringRef kCFGregorianCalendar;
-CF_EXPORT const CFStringRef kCFBuddhistCalendar;
-CF_EXPORT const CFStringRef kCFChineseCalendar;
-CF_EXPORT const CFStringRef kCFHebrewCalendar;
-CF_EXPORT const CFStringRef kCFIslamicCalendar;
-CF_EXPORT const CFStringRef kCFIslamicCivilCalendar;
-CF_EXPORT const CFStringRef kCFJapaneseCalendar;
-CF_EXPORT const CFStringRef kCFRepublicOfChinaCalendar CF_AVAILABLE(10_6, 4_0);
-CF_EXPORT const CFStringRef kCFPersianCalendar CF_AVAILABLE(10_6, 4_0);
-CF_EXPORT const CFStringRef kCFIndianCalendar CF_AVAILABLE(10_6, 4_0);
-CF_EXPORT const CFStringRef kCFISO8601Calendar CF_AVAILABLE(10_6, 4_0);
+// Values for kCFLocaleCalendarIdentifierKey
+CF_EXPORT const CFStringRef kCFCalendarIdentifierGregorian;
+CF_EXPORT const CFStringRef kCFCalendarIdentifierBuddhist;
+CF_EXPORT const CFStringRef kCFCalendarIdentifierChinese;
+CF_EXPORT const CFStringRef kCFCalendarIdentifierHebrew;
+CF_EXPORT const CFStringRef kCFCalendarIdentifierIslamic;
+CF_EXPORT const CFStringRef kCFCalendarIdentifierIslamicCivil;
+CF_EXPORT const CFStringRef kCFCalendarIdentifierJapanese;
+CF_EXPORT const CFStringRef kCFCalendarIdentifierRepublicOfChina CF_AVAILABLE(10_6, 4_0);
+CF_EXPORT const CFStringRef kCFCalendarIdentifierPersian CF_AVAILABLE(10_6, 4_0);
+CF_EXPORT const CFStringRef kCFCalendarIdentifierIndian CF_AVAILABLE(10_6, 4_0);
+CF_EXPORT const CFStringRef kCFCalendarIdentifierISO8601 CF_AVAILABLE(10_6, 4_0);
 
 CF_EXTERN_C_END
 

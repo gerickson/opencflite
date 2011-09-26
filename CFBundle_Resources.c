@@ -43,10 +43,6 @@
 #define READ_DIRECTORIES 1
 #elif DEPLOYMENT_TARGET_WINDOWS
 #define READ_DIRECTORIES 0
-//#if DEPLOYMENT_TARGET_WINDOWS && !defined(__GNUC__)
-//#include "compat/dirent.h"
-//#define  READ_DIRECTORIES 1
-//#endif
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif

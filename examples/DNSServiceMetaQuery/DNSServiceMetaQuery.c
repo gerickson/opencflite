@@ -8,6 +8,9 @@
  * source control system for the project at https://sourceforge.net/svn/?group_id=246198.
  *
  */
+/*****
+ ** NOTE: You must have the Bonjour SDK installed to build/run this example.
+ *****/
 /*
     File:  DNSServiceMetaQuery.c
     

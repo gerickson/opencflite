@@ -179,14 +179,6 @@
 	<References>
 	</References>
 	<Files>
-		<Filter
-			Name="My Inspector Results"
-			>
-			<File
-				RelativePath=".\My Inspector Results\r000mi4\r000mi4.insp"
-				>
-			</File>
-		</Filter>
 		<File
 			RelativePath=".\CFRunLoopTimerExample.c"
 			>

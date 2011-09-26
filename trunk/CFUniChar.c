@@ -473,7 +473,6 @@ bool CFUniCharIsMemberOf(UTF32Char theChar, uint32_t charset) {
 }
 
 const uint8_t *CFUniCharGetBitmapPtrForPlane(uint32_t charset, uint32_t plane) {
-
     if (NULL == __CFUniCharBitmapDataArray) __CFUniCharLoadBitmapData();
 
     charset = __CFUniCharMapCompatibilitySetID(charset);

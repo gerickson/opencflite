@@ -55,7 +55,4 @@ __private_extern__ CFIndex __CFStringEncodingICUByteLength(const char *icuName, 
 // The caller is responsible for freeing the memory (use CFAllocatorDeallocate)
 __private_extern__ CFStringEncoding *__CFStringEncodingCreateICUEncodings(CFAllocatorRef allocator, CFIndex *numberOfIndex);
 
-#if DEPLOYMENT_TARGET_WINDOWS
-__private_extern__ void __CFStringEncodingICUThreadDataCleaner(void *context);
-#endif
 

@@ -51,24 +51,10 @@
 #include <sys/time.h>
 #include <unistd.h>
 #elif DEPLOYMENT_TARGET_WINDOWS
-#define lseek _lseek
-#define open _open
-#define read _read
-#define write _write
-#define close _close
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
 
-// On Unix, you can schedule an fd with the RunLoop by creating a CFSocket around it.  On Win32
-// files and sockets are not interchangeable, and we do cheapo scheduling, where the file is
-// always readable and writable until we hit EOF (similar to the way CFData streams are scheduled).
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-#define REAL_FILE_SCHEDULING (1)
-#elif DEPLOYMENT_TARGET_WINDOWS
-#else
-#error Unknown or unspecified DEPLOYMENT_TARGET
-#endif
 
 #define SCHEDULE_AFTER_WRITE  (0)
 #define SCHEDULE_AFTER_READ   (1)
@@ -98,10 +84,11 @@ CONST_STRING_DECL(kCFStreamPropertyFileCurrentOffset, "kCFStreamPropertyFileCurr
 
 
 #ifdef REAL_FILE_SCHEDULING
+extern void _CFFileDescriptorInduceFakeReadCallBack(CFFileDescriptorRef);
 static void fileCallBack(CFFileDescriptorRef f, CFOptionFlags callBackTypes, void *info);
 
 static void constructCFFD(_CFFileStreamContext *fileStream, Boolean forRead, struct _CFStream *stream) {
-    CFFileDescriptorContext context = {0, stream, NULL, NULL, (void*)CFCopyDescription};
+    CFFileDescriptorContext context = {0, stream, NULL, NULL, (void *)CFCopyDescription};
     CFFileDescriptorRef cffd = CFFileDescriptorCreate(CFGetAllocator(stream), fileStream->fd, false, fileCallBack, &context);
     CFFileDescriptorEnableCallBacks(cffd, forRead ? kCFFileDescriptorReadCallBack : kCFFileDescriptorWriteCallBack);
     if (fileStream->rlInfo.rlArray) {

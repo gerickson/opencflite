@@ -75,6 +75,14 @@ CFAbsoluteTime _CFAbsoluteTimeFromFileTime(const FILETIME *ft) {
     /* seconds between 1601 and 1970, 1970 and 2001 */
     return ret;
 }
+
+__private_extern__ LONGLONG __CFTSRToFiletime(int64_t tsr) {
+    //FILETIME tsrAsFT;
+    //tsrAsFT.dwHighDateTime = (DWORD)(tsr >> 32);
+    //tsrAsFT.dwLowDateTime = (DWORD)(tsr & 0xFFFFFFFF);
+    LONGLONG tsrAsFT = static_cast<LONGLONG>(tsr); // Aren't these the same thing?
+    return tsrAsFT;
+}
 #endif
 
 #if DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD

@@ -67,7 +67,6 @@ CFData read/write routines
 #include <fcntl.h>
 #include <errno.h>
 #include <ctype.h>
-#define chmod _chmod
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif

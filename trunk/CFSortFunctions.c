@@ -225,6 +225,8 @@ static void __CFSimpleMergeSort(VALUE_TYPE listp[], INDEX_TYPE cnt, VALUE_TYPE t
 #endif
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+// Excluded from linux for dispatch dependency
+
 // if !right, put the cnt1 smallest values in tmp, else put the cnt2 largest values in tmp
 static void __CFSortIndexesNMerge(VALUE_TYPE listp1[], INDEX_TYPE cnt1, VALUE_TYPE listp2[], INDEX_TYPE cnt2, VALUE_TYPE tmp[], size_t right, COMPARATOR_BLOCK cmp) {
     // if the last element of listp1 <= the first of listp2, lists are already ordered

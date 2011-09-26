@@ -95,23 +95,17 @@ CF_EXTERN_C_BEGIN
 #include <CoreFoundation/CFString.h>
 #include <CoreFoundation/CFDate.h>
 #include <CoreFoundation/CFArray.h>
-#include <CoreFoundation/CFRunLoop.h>
-#include <CoreFoundation/CFStorage.h>
 #include <CoreFoundation/CFLogUtilities.h>
 #include <CoreFoundation/CFRuntime.h>
 #include <limits.h>
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 #include <xlocale.h>
-#include <libkern/OSAtomic.h>
-#include <mach/mach_time.h>
-#include <mach/mach.h>
 #include <unistd.h>
 #endif
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #include <sys/time.h>
 #include <pthread.h>
 #include <signal.h>
-#include <unistd.h>
 #endif
 #if DEPLOYMENT_TARGET_WINDOWS
 #include <pthread.h>
@@ -134,17 +128,18 @@ CF_EXTERN_C_BEGIN
 CF_EXPORT const char *_CFProcessName(void);
 CF_EXPORT CFStringRef _CFProcessNameString(void);
 
-CF_EXPORT Boolean _CFIsCFM(void);
-
 CF_EXPORT Boolean _CFGetCurrentDirectory(char *path, int maxlen);
-
-CF_EXPORT CFStringRef _CFGetUserName(void);
 
 CF_EXPORT CFArrayRef _CFGetWindowsBinaryDirectories(void);
 
 CF_EXPORT CFStringRef _CFStringCreateHostName(void);
 
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#include <CoreFoundation/CFRunLoop.h>
 CF_EXPORT void _CFMachPortInstallNotifyPort(CFRunLoopRef rl, CFStringRef mode);
+#endif
+
+__private_extern__ CFIndex __CFActiveProcessorCount();
 
 #if defined(__ppc__) || defined(__ppc64__) || defined(__powerpc__)
     #define HALT do {asm __volatile__("trap"); kill(getpid(), 9); } while (0)
@@ -234,10 +229,6 @@ enum {
 #endif
 };
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-extern int pthread_key_init_np(int, void (*)(void *));
-#endif
-
 #define __kCFAllocatorTypeID_CONST	2
 
 CF_INLINE CFAllocatorRef __CFGetDefaultAllocator(void) {
@@ -247,8 +238,6 @@ CF_INLINE CFAllocatorRef __CFGetDefaultAllocator(void) {
     }
     return allocator;
 }
-
-extern CFTypeID __CFGenericTypeID(const void *cf);
 
 
 #if !defined(LLONG_MAX)

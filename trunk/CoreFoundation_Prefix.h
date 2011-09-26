@@ -124,8 +124,10 @@ typedef int		boolean_t;
 #endif
 
 #if DEPLOYMENT_TARGET_LINUX
-
+    
 #define __private_extern__
+#define __strong
+#define __weak
 
 #define strtod_l(a,b,locale) strtod(a,b)
 #define strtoul_l(a,b,c,locale) strtoul(a,b,c)

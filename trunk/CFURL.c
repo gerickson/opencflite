@@ -3781,7 +3781,7 @@ CFURLRef CFURLCreateWithFileSystemPath(CFAllocatorRef allocator, CFStringRef fil
             isAbsolute = (len > 0 && CFStringGetCharacterAtIndex(filePath, 0) == '/');
             break;
         case kCFURLWindowsPathStyle:
-            isAbsolute = (len >= 3 && CFStringGetCharacterAtIndex(filePath, 1) == ':' && CFStringGetCharacterAtIndex(filePath, 2) == '\\');
+            isAbsolute = (len >= 3 && CFStringGetCharacterAtIndex(filePath, 1) == ':' && (CFStringGetCharacterAtIndex(filePath, 2) == '\\' || CFStringGetCharacterAtIndex(filePath, 2) == '/'));
 	    /* Absolute path under Win32 can begin with "\\"
 	     * (Sergey Zubarev)
 	     */
@@ -3819,7 +3819,7 @@ CF_EXPORT CFURLRef CFURLCreateWithFileSystemPathRelativeToBase(CFAllocatorRef al
             pathDelim = '/';
             break;
         case kCFURLWindowsPathStyle: 
-            isAbsolute = (len >= 3 && CFStringGetCharacterAtIndex(filePath, 1) == ':' && CFStringGetCharacterAtIndex(filePath, 2) == '\\');
+            isAbsolute = (len >= 3 && CFStringGetCharacterAtIndex(filePath, 1) == ':' && (CFStringGetCharacterAtIndex(filePath, 2) == '\\' || CFStringGetCharacterAtIndex(filePath, 2) == '/'));
 	    /* Absolute path under Win32 can begin with "\\"
 	     * (Sergey Zubarev)
 	     */

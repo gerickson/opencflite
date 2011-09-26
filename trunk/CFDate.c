@@ -90,6 +90,7 @@ __private_extern__ LONGLONG __CFTSRToFiletime(int64_t tsr) {
 uint64_t mach_absolute_time () {
     CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
     return __CFTimeIntervalToTSR((CFTimeInterval)now);
+    //return ((uint64_t)(now * 1000000000.0));
 }
 #endif
 

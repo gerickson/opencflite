@@ -57,6 +57,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #elif DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+#include <CoreFoundation/CFNumberFormatter.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>

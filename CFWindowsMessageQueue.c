@@ -42,8 +42,8 @@
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 
-extern DWORD __CFRunLoopGetWindowsMessageQueueMask(CFRunLoopRef rl, CFStringRef mode);
-extern void __CFRunLoopSetWindowsMessageQueueMask(CFRunLoopRef rl, DWORD mask, CFStringRef mode);
+extern uint32_t _CFRunLoopGetWindowsMessageQueueMask(CFRunLoopRef rl, CFStringRef mode);
+extern void _CFRunLoopSetWindowsMessageQueueMask(CFRunLoopRef rl, uint32_t mask, CFStringRef mode);
 
 struct __CFWindowsMessageQueue {
     CFRuntimeBase _base;
@@ -196,9 +196,9 @@ static void __CFWindowsMessageQueueSchedule(void *info, CFRunLoopRef rl, CFStrin
     if (__CFWindowsMessageQueueIsValid(wmq)) {
 	uint32_t mask;
 	CFArrayAppendValue(wmq->_runLoops, rl);
-	mask = __CFRunLoopGetWindowsMessageQueueMask(rl, mode);
+	mask = _CFRunLoopGetWindowsMessageQueueMask(rl, mode);
 	mask |= wmq->_mask;
-	__CFRunLoopSetWindowsMessageQueueMask(rl, mask, mode);
+	_CFRunLoopSetWindowsMessageQueueMask(rl, mask, mode);
     }
     __CFWindowsMessageQueueUnlock(wmq);
 }

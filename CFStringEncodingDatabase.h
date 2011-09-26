@@ -40,8 +40,6 @@
  *
  */
 
-#pragma once
-
 #include <CoreFoundation/CFString.h>
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 

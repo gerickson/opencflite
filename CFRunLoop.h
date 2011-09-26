@@ -144,7 +144,7 @@ typedef struct {
     sem_t *	(*getPort)(void *info);
     void	(*perform)(void *info);
 #else
-    void*	(*getPort)(void *info);
+    void *	(*getPort)(void *info);
     void	(*perform)(void *info);
 #endif
 } CFRunLoopSourceContext1;

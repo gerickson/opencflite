@@ -51,7 +51,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "objcrt", "objc4\objcrt\objc
 		{B3408263-0CF1-47BE-83CC-56070EFC9BC1} = {B3408263-0CF1-47BE-83CC-56070EFC9BC1}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BundleExample", "examples\BundleExample\BundleExample.vcproj", "{4E98FDA7-54AE-4A8E-847A-86651EF6BBE1}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BundleExample", "examples\BundleExample\BundleExample_vs2005.vcproj", "{4E98FDA7-54AE-4A8E-847A-86651EF6BBE1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

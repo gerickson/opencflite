@@ -20,6 +20,29 @@
 
 #include <CoreFoundation/CoreFoundation.h>
 
+// This function will print the provided arguments (printf style varargs) out to the console.
+// Note that the CFString formatting function accepts "%@" as a way to display CF types.
+// For types other than CFString and CFNumber, the result of %@ is mostly for debugging
+// and can differ between releases and different platforms.
+void show(CFStringRef formatString, ...) {
+    CFStringRef resultString;
+    CFDataRef data;
+    va_list argList;
+
+    va_start(argList, formatString);
+    resultString = CFStringCreateWithFormatAndArguments(NULL, NULL, formatString, argList);
+    va_end(argList);
+
+    data = CFStringCreateExternalRepresentation(NULL, resultString, CFStringGetSystemEncoding(), '?');
+
+    if (data != NULL) {
+        printf ("%.*s\n\n", (int)CFDataGetLength(data), CFDataGetBytePtr(data));
+        CFRelease(data);
+    }
+
+    CFRelease(resultString);
+}
+
 static void readPropertyListFromFile (const char *path) {
     CFDataRef data = NULL;
 		
@@ -49,8 +72,7 @@ static void readPropertyListFromFile (const char *path) {
     if (data != NULL) {
         CFPropertyListRef propertyList = CFPropertyListCreateFromXMLData (NULL, data, kCFPropertyListImmutable, NULL);
 
-        CFShow (CFSTR ("Property list (as read from file):"));
-        CFShow (propertyList);
+        show (CFSTR ("Property list (as read from file):\n%@"), propertyList);
 
 		CFRelease(data);
     }

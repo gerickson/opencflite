@@ -27,6 +27,29 @@ int main (int argc, const char * argv[]) {
     return 0;
 }
 
+// This function will print the provided arguments (printf style varargs) out to the console.
+// Note that the CFString formatting function accepts "%@" as a way to display CF types.
+// For types other than CFString and CFNumber, the result of %@ is mostly for debugging
+// and can differ between releases and different platforms.
+void show(CFStringRef formatString, ...) {
+    CFStringRef resultString;
+    CFDataRef data;
+    va_list argList;
+
+    va_start(argList, formatString);
+    resultString = CFStringCreateWithFormatAndArguments(NULL, NULL, formatString, argList);
+    va_end(argList);
+
+    data = CFStringCreateExternalRepresentation(NULL, resultString, CFStringGetSystemEncoding(), '?');
+
+    if (data != NULL) {
+        printf ("%.*s\n\n", (int)CFDataGetLength(data), CFDataGetBytePtr(data));
+        CFRelease(data);
+    }
+
+    CFRelease(resultString);
+}
+
 void propertyListExample (void) {
     CFMutableDictionaryRef dict;
     CFNumberRef num;
@@ -70,8 +93,7 @@ void propertyListExample (void) {
 
     // We now have a dictionary which contains everything we want to know about
     // John Doe; let's show it first:
-    CFShow (CFSTR ("John Doe info dictionary: "));
-    CFShow (dict);
+    show (CFSTR ("John Doe info dictionary:\n%@"), dict);
 
     // Now create a "property list", which is a flattened, XML version of the
     // dictionary:
@@ -79,8 +101,7 @@ void propertyListExample (void) {
 
    // The return value is a CFData containing the XML file; show the data
 
-    CFShow (CFSTR ("Shown as XML property list (bytes): "));
-    CFShow (xmlPropertyListData);
+    show (CFSTR ("Shown as XML property list (bytes):\n%@"), xmlPropertyListData);
 
     // Given CFDatas are shown as ASCII versions of their hex contents, we can also
     // attempt to show the contents of the XML, assuming it was encoded in UTF8
@@ -88,8 +109,7 @@ void propertyListExample (void) {
 
     xmlAsString = CFStringCreateFromExternalRepresentation (NULL, xmlPropertyListData, kCFStringEncodingUTF8);
 
-    CFShow (CFSTR ("The XML property list contents: "));
-    CFShow (xmlAsString);
+    show (CFSTR ("The XML property list contents:\n%@"), xmlAsString);
 
     writePropertyListToFile (xmlPropertyListData);
 
@@ -105,8 +125,7 @@ void propertyListExample (void) {
 
     int value = 1;
     CFNumberRef numRef = CFNumberCreate(0, kCFNumberSInt8Type, &value);
-    CFShow (CFSTR ("The number was: "));
-    CFShow (numRef);
+    show (CFSTR ("The number was: %@"), numRef);
     CFRelease (numRef);
 }
 
@@ -124,8 +143,7 @@ void writePropertyListToFile (CFDataRef data) {
 
         Boolean isOpen = CFWriteStreamOpen (stream);
 
-        CFShow (CFSTR ("Property list (as written to file):"));
-        CFShow (propertyList);
+        show (CFSTR ("Property list (as written to file):\n%@"), propertyList);
   
         CFIndex bytesWritten = CFPropertyListWriteToStream (propertyList, stream, kCFPropertyListXMLFormat_v1_0, NULL);
 

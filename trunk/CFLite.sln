@@ -49,6 +49,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "objcrt", "objc4\objcrt\objc
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BundleExample", "examples\BundleExample\BundleExample.vcproj", "{4E98FDA7-54AE-4A8E-847A-86651EF6BBE1}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PLConvertExample", "examples\PLConvertExample\PLConvertExample.vcproj", "{9DF7218C-AE33-4387-B6F9-5728AE3C7F6E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{EC99198F-4CDD-4D85-AE6F-F837FF6CC372} = {EC99198F-4CDD-4D85-AE6F-F837FF6CC372}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -116,6 +121,12 @@ Global
 		{4E98FDA7-54AE-4A8E-847A-86651EF6BBE1}.DebugDLL|Win32.Build.0 = Debug|Win32
 		{4E98FDA7-54AE-4A8E-847A-86651EF6BBE1}.Release|Win32.ActiveCfg = Release|Win32
 		{4E98FDA7-54AE-4A8E-847A-86651EF6BBE1}.Release|Win32.Build.0 = Release|Win32
+		{9DF7218C-AE33-4387-B6F9-5728AE3C7F6E}.Debug|Win32.ActiveCfg = Debug|Win32
+		{9DF7218C-AE33-4387-B6F9-5728AE3C7F6E}.Debug|Win32.Build.0 = Debug|Win32
+		{9DF7218C-AE33-4387-B6F9-5728AE3C7F6E}.DebugDLL|Win32.ActiveCfg = Debug|Win32
+		{9DF7218C-AE33-4387-B6F9-5728AE3C7F6E}.DebugDLL|Win32.Build.0 = Debug|Win32
+		{9DF7218C-AE33-4387-B6F9-5728AE3C7F6E}.Release|Win32.ActiveCfg = Release|Win32
+		{9DF7218C-AE33-4387-B6F9-5728AE3C7F6E}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -129,5 +140,6 @@ Global
 		{B5F7F4D9-DCA9-4CCD-8776-D2EAF45E4BE9} = {60C062B2-DAC0-4361-9D92-9654183AFD72}
 		{6EC2C74D-B79D-4B8D-B14B-94ED3F08EB28} = {60C062B2-DAC0-4361-9D92-9654183AFD72}
 		{4E98FDA7-54AE-4A8E-847A-86651EF6BBE1} = {60C062B2-DAC0-4361-9D92-9654183AFD72}
+		{9DF7218C-AE33-4387-B6F9-5728AE3C7F6E} = {60C062B2-DAC0-4361-9D92-9654183AFD72}
 	EndGlobalSection
 EndGlobal

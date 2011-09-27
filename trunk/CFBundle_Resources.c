@@ -57,6 +57,7 @@
 #include <CoreFoundation/CFLocale.h>
 #include <CoreFoundation/CFPreferences.h>
 #include <string.h>
+#include <CoreFoundation/ForFoundationOnly.h>
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include <CoreFoundation/CFPriv.h>
@@ -357,7 +358,11 @@ static CFArrayRef _CFBundleCopySortedDirectoryContentsAtPath(CFStringRef path, _
         }
         if (tryToOpen && (dirp = opendir(cpathBuff))) {
             while ((dent = readdir(dirp))) {
+#if DEPLOYMENT_TARGET_LINUX
+                CFIndex nameLen = strlen(dent->d_name);
+#else
                 CFIndex nameLen = dent->d_namlen;
+#endif
                 if (0 == nameLen || 0 == dent->d_fileno || ('.' == dent->d_name[0] && (1 == nameLen || (2 == nameLen && '.' == dent->d_name[1]) || '_' == dent->d_name[1]))) continue;
                 name = CFStringCreateWithFileSystemRepresentation(kCFAllocatorSystemDefault, dent->d_name);
                 if (name) {
@@ -721,6 +726,7 @@ static void _CFSearchBundleDirectory(CFAllocatorRef alloc, CFMutableArrayRef res
 }
 
 #if READ_DIRECTORIES
+#if __BLOCKS__
 static void _CFSearchBundleDirectoryWithPredicate(CFAllocatorRef alloc, CFMutableArrayRef result, UniChar *pathUniChars, CFIndex dirPathLen, Boolean (^predicate)(CFStringRef filename, Boolean *stop), CFMutableStringRef cheapStr, CFMutableStringRef tmpString, Boolean *stopLooking, uint8_t version) {
 
     // pathUniChars is the full path to the directory we are searching.
@@ -806,6 +812,7 @@ static void _CFSearchBundleDirectoryWithPredicate(CFAllocatorRef alloc, CFMutabl
     CFRelease(directoryContents);
     CFRelease(unknownContents);
 }
+#endif
 #endif
 
 #if _BLOCKS
@@ -1168,6 +1175,8 @@ CF_EXPORT CFStringRef CFBundleCopyLocalizedString(CFBundleRef bundle, CFStringRe
     CFRelease(stringTable);
     return result;
 }
+
+__private_extern__ CFArrayRef _CFBundleCopyLanguageSearchListInDirectory(CFAllocatorRef alloc, CFURLRef url, uint8_t *version); 
 
 CF_EXPORT CFURLRef CFBundleCopyResourceURLInDirectory(CFURLRef bundleURL, CFStringRef resourceName, CFStringRef resourceType, CFStringRef subDirName) {
     CFURLRef result = NULL;

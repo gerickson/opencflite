@@ -57,7 +57,7 @@
 #include <CoreFoundation/CFMachPort.h>
 #endif
 
-#if (TARGET_OS_MAC && !(TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)) || (TARGET_OS_EMBEDDED || TARGET_OS_IPHONE) || TARGET_OS_WIN32
+#if (TARGET_OS_MAC && !(TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)) || (TARGET_OS_EMBEDDED || TARGET_OS_IPHONE) || TARGET_OS_WIN32 || TARGET_OS_LINUX
 #include <CoreFoundation/CFRunLoop.h>
 #include <CoreFoundation/CFSocket.h>
 #include <CoreFoundation/CFBundlePriv.h>

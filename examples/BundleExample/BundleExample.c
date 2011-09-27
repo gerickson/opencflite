@@ -159,7 +159,8 @@ static void dumpBundleContents(CFBundleRef bundleRef) {
 }
 
 #if defined(WIN32)
-static char* safariBundlePath = "C:\\Program Files (x86)\\Safari\\Safari.resources";
+static char* safariBundlePath64 = "C:\\Program Files (x86)\\Safari\\Safari.resources";
+static char* safariBundlePath = "C:\\Program Files\\Safari\\Safari.resources";
 #endif
 
 int main () {   
@@ -204,21 +205,29 @@ int main () {
     printf("3. Safari Bundle:\n");
     // Try inspecting Safari.
     safariPathRef = CFURLCreateFromFileSystemRepresentation (kCFAllocatorDefault, safariBundlePath, (CFIndex)strlen (safariBundlePath), false); 
-    assert (safariPathRef);
-    if (!safariPathRef)
-    {
+    if (!safariPathRef) {
         show(CFSTR("CFURLCreateFromFileSystemRepresentation() failed."));
         return -2;
     }
-    show(CFSTR("Safari Path: %@"), safariPathRef);
+    show(CFSTR("Try Safari Path (32-bit OS): %@"), safariPathRef);
 
     safariBundleRef = CFBundleCreate (kCFAllocatorDefault, safariPathRef);
     CFRelease(safariPathRef);
-    assert (safariBundleRef);
     if (!safariBundleRef)
     {
-        show(CFSTR("CFURLCreateFromFileSystemRepresentation() failed."));
-        return -2;
+        safariPathRef = CFURLCreateFromFileSystemRepresentation (kCFAllocatorDefault, safariBundlePath64, (CFIndex)strlen (safariBundlePath64), false); 
+        show(CFSTR("Try Safari Path (64-bit OS): %@"), safariPathRef);
+        if (!safariPathRef) {
+            show(CFSTR("CFURLCreateFromFileSystemRepresentation() failed."));
+            return -3;
+        }
+        safariBundleRef = CFBundleCreate (kCFAllocatorDefault, safariPathRef);
+        CFRelease(safariPathRef);
+    }
+
+    if (!safariBundleRef) {
+        show(CFSTR("Unable to find Safari binary."));
+        return -4;
     }
 
     dumpBundleContents(safariBundleRef);

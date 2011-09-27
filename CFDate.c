@@ -77,10 +77,13 @@ CFAbsoluteTime _CFAbsoluteTimeFromFileTime(const FILETIME *ft) {
 }
 
 __private_extern__ LONGLONG __CFTSRToFiletime(int64_t tsr) {
-    //FILETIME tsrAsFT;
-    //tsrAsFT.dwHighDateTime = (DWORD)(tsr >> 32);
-    //tsrAsFT.dwLowDateTime = (DWORD)(tsr & 0xFFFFFFFF);
-    LONGLONG tsrAsFT = static_cast<LONGLONG>(tsr); // Aren't these the same thing?
+    CFTimeInterval timeInSecondsSince01Jan2001 = __CFTSRToTimeInterval (tsr); // Time in seconds
+
+    /*  seconds between 1601 and 1970 : 11644473600,
+     *  seconds between 1970 and 2001 : 978307200,
+     *  FILETIME - number of 100-nanosecond intervals since January 1, 1601
+     */
+    LONGLONG tsrAsFT = (LONGLONG)(timeInSecondsSince01Jan2001+11644473600LL+978307200)*10000000;
     return tsrAsFT;
 }
 #endif
@@ -90,7 +93,6 @@ __private_extern__ LONGLONG __CFTSRToFiletime(int64_t tsr) {
 uint64_t mach_absolute_time () {
     CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
     return __CFTimeIntervalToTSR((CFTimeInterval)now);
-    //return ((uint64_t)(now * 1000000000.0));
 }
 #endif
 

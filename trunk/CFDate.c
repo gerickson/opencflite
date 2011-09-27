@@ -62,6 +62,7 @@
 
 const CFTimeInterval kCFAbsoluteTimeIntervalSince1970 = 978307200.0L;
 const CFTimeInterval kCFAbsoluteTimeIntervalSince1904 = 3061152000.0L;
+const CFTimeInterval kCFAbsoluteTimeIntervalFrom1601To1970 = 11644473600.0L;
 
 __private_extern__ double __CFTSRRate = 0.0;
 static double __CF1_TSRRate = 0.0;
@@ -71,20 +72,17 @@ static double __CF1_TSRRate = 0.0;
 CFAbsoluteTime _CFAbsoluteTimeFromFileTime(const FILETIME *ft) {
     CFAbsoluteTime ret = (CFTimeInterval)ft->dwHighDateTime * 429.49672960;
     ret += (CFTimeInterval)ft->dwLowDateTime / 10000000.0;
-    ret -= (11644473600.0 + kCFAbsoluteTimeIntervalSince1970);
-    /* seconds between 1601 and 1970, 1970 and 2001 */
-    return ret;
+    ret -= (kCFAbsoluteTimeIntervalFrom1601To1970 + kCFAbsoluteTimeIntervalSince1970);
+
+    return ret; // Seconds since 1-Jan-2001
 }
 
 __private_extern__ LONGLONG __CFTSRToFiletime(int64_t tsr) {
     CFTimeInterval timeInSecondsSince01Jan2001 = __CFTSRToTimeInterval (tsr); // Time in seconds
 
-    /*  seconds between 1601 and 1970 : 11644473600,
-     *  seconds between 1970 and 2001 : 978307200,
-     *  FILETIME - number of 100-nanosecond intervals since January 1, 1601
-     */
-    LONGLONG tsrAsFT = (LONGLONG)(timeInSecondsSince01Jan2001+11644473600LL+978307200)*10000000;
-    return tsrAsFT;
+    LONGLONG tsrAsFT = (LONGLONG)(kCFAbsoluteTimeIntervalFrom1601To1970 + kCFAbsoluteTimeIntervalSince1970 +
+                                  timeInSecondsSince01Jan2001) * 10000000LL;
+    return tsrAsFT; /* 100-nanosecond intervals since 1-Jan-1601 */
 }
 #endif
 

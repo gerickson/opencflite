@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 9.00
-# Visual Studio 2005
+# Visual C++ Express 2005
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{60C062B2-DAC0-4361-9D92-9654183AFD72}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WritePListExample", "examples\WritePListExample\WritePListExample_vs2005.vcproj", "{AD525151-D756-44E6-AEA7-12052F4F43E2}"
@@ -25,8 +25,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AllocatorExample", "example
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CFLite", "windows\CFLiteLib_vs2005.vcproj", "{EC99198F-4CDD-4D85-AE6F-F837FF6CC372}"
 	ProjectSection(ProjectDependencies) = postProject
-		{B3408263-0CF1-47BE-83CC-56070EFC9BC1} = {B3408263-0CF1-47BE-83CC-56070EFC9BC1}
 		{E38C1996-8B3D-4050-A4B2-DC85957B047D} = {E38C1996-8B3D-4050-A4B2-DC85957B047D}
+		{B3408263-0CF1-47BE-83CC-56070EFC9BC1} = {B3408263-0CF1-47BE-83CC-56070EFC9BC1}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DisplayURL", "examples\DisplayURL\DisplayURL_vs2005.vcproj", "{6816B34F-DE8C-48EC-8F31-11176DA5FE11}"
@@ -52,6 +52,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "objcrt", "objc4\objcrt\objc
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BundleExample", "examples\BundleExample\BundleExample_vs2005.vcproj", "{4E98FDA7-54AE-4A8E-847A-86651EF6BBE1}"
+	ProjectSection(ProjectDependencies) = postProject
+		{EC99198F-4CDD-4D85-AE6F-F837FF6CC372} = {EC99198F-4CDD-4D85-AE6F-F837FF6CC372}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

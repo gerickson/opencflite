@@ -100,12 +100,12 @@ CF_EXTERN_C_BEGIN
 #include <limits.h>
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 #include <xlocale.h>
-#include <unistd.h>
 #endif
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #include <sys/time.h>
 #include <pthread.h>
 #include <signal.h>
+#include <unistd.h>
 #endif
 #if DEPLOYMENT_TARGET_WINDOWS
 #include <pthread.h>

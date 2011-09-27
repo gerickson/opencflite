@@ -1979,7 +1979,7 @@ static CFURLRef _CFBundleCopyExecutableURLRaw(CFURLRef urlPath, CFStringRef exeN
     }
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     if (!executableURL) {
-        executableURL = CFURLCreateWithFileSystemPathRelativeToBase(kCFAllocatorSystemDefault,, exeName, kCFURLPOSIXPathStyle, false, urlPath);
+        executableURL = CFURLCreateWithFileSystemPathRelativeToBase(kCFAllocatorSystemDefault, exeName, kCFURLPOSIXPathStyle, false, urlPath);
         if (executableURL && !_urlExists(executableURL)) {
             CFRelease(executableURL);
             executableURL = NULL;

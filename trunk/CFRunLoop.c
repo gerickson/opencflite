@@ -72,6 +72,7 @@ typedef void* dispatch_source_t ;
 #include <pthread.h>
 #include <semaphore.h>
 
+typedef void* dispatch_source_t ;
 #endif
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
@@ -286,6 +287,7 @@ CF_INLINE void __CFPortFree(__CFPort port) {
 typedef sem_t * __CFPort;
 #define CFPORT_NULL NULL
 #define MAX_PORTS 16
+#define MAXIMUM_WAIT_OBJECTS MAX_PORTS
 
 CF_INLINE __CFPort __CFPortAllocate(void) {
 	__CFPort port = CFPORT_NULL;
@@ -343,7 +345,7 @@ static __CFPort *__CFPortSetGetPorts(__CFPortSet portSet, __CFPort *portBuf, uin
     __CFSpinLock(&(portSet->lock));
     __CFPort *result = portBuf;
     if (bufSize < portSet->used)
-	result = (__CFPort *)CFAllocatorAllocate(kCFAllocatorSystemDefault, portSet->used * sizeof(HANDLE), 0);
+	result = (__CFPort *)CFAllocatorAllocate(kCFAllocatorSystemDefault, portSet->used * sizeof(__CFPort), 0);
     if (portSet->used > 1) {
 	// rotate the ports to vaguely simulate round-robin behaviour
 	uint16_t lastPort = portSet->used - 1;
@@ -466,8 +468,9 @@ struct __CFRunLoopMode {
     CFIndex _observerMask;
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
     mach_port_t _timerPort;
-#endif
-#if DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_LINUX
+    sem_t* _timerPort;
+#elif DEPLOYMENT_TARGET_WINDOWS
     HANDLE _timerPort;
     DWORD _msgQMask;
     void (*_msgPump)(void);
@@ -1827,6 +1830,8 @@ static void __CFRepositionTimerInMode(CFRunLoopModeRef rlm, CFRunLoopTimerRef rl
         fireTSR = (fireTSR / tenus + 1) * tenus;
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
         mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
+#elif DEPLOYMENT_TARGET_LINUX
+        // Implement Me!
 #elif DEPLOYMENT_TARGET_WINDOWS
         LARGE_INTEGER dueTime;
         dueTime.QuadPart = __CFTSRToFiletime(fireTSR);
@@ -1874,6 +1879,8 @@ static Boolean __CFRunLoopDoTimer(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLo
             fireTSR = (fireTSR / tenus + 1) * tenus;
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
             mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
+#elif DEPLOYMENT_TARGET_LINUX
+            // Implement me!
 #elif DEPLOYMENT_TARGET_WINDOWS
             LARGE_INTEGER dueTime;
             dueTime.QuadPart = __CFTSRToFiletime(fireTSR);
@@ -1924,6 +1931,8 @@ static Boolean __CFRunLoopDoTimer(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLo
                 fireTSR = (fireTSR / tenus + 1) * tenus;
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
                 mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
+#elif DEPLOYMENT_TARGET_LINUX
+                // Implement Me!
 #else
                 LARGE_INTEGER dueTime;
                 dueTime.QuadPart = __CFTSRToFiletime(fireTSR);
@@ -2153,6 +2162,9 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
 #define MACH_PORT_NULL 0
 #define mach_port_name_t HANDLE
 #define _dispatch_get_main_queue_port_4CF _dispatch_get_main_queue_handle_4CF
+#elif DEPLOYMENT_TARGET_LINUX
+#define MACH_PORT_NULL 0
+#define mach_port_name_t sem_t*
 #else
 #error Unknown deployment target - CFRunLoop not functional
 #endif
@@ -2213,6 +2225,8 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
 #elif DEPLOYMENT_TARGET_WINDOWS
         HANDLE livePort = NULL;
         Boolean windowsMessageReceived = false;
+#elif DEPLOYMENT_TARGET_LINUX
+        sem_t* livePort = NULL;
 #endif
 	__CFPortSet waitSet = rlm->_portSet;
 
@@ -2992,6 +3006,8 @@ void CFRunLoopRemoveTimer(CFRunLoopRef rl, CFRunLoopTimerRef rlt, CFStringRef mo
 		    fireTSR = (fireTSR / tenus + 1) * tenus;
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 		    mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
+#elif DEPLOYMENT_TARGET_LINUX
+                    // Implement Me!
 #elif DEPLOYMENT_TARGET_WINDOWS
                     LARGE_INTEGER dueTime;
                     dueTime.QuadPart = __CFTSRToFiletime(fireTSR);

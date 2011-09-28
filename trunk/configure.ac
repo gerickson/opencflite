@@ -706,12 +706,14 @@ compat/Makefile
 tests/Makefile
 examples/Makefile
 examples/Allocator/Makefile
+examples/BundleExample/Makefile
 examples/CFLocalServer/Makefile
 examples/CFMessagePort/Makefile
 examples/CFRunLoopTimerExample/Makefile
 examples/CFTest/Makefile
 examples/DisplayURL/Makefile
 examples/DNSServiceMetaQuery/Makefile
+examples/PLConvertExample/Makefile
 examples/ReadPListExample/Makefile
 examples/SimpleWebServer/Makefile
 examples/StringExample/Makefile

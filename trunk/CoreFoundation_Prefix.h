@@ -284,8 +284,6 @@ CF_INLINE size_t malloc_size(void *memblock) {
     return _msize(memblock);
 }
 
-extern uint64_t mach_absolute_time (); // Implemented in CFDate.c
-
 #define strtod_l(a,b,locale) strtod(a,b)
 #define strtoul_l(a,b,c,locale) strtoul(a,b,c)
 #define strtol_l(a,b,c,locale) strtol(a,b,c)
@@ -334,6 +332,8 @@ CF_EXPORT int64_t OSAtomicAdd64Barrier( int64_t __theAmount, volatile int64_t *_
 #endif
 
 #if DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_WINDOWS
+
+extern uint64_t mach_absolute_time (); // Implemented in CFDate.c
 
 #include <stdarg.h>
 

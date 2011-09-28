@@ -1380,11 +1380,7 @@ static CFBundleRef _CFBundleCreate(CFAllocatorRef allocator, CFURLRef bundleURL,
     bundle->_plugInData._instanceCount = 0;
     bundle->_plugInData._factories = NULL;
 
-#if DEPLOYMENT_TARGET_LINUX
-    CF_SPIN_LOCK_INIT_FOR_STRUCTS (bundle->_bundleLoadingLock);
-#else
     bundle->_bundleLoadingLock = CFSpinLockInit;
-#endif
     
     CFBundleGetInfoDictionary(bundle);
     

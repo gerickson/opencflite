@@ -7,6 +7,8 @@
 #if !defined(__COREFOUNDATION_CFNOTIFICATIONCENTER__)
 #define __COREFOUNDATION_CFNOTIFICATIONCENTER__ 1
 
+#include <CoreFoundation/CoreFoundation_Prefix.h>
+#include "CFInternal.h"
 #include <CoreFoundation/CFBase.h>
 #include <CoreFoundation/CFDictionary.h>
 
@@ -26,11 +28,11 @@ typedef CFIndex CFNotificationSuspensionBehavior;
 
 CF_EXPORT CFTypeID CFNotificationCenterGetTypeID(void);
 
-CF_EXPORT CFNotificationCenterRef CFNotificationCenterGetLocalCenter(void) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER;
+CF_EXPORT CFNotificationCenterRef CFNotificationCenterGetLocalCenter(void) CF_AVAILABLE(10_4, 3_0);
 
 CF_EXPORT CFNotificationCenterRef CFNotificationCenterGetDistributedCenter(void);
 
-CF_EXPORT CFNotificationCenterRef CFNotificationCenterGetDarwinNotifyCenter(void) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER;
+CF_EXPORT CFNotificationCenterRef CFNotificationCenterGetDarwinNotifyCenter(void) CF_AVAILABLE(10_4, 3_0);
 
 CF_EXPORT void CFNotificationCenterAddObserver(CFNotificationCenterRef center, const void *observer, CFNotificationCallback callBack, CFStringRef name, const void *object, CFNotificationSuspensionBehavior suspensionBehavior);
 
@@ -46,7 +48,7 @@ enum {
     kCFNotificationPostToAllSessions = (1 << 1)
 };
 
-void CFNotificationCenterPostNotificationWithOptions(CFNotificationCenterRef center, CFStringRef name, const void *object, CFDictionaryRef userInfo, CFOptionFlags options) AVAILABLE_MAC_OS_X_VERSION_10_3_AND_LATER;
+void CFNotificationCenterPostNotificationWithOptions(CFNotificationCenterRef center, CFStringRef name, const void *object, CFDictionaryRef userInfo, CFOptionFlags options) CF_AVAILABLE(10_3, 3_0);
 
 #endif
 

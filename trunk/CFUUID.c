@@ -280,11 +280,11 @@ static CFUUIDRef __CFUUIDCreateWithBytesPrimitive(CFAllocatorRef allocator, CFUU
     });
 #else
     __CFSpinLock(&_uniquedUUIDsLock);
-    __CFUUID *uuid = (__CFUUID *)__CFUUIDGetUniquedUUIDHasLock(&bytes);
+    struct __CFUUID *uuid = (struct __CFUUID *)__CFUUIDGetUniquedUUIDHasLock(&bytes);
     if (!uuid) {
         size_t size;
-        size = sizeof(__CFUUID) - sizeof(CFRuntimeBase);
-        uuid = (__CFUUID *)_CFRuntimeCreateInstance(kCFUseCollectableAllocator ? kCFAllocatorSystemDefault : allocator, __kCFUUIDTypeID, (CFIndex)size, NULL);
+        size = sizeof(struct __CFUUID) - sizeof(CFRuntimeBase);
+        uuid = (struct __CFUUID *)_CFRuntimeCreateInstance(kCFUseCollectableAllocator ? kCFAllocatorSystemDefault : allocator, __kCFUUIDTypeID, (CFIndex)size, NULL);
 
         if (!uuid) return NULL;
 

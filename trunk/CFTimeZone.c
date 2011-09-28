@@ -102,7 +102,8 @@ static void __InitTZStrings(void);
 
 #if DEPLOYMENT_TARGET_LINUX
 // Symbol aliases
-CF_EXPORT CFStringRef const kCFDateFormatterTimeZone __attribute__((weak, alias ("kCFDateFormatterTimeZoneKey")));
+//CF_EXPORT CFStringRef const kCFDateFormatterTimeZone __attribute__((weak, alias ("kCFDateFormatterTimeZoneKey")));
+extern CFStringRef const kCFDateFormatterTimeZoneKey; // __attribute__((weak, alias ("kCFDateFormatterTimeZoneKey")));
 #elif DEPLOYMENT_TARGET_WINDOWS
 CONST_STRING_DECL(kCFDateFormatterTimeZone, "kCFDateFormatterTimeZoneKey")
 #endif

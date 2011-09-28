@@ -122,6 +122,7 @@ am__objects_1 = libCoreFoundation_la-CFApplicationPreferences.lo \
 	libCoreFoundation_la-CFFileUtilities.lo \
 	libCoreFoundation_la-CFLocaleIdentifier.lo \
 	libCoreFoundation_la-CFLocale.lo \
+	libCoreFoundation_la-CFLocaleKeys.lo \
 	libCoreFoundation_la-CFMachPort.lo \
 	libCoreFoundation_la-CFMessagePort.lo \
 	libCoreFoundation_la-CFNotificationCenter.lo \
@@ -178,16 +179,16 @@ am__libCoreFoundation_debug_la_SOURCES_DIST =  \
 	CFCalendar.c CFCharacterSet.c CFConcreteStreams.c CFData.c \
 	CFDateFormatter.c CFDate.c CFDictionary.c CFError.c \
 	CFFileDescriptor.c CFFileUtilities.c CFLocaleIdentifier.c \
-	CFLocale.c CFMachPort.c CFMessagePort.c CFNotificationCenter.c \
-	CFNumberFormatter.c CFNumber.c CFPlatform.c CFPlugIn_Factory.c \
-	CFPlugIn_Instance.c CFPlugIn.c CFPlugIn_PlugIn.c \
-	CFPreferences.c CFPropertyList.c CFRunLoop.c CFRuntime.c \
-	CFSet.c CFSocket.c CFSocketStream.c CFSortFunctions.c \
-	CFStorage.c CFStream.c CFStringEncodingConverter.c \
-	CFStringEncodings.c CFString.c CFStringScanner.c \
-	CFStringUtilities.c CFSystemDirectories.c CFTimeZone.c \
-	CFTree.c CFURL.c CFURLAccess.c CFUUID.c CFUniChar.c \
-	CFUnicodeDecomposition.c CFUnicodePrecomposition.c \
+	CFLocale.c CFLocaleKeys.c CFMachPort.c CFMessagePort.c \
+	CFNotificationCenter.c CFNumberFormatter.c CFNumber.c \
+	CFPlatform.c CFPlugIn_Factory.c CFPlugIn_Instance.c CFPlugIn.c \
+	CFPlugIn_PlugIn.c CFPreferences.c CFPropertyList.c CFRunLoop.c \
+	CFRuntime.c CFSet.c CFSocket.c CFSocketStream.c \
+	CFSortFunctions.c CFStorage.c CFStream.c \
+	CFStringEncodingConverter.c CFStringEncodings.c CFString.c \
+	CFStringScanner.c CFStringUtilities.c CFSystemDirectories.c \
+	CFTimeZone.c CFTree.c CFURL.c CFURLAccess.c CFUUID.c \
+	CFUniChar.c CFUnicodeDecomposition.c CFUnicodePrecomposition.c \
 	CFUserNotification.c CFUtilities.c CFVersion.c \
 	CFWindowsMessageQueue.c CFXMLInputStream.c CFXMLNode.c \
 	CFXMLParser.c CFXMLPreferencesDomain.c CFXMLTree.c
@@ -214,6 +215,7 @@ am__objects_2 =  \
 	libCoreFoundation_debug_la-CFFileUtilities.lo \
 	libCoreFoundation_debug_la-CFLocaleIdentifier.lo \
 	libCoreFoundation_debug_la-CFLocale.lo \
+	libCoreFoundation_debug_la-CFLocaleKeys.lo \
 	libCoreFoundation_debug_la-CFMachPort.lo \
 	libCoreFoundation_debug_la-CFMessagePort.lo \
 	libCoreFoundation_debug_la-CFNotificationCenter.lo \
@@ -276,16 +278,16 @@ am__libCoreFoundation_profile_la_SOURCES_DIST =  \
 	CFCalendar.c CFCharacterSet.c CFConcreteStreams.c CFData.c \
 	CFDateFormatter.c CFDate.c CFDictionary.c CFError.c \
 	CFFileDescriptor.c CFFileUtilities.c CFLocaleIdentifier.c \
-	CFLocale.c CFMachPort.c CFMessagePort.c CFNotificationCenter.c \
-	CFNumberFormatter.c CFNumber.c CFPlatform.c CFPlugIn_Factory.c \
-	CFPlugIn_Instance.c CFPlugIn.c CFPlugIn_PlugIn.c \
-	CFPreferences.c CFPropertyList.c CFRunLoop.c CFRuntime.c \
-	CFSet.c CFSocket.c CFSocketStream.c CFSortFunctions.c \
-	CFStorage.c CFStream.c CFStringEncodingConverter.c \
-	CFStringEncodings.c CFString.c CFStringScanner.c \
-	CFStringUtilities.c CFSystemDirectories.c CFTimeZone.c \
-	CFTree.c CFURL.c CFURLAccess.c CFUUID.c CFUniChar.c \
-	CFUnicodeDecomposition.c CFUnicodePrecomposition.c \
+	CFLocale.c CFLocaleKeys.c CFMachPort.c CFMessagePort.c \
+	CFNotificationCenter.c CFNumberFormatter.c CFNumber.c \
+	CFPlatform.c CFPlugIn_Factory.c CFPlugIn_Instance.c CFPlugIn.c \
+	CFPlugIn_PlugIn.c CFPreferences.c CFPropertyList.c CFRunLoop.c \
+	CFRuntime.c CFSet.c CFSocket.c CFSocketStream.c \
+	CFSortFunctions.c CFStorage.c CFStream.c \
+	CFStringEncodingConverter.c CFStringEncodings.c CFString.c \
+	CFStringScanner.c CFStringUtilities.c CFSystemDirectories.c \
+	CFTimeZone.c CFTree.c CFURL.c CFURLAccess.c CFUUID.c \
+	CFUniChar.c CFUnicodeDecomposition.c CFUnicodePrecomposition.c \
 	CFUserNotification.c CFUtilities.c CFVersion.c \
 	CFWindowsMessageQueue.c CFXMLInputStream.c CFXMLNode.c \
 	CFXMLParser.c CFXMLPreferencesDomain.c CFXMLTree.c
@@ -312,6 +314,7 @@ am__objects_3 =  \
 	libCoreFoundation_profile_la-CFFileUtilities.lo \
 	libCoreFoundation_profile_la-CFLocaleIdentifier.lo \
 	libCoreFoundation_profile_la-CFLocale.lo \
+	libCoreFoundation_profile_la-CFLocaleKeys.lo \
 	libCoreFoundation_profile_la-CFMachPort.lo \
 	libCoreFoundation_profile_la-CFMessagePort.lo \
 	libCoreFoundation_profile_la-CFNotificationCenter.lo \
@@ -452,7 +455,7 @@ CFLAGS = -pthread -g -O2 -Wall -pipe -Wno-trigraphs -Wno-parentheses -fexception
 CF_VERSION_INFO = 550:1:0
 CMP = /usr/bin/cmp
 CPP = gcc -E
-CPPFLAGS = -I./include  -I/usr/include/uuid   -D_REENTRANT  -I/usr/include  -DDEPLOYMENT_TARGET_LINUX=1 -DTARGET_OS_LINUX
+CPPFLAGS = -I./include  -I/usr/include/uuid   -D_REENTRANT  -I/usr/include  -DDEPLOYMENT_TARGET_LINUX=1 
 CXX = g++
 CXXCPP = g++ -E
 CXXDEPMODE = depmode=gcc3
@@ -605,7 +608,9 @@ CF_COMMON_CPPFLAGS = $(AM_CPPFLAGS)			\
 				  -DU_SHOW_DRAFT_API=1			\
 				  -DCF_BUILDING_CF=1			\
 				  -D__kCFCharacterSetDir=\"${libCoreFoundation_la_datadir}\" \
-				  -DMAC_OS_X_VERSION_MAX_ALLOWED=MAC_OS_X_VERSION_10_5	\
+				  -DMAC_OS_X_VERSION_MAX_ALLOWED=MAC_OS_X_VERSION_10_7	\
+				  -DTARGET_OS_LINUX			\
+				  -DDEPLOYMENT_TARGET_LINUX		\
 				  -I$(top_srcdir)/include		\
 				  -I$(top_srcdir)/include/mach_support
 
@@ -618,7 +623,6 @@ noinst_HEADERS = auto_stubs.h				\
 				  CFBundle_BinaryTypes.h		\
 				  CFBundle_Internal.h			\
 				  CFInternal.h				\
-				  CFRunLoopPriv.h			\
 				  CFUniCharPriv.h			\
 				  CFWindowsMessageQueue.h		\
 				  CFXMLInputStream.h
@@ -706,6 +710,7 @@ CF_COMMON_SOURCES = CFApplicationPreferences.c		\
 				  CFFileUtilities.c			\
 				  CFLocaleIdentifier.c			\
 				  CFLocale.c				\
+				  CFLocaleKeys.c				\
 				  CFMachPort.c				\
 				  CFMessagePort.c			\
 				  CFNotificationCenter.c		\
@@ -1028,6 +1033,7 @@ include ./$(DEPDIR)/libCoreFoundation_debug_la-CFFileDescriptor.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFFileUtilities.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFLocale.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFLocaleIdentifier.Plo
+include ./$(DEPDIR)/libCoreFoundation_debug_la-CFLocaleKeys.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFMachPort.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFMessagePort.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFNotificationCenter.Plo
@@ -1093,6 +1099,7 @@ include ./$(DEPDIR)/libCoreFoundation_la-CFFileDescriptor.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFFileUtilities.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFLocale.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFLocaleIdentifier.Plo
+include ./$(DEPDIR)/libCoreFoundation_la-CFLocaleKeys.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFMachPort.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFMessagePort.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFNotificationCenter.Plo
@@ -1158,6 +1165,7 @@ include ./$(DEPDIR)/libCoreFoundation_profile_la-CFFileDescriptor.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFFileUtilities.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFLocale.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFLocaleIdentifier.Plo
+include ./$(DEPDIR)/libCoreFoundation_profile_la-CFLocaleKeys.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFMachPort.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFMessagePort.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFNotificationCenter.Plo
@@ -1376,6 +1384,13 @@ libCoreFoundation_la-CFLocale.lo: CFLocale.c
 #	source='CFLocale.c' object='libCoreFoundation_la-CFLocale.lo' libtool=yes \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_la-CFLocale.lo `test -f 'CFLocale.c' || echo '$(srcdir)/'`CFLocale.c
+
+libCoreFoundation_la-CFLocaleKeys.lo: CFLocaleKeys.c
+	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_la-CFLocaleKeys.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_la-CFLocaleKeys.Tpo -c -o libCoreFoundation_la-CFLocaleKeys.lo `test -f 'CFLocaleKeys.c' || echo '$(srcdir)/'`CFLocaleKeys.c
+	$(am__mv) $(DEPDIR)/libCoreFoundation_la-CFLocaleKeys.Tpo $(DEPDIR)/libCoreFoundation_la-CFLocaleKeys.Plo
+#	source='CFLocaleKeys.c' object='libCoreFoundation_la-CFLocaleKeys.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_la-CFLocaleKeys.lo `test -f 'CFLocaleKeys.c' || echo '$(srcdir)/'`CFLocaleKeys.c
 
 libCoreFoundation_la-CFMachPort.lo: CFMachPort.c
 	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_la-CFMachPort.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_la-CFMachPort.Tpo -c -o libCoreFoundation_la-CFMachPort.lo `test -f 'CFMachPort.c' || echo '$(srcdir)/'`CFMachPort.c
@@ -1832,6 +1847,13 @@ libCoreFoundation_debug_la-CFLocale.lo: CFLocale.c
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_debug_la-CFLocale.lo `test -f 'CFLocale.c' || echo '$(srcdir)/'`CFLocale.c
 
+libCoreFoundation_debug_la-CFLocaleKeys.lo: CFLocaleKeys.c
+	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_debug_la-CFLocaleKeys.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_debug_la-CFLocaleKeys.Tpo -c -o libCoreFoundation_debug_la-CFLocaleKeys.lo `test -f 'CFLocaleKeys.c' || echo '$(srcdir)/'`CFLocaleKeys.c
+	$(am__mv) $(DEPDIR)/libCoreFoundation_debug_la-CFLocaleKeys.Tpo $(DEPDIR)/libCoreFoundation_debug_la-CFLocaleKeys.Plo
+#	source='CFLocaleKeys.c' object='libCoreFoundation_debug_la-CFLocaleKeys.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_debug_la-CFLocaleKeys.lo `test -f 'CFLocaleKeys.c' || echo '$(srcdir)/'`CFLocaleKeys.c
+
 libCoreFoundation_debug_la-CFMachPort.lo: CFMachPort.c
 	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_debug_la-CFMachPort.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_debug_la-CFMachPort.Tpo -c -o libCoreFoundation_debug_la-CFMachPort.lo `test -f 'CFMachPort.c' || echo '$(srcdir)/'`CFMachPort.c
 	$(am__mv) $(DEPDIR)/libCoreFoundation_debug_la-CFMachPort.Tpo $(DEPDIR)/libCoreFoundation_debug_la-CFMachPort.Plo
@@ -2286,6 +2308,13 @@ libCoreFoundation_profile_la-CFLocale.lo: CFLocale.c
 #	source='CFLocale.c' object='libCoreFoundation_profile_la-CFLocale.lo' libtool=yes \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_profile_la-CFLocale.lo `test -f 'CFLocale.c' || echo '$(srcdir)/'`CFLocale.c
+
+libCoreFoundation_profile_la-CFLocaleKeys.lo: CFLocaleKeys.c
+	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_profile_la-CFLocaleKeys.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_profile_la-CFLocaleKeys.Tpo -c -o libCoreFoundation_profile_la-CFLocaleKeys.lo `test -f 'CFLocaleKeys.c' || echo '$(srcdir)/'`CFLocaleKeys.c
+	$(am__mv) $(DEPDIR)/libCoreFoundation_profile_la-CFLocaleKeys.Tpo $(DEPDIR)/libCoreFoundation_profile_la-CFLocaleKeys.Plo
+#	source='CFLocaleKeys.c' object='libCoreFoundation_profile_la-CFLocaleKeys.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_profile_la-CFLocaleKeys.lo `test -f 'CFLocaleKeys.c' || echo '$(srcdir)/'`CFLocaleKeys.c
 
 libCoreFoundation_profile_la-CFMachPort.lo: CFMachPort.c
 	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_profile_la-CFMachPort.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_profile_la-CFMachPort.Tpo -c -o libCoreFoundation_profile_la-CFMachPort.lo `test -f 'CFMachPort.c' || echo '$(srcdir)/'`CFMachPort.c

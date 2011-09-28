@@ -797,7 +797,7 @@ static bool __CFLocaleCopyICUKeyword(CFLocaleRef locale, bool user, CFTypeRef *c
 }
 
 static bool __CFLocaleCopyICUCalendarID(CFLocaleRef locale, bool user, CFTypeRef *cf, CFStringRef context, const char *keyword) {
-#if (U_ICU_VERSION_MAJOR_NUM >= 4) && (U_ICU_VERSION_MINOR_NUM >= 6) 
+#if (U_ICU_VERSION_MAJOR_NUM >= 4) && (U_ICU_VERSION_MINOR_NUM >= 2) 
     char localeID[ULOC_FULLNAME_CAPACITY+ULOC_KEYWORD_AND_VALUES_CAPACITY];
     if (CFStringGetCString(locale->_identifier, localeID, sizeof(localeID)/sizeof(char), kCFStringEncodingASCII)) {
         UErrorCode icuStatus = U_ZERO_ERROR;

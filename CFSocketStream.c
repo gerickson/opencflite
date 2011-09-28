@@ -74,6 +74,7 @@ CONST_STRING_DECL(kCFStreamSocketSecurityLevelNegotiatedSSL, "kCFStreamSocketSec
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 #elif DEPLOYMENT_TARGET_WINDOWS
 typedef void (*CF_SOCKET_STREAM_PAIR)(CFAllocatorRef, CFStringRef, UInt32, CFSocketNativeHandle, const CFSocketSignature*, CFReadStreamRef*, CFWriteStreamRef*);
+#elif DEPLOYMENT_TARGET_LINUX
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
@@ -120,6 +121,7 @@ static struct {
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 #elif DEPLOYMENT_TARGET_WINDOWS
     HMODULE	image;
+#elif DEPLOYMENT_TARGET_LINUX
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
@@ -130,6 +132,7 @@ static struct {
     CFSpinLockInit,
     0x0,
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#elif DEPLOYMENT_TARGET_LINUX
 #elif DEPLOYMENT_TARGET_WINDOWS
     NULL,
 #else

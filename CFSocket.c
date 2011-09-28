@@ -968,6 +968,19 @@ Boolean __CFSocketGetBytesAvailable(CFSocketRef s, CFIndex* ctBytesAvailable) {
 #include <sys/un.h>
 #include <libc.h>
 #include <dlfcn.h>
+#elif DEPLOYMENT_TARGET_LINUX
+#include <fcntl.h>
+#include <linux/ioctl.h>
+#include <asm/ioctls.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/sysctl.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/select.h>
+#include <unistd.h>
+#include <dlfcn.h>
 #endif
 #include <CoreFoundation/CFArray.h>
 #include <CoreFoundation/CFData.h>
@@ -1012,6 +1025,10 @@ void gettimeofday(struct timeval *tp, void *tzp) {
 
 #endif // DEPLOYMENT_TARGET_WINDOWS
 
+#if DEPLOYMENT_TARGET_LINUX
+#define NBBY 8
+#define INVALID_SOCKET -1
+#endif
 
 // On Mach we use a v0 RunLoopSource to make client callbacks.  That source is signalled by a
 // separate SocketManager thread who uses select() to watch the sockets' fds.
@@ -1931,7 +1948,11 @@ __attribute__ ((noreturn))	// mostly interesting for shutting up a warning
 #endif /* __GNUC__ */
 static void __CFSocketManager(void * arg)
 {
+#if DEPLOYMENT_TARGET_LINUX
+    pthread_setname_np(pthread_self(), "com.apple.CFSocket.private");
+#else
     pthread_setname_np("com.apple.CFSocket.private");
+#endif
     if (objc_collectingEnabled()) objc_registerThreadWithCollector();
     SInt32 nrfds, maxnrfds, fdentries = 1;
     SInt32 rfds, wfds;

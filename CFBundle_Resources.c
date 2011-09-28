@@ -2231,11 +2231,17 @@ static Boolean _isValidPlatformAndProductSuffixPair(CFStringRef platform, CFStri
 
 static Boolean _isBlacklistedKey(CFStringRef keyName) {
 #define _CFBundleNumberOfBlacklistedInfoDictionaryKeys 2
+#if defined(__CONSTANT_CFSTRINGS__)
     static const CFStringRef _CFBundleBlacklistedInfoDictionaryKeys[_CFBundleNumberOfBlacklistedInfoDictionaryKeys] = { CFSTR("CFBundleExecutable"), CFSTR("CFBundleIdentifier") };
-    
+
     for (CFIndex idx = 0; idx < _CFBundleNumberOfBlacklistedInfoDictionaryKeys; idx++) {
         if (CFEqual(keyName, _CFBundleBlacklistedInfoDictionaryKeys[idx])) return true;
     }
+#else
+    if (CFEqual(keyName, CFSTR("CFBundleExecutable"))) return true;
+    if (CFEqual(keyName, CFSTR("CFBundleIdentifier"))) return true;
+#endif
+ 
     return false;
 }
 

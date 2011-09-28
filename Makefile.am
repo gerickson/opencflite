@@ -36,7 +36,9 @@ CF_COMMON_CPPFLAGS		= $(AM_CPPFLAGS)			\
 				  -DU_SHOW_DRAFT_API=1			\
 				  -DCF_BUILDING_CF=1			\
 				  -D__kCFCharacterSetDir=\"${libCoreFoundation_la_datadir}\" \
-				  -DMAC_OS_X_VERSION_MAX_ALLOWED=MAC_OS_X_VERSION_10_5	\
+				  -DMAC_OS_X_VERSION_MAX_ALLOWED=MAC_OS_X_VERSION_10_7	\
+				  -DTARGET_OS_LINUX			\
+				  -DDEPLOYMENT_TARGET_LINUX		\
 				  -I$(top_srcdir)/include		\
 				  -I$(top_srcdir)/include/mach_support
 
@@ -51,7 +53,6 @@ noinst_HEADERS			= auto_stubs.h				\
 				  CFBundle_BinaryTypes.h		\
 				  CFBundle_Internal.h			\
 				  CFInternal.h				\
-				  CFRunLoopPriv.h			\
 				  CFUniCharPriv.h			\
 				  CFWindowsMessageQueue.h		\
 				  CFXMLInputStream.h
@@ -140,6 +141,7 @@ CF_COMMON_SOURCES		= CFApplicationPreferences.c		\
 				  CFFileUtilities.c			\
 				  CFLocaleIdentifier.c			\
 				  CFLocale.c				\
+				  CFLocaleKeys.c				\
 				  CFMachPort.c				\
 				  CFMessagePort.c			\
 				  CFNotificationCenter.c		\

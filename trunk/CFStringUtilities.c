@@ -41,8 +41,8 @@
 #include <CoreFoundation/CFStringEncodingConverterExt.h>
 #include <CoreFoundation/CFUniChar.h>
 #include <CoreFoundation/CFStringEncodingExt.h>
-#include "CFStringEncodingDatabase.h"
-#include "CFICUConverters.h"
+#include <CoreFoundation/CFStringEncodingDatabase.h>
+#include <CoreFoundation/CFICUConverters.h>
 #include <CoreFoundation/CFPreferences.h>
 #include <limits.h>
 #include <stdlib.h>

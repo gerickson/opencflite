@@ -39,7 +39,7 @@
 #include "CFStreamInternal.h"
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
-#include <CoreFoundation/CFPriv.h>
+#include "CFPriv.h"
 #include <CoreFoundation/CFNumber.h>
 #include <sys/types.h>
 #include <stdlib.h>
@@ -51,6 +51,10 @@
 #include <sys/time.h>
 #include <unistd.h>
 #elif DEPLOYMENT_TARGET_WINDOWS
+#define lseek _lseek
+#define read _read
+#define write _write
+#define close _close
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif

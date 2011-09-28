@@ -37,11 +37,11 @@
 	Responsibility: Tony Parker
 */
 
-#include <CoreFoundation/CFPriv.h>
+#include "CFPriv.h"
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include "CFLocaleInternal.h"
-#include <CoreFoundation/CFPriv.h>
+#include "CFPriv.h"
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS
 #include <CoreFoundation/CFBundle.h>
 #endif
@@ -51,6 +51,9 @@
 #include <CoreFoundation/CFCalendar.h>
 #if DEPLOYMENT_TARGET_WINDOWS
 #include <process.h>
+
+#define getpid _getpid
+
 #endif
 #include <math.h>
 #include <string.h>

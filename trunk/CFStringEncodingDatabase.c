@@ -40,7 +40,7 @@
 #include "CFInternal.h"
 #include <CoreFoundation/CFStringEncodingExt.h>
 #include "CFStringEncodingConverterPriv.h"
-#include "CFStringEncodingDatabase.h"
+#include <CoreFoundation/CFStringEncodingDatabase.h>
 #include <stdio.h>
 
 #define ISO8859CODEPAGE_BASE (28590)

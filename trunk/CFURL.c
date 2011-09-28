@@ -37,13 +37,13 @@
 */
 
 #include <CoreFoundation/CFURL.h>
-#include <CoreFoundation/CFPriv.h>
+#include "CFPriv.h"
 #include <CoreFoundation/CFCharacterSetPriv.h>
 #include <CoreFoundation/CFNumber.h>
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include <CoreFoundation/CFStringEncodingConverter.h>
-#include <CoreFoundation/CFPriv.h>
+#include "CFPriv.h"
 #include <CoreFoundation/CFURLPriv.h>
 #include <limits.h>
 #include <stdlib.h>

@@ -44,7 +44,7 @@
 #include <CoreFoundation/CFPropertyList.h>
 #include <CoreFoundation/CFBundle.h>
 #include <CoreFoundation/CFNumber.h>
-#include <CoreFoundation/CFPriv.h>
+#include "CFPriv.h"
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include <sys/stat.h>

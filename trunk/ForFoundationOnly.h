@@ -49,7 +49,7 @@
 #include <CoreFoundation/CFData.h>
 #include <CoreFoundation/CFDictionary.h>
 #include <CoreFoundation/CFSet.h>
-#include <CoreFoundation/CFPriv.h>
+#include "CFPriv.h"
 #include <CoreFoundation/CFPropertyList.h>
 #include <CoreFoundation/CFError.h>
 #include <CoreFoundation/CFStringEncodingExt.h>

@@ -40,7 +40,7 @@
 
 #include <CoreFoundation/CFLocale.h>
 #include <CoreFoundation/CoreFoundation_Prefix.h>
-#include <CoreFoundation/CFInternal.h>
+#include "CFInternal.h"
 #include "CFLocaleInternal.h"
 
 CONST_STRING_DECL(kCFLocaleAlternateQuotationBeginDelimiterKey, "kCFLocaleAlternateQuotationBeginDelimiterKey");

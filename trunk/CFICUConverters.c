@@ -36,9 +36,9 @@
 	Responsibility: Aki Inoue
 */
 
-#include "CFStringEncodingDatabase.h"
+#include <CoreFoundation/CFStringEncodingDatabase.h>
 #include "CFStringEncodingConverterPriv.h"
-#include "CFICUConverters.h"
+#include <CoreFoundation/CFICUConverters.h>
 #include <CoreFoundation/CFStringEncodingExt.h>
 #include <CoreFoundation/CFUniChar.h>
 #include <unicode/ucnv.h>

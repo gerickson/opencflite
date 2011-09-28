@@ -39,7 +39,7 @@
 
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
-#include <CoreFoundation/CFPriv.h>
+#include "CFPriv.h"
 #if DEPLOYMENT_TARGET_WINDOWS
 #include <io.h>
 #include <fcntl.h>

@@ -57,10 +57,10 @@
 #include <CoreFoundation/CFLocale.h>
 #include <CoreFoundation/CFPreferences.h>
 #include <string.h>
-#include <CoreFoundation/ForFoundationOnly.h>
+#include "ForFoundationOnly.h"
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
-#include <CoreFoundation/CFPriv.h>
+#include "CFPriv.h"
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>

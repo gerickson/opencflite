@@ -1193,7 +1193,7 @@ static CFBundleRef RegisterCoreFoundationBundle(void) {
 #define DLL_THREAD_DETACH    3
 #define DLL_PROCESS_DETACH   0
 
-int DllMain( HINSTANCE hInstance, DWORD dwReason, LPVOID pReserved ) {
+int __stdcall DllMain( HINSTANCE hInstance, DWORD dwReason, LPVOID pReserved ) {
     static CFBundleRef cfBundle = NULL;
     if (dwReason == DLL_PROCESS_ATTACH) {
 	__CFInitialize();

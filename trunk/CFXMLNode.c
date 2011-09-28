@@ -40,7 +40,7 @@
 #include <CoreFoundation/CFPropertyList.h>
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
-#include "CFXMLInputStream.h"
+#include <CoreFoundation/CFXMLInputStream.h>
 
 CF_INLINE Boolean _nullSafeCFEqual(CFTypeRef cf1, CFTypeRef cf2) {
     if (cf1 && !cf2) return false;

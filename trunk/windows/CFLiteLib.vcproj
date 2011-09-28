@@ -44,10 +44,12 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)\dist\include&quot;;&quot;$(SolutionDir)\dist\include\CoreFoundation\GNUCompatibility&quot;;&quot;$(SolutionDir)&quot;;&quot;$(SolutionDir)\icu&quot;;&quot;$(SolutionDir)\objc4&quot;;&quot;$(SolutionDir)\pthreads\include&quot;"
-				PreprocessorDefinitions="WIN32;DEBUG;_DEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;_USRDLL;CFLITELIB_EXPORTS;DEPLOYMENT_TARGET_WINDOWS;__STDC_LIMIT_MACROS;CF_BUILDING_CF;_WIN32_WINNT=0x0500;WINVER=0x0500;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE;_BIND_TO_CURRENT_VCLIBS_VERSION"
+				PreprocessorDefinitions="WIN32;DEBUG;_DEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;_USRDLL;CFLITELIB_EXPORTS;DEPLOYMENT_TARGET_WINDOWS;TARGET_OS_WIN32;__STDC_LIMIT_MACROS;CF_BUILDING_CF;_WIN32_WINNT=0x0500;WINVER=0x0500;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE;_BIND_TO_CURRENT_VCLIBS_VERSION"
 				MinimalRebuild="true"
+				ExceptionHandling="0"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
+				EnableEnhancedInstructionSet="2"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="true"
@@ -131,11 +133,12 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)\dist\include&quot;;&quot;$(SolutionDir)\dist\include\CoreFoundation\GNUCompatibility&quot;;&quot;$(SolutionDir)&quot;;&quot;$(SolutionDir)\icu&quot;;&quot;$(SolutionDir)\objc4&quot;;&quot;$(SolutionDir)\pthreads\include&quot;"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;_USRDLL;CFLITELIB_EXPORTS;DEPLOYMENT_TARGET_WINDOWS;__STDC_LIMIT_MACROS;CF_BUILDING_CF;_WIN32_WINNT=0x0500;WINVER=0x0500;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE;_BIND_TO_CURRENT_VCLIBS_VERSION"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;_USRDLL;CFLITELIB_EXPORTS;DEPLOYMENT_TARGET_WINDOWS;TARGET_OS_WIN32;__STDC_LIMIT_MACROS;CF_BUILDING_CF;_WIN32_WINNT=0x0500;WINVER=0x0500;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE;_BIND_TO_CURRENT_VCLIBS_VERSION"
+				ExceptionHandling="0"
 				RuntimeLibrary="2"
+				EnableEnhancedInstructionSet="2"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
-				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="3"
 			/>
 			<Tool

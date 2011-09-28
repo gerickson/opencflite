@@ -67,6 +67,10 @@ HANDLE _dispatch_get_main_queue_handle_4CF(void) { return 0; }
 void _dispatch_main_queue_callback_4CF(void) {}
 typedef void* dispatch_source_t ;
 #endif
+
+#define getpid _getpid
+#define read _read
+
 #elif DEPLOYMENT_TARGET_LINUX
 #include <dlfcn.h>
 #include <pthread.h>

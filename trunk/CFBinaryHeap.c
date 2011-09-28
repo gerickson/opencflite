@@ -37,7 +37,7 @@
 */
 
 #include <CoreFoundation/CFBinaryHeap.h>
-#include <CoreFoundation/CFPriv.h>
+#include "CFPriv.h"
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 

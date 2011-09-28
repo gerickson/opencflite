@@ -123,6 +123,7 @@ CF_COMMON_SOURCES		= CFApplicationPreferences.c		\
 				  CFArray.c				\
 				  CFBag.c				\
 				  CFBase.c				\
+				  CFBasicHash.m				\
 				  CFBinaryHeap.c			\
 				  CFBinaryPList.c			\
 				  CFBitVector.c				\
@@ -139,15 +140,17 @@ CF_COMMON_SOURCES		= CFApplicationPreferences.c		\
 				  CFError.c				\
 				  CFFileDescriptor.c			\
 				  CFFileUtilities.c			\
+				  CFICUConverters.c			\
 				  CFLocaleIdentifier.c			\
 				  CFLocale.c				\
-				  CFLocaleKeys.c				\
+				  CFLocaleKeys.c			\
 				  CFMachPort.c				\
 				  CFMessagePort.c			\
 				  CFNotificationCenter.c		\
 				  CFNumberFormatter.c			\
 				  CFNumber.c				\
 				  CFPlatform.c				\
+				  CFPlatformConverters.c		\
 				  CFPlugIn_Factory.c			\
 				  CFPlugIn_Instance.c			\
 				  CFPlugIn.c				\
@@ -163,6 +166,7 @@ CF_COMMON_SOURCES		= CFApplicationPreferences.c		\
 				  CFStorage.c				\
 				  CFStream.c				\
 				  CFStringEncodingConverter.c		\
+				  CFStringEncodingDatabase.c		\
 				  CFStringEncodings.c			\
 				  CFString.c				\
 				  CFStringScanner.c			\

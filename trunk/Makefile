@@ -104,6 +104,7 @@ libCoreFoundation_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am__objects_1 = libCoreFoundation_la-CFApplicationPreferences.lo \
 	libCoreFoundation_la-CFArray.lo libCoreFoundation_la-CFBag.lo \
 	libCoreFoundation_la-CFBase.lo \
+	libCoreFoundation_la-CFBasicHash.lo \
 	libCoreFoundation_la-CFBinaryHeap.lo \
 	libCoreFoundation_la-CFBinaryPList.lo \
 	libCoreFoundation_la-CFBitVector.lo \
@@ -120,6 +121,7 @@ am__objects_1 = libCoreFoundation_la-CFApplicationPreferences.lo \
 	libCoreFoundation_la-CFError.lo \
 	libCoreFoundation_la-CFFileDescriptor.lo \
 	libCoreFoundation_la-CFFileUtilities.lo \
+	libCoreFoundation_la-CFICUConverters.lo \
 	libCoreFoundation_la-CFLocaleIdentifier.lo \
 	libCoreFoundation_la-CFLocale.lo \
 	libCoreFoundation_la-CFLocaleKeys.lo \
@@ -129,6 +131,7 @@ am__objects_1 = libCoreFoundation_la-CFApplicationPreferences.lo \
 	libCoreFoundation_la-CFNumberFormatter.lo \
 	libCoreFoundation_la-CFNumber.lo \
 	libCoreFoundation_la-CFPlatform.lo \
+	libCoreFoundation_la-CFPlatformConverters.lo \
 	libCoreFoundation_la-CFPlugIn_Factory.lo \
 	libCoreFoundation_la-CFPlugIn_Instance.lo \
 	libCoreFoundation_la-CFPlugIn.lo \
@@ -143,6 +146,7 @@ am__objects_1 = libCoreFoundation_la-CFApplicationPreferences.lo \
 	libCoreFoundation_la-CFStorage.lo \
 	libCoreFoundation_la-CFStream.lo \
 	libCoreFoundation_la-CFStringEncodingConverter.lo \
+	libCoreFoundation_la-CFStringEncodingDatabase.lo \
 	libCoreFoundation_la-CFStringEncodings.lo \
 	libCoreFoundation_la-CFString.lo \
 	libCoreFoundation_la-CFStringScanner.lo \
@@ -166,29 +170,30 @@ am__objects_1 = libCoreFoundation_la-CFApplicationPreferences.lo \
 	libCoreFoundation_la-CFXMLTree.lo
 am_libCoreFoundation_la_OBJECTS = $(am__objects_1)
 libCoreFoundation_la_OBJECTS = $(am_libCoreFoundation_la_OBJECTS)
-libCoreFoundation_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CCLD) \
-	$(libCoreFoundation_la_CFLAGS) $(CFLAGS) \
-	$(libCoreFoundation_la_LDFLAGS) $(LDFLAGS) -o $@
+libCoreFoundation_la_LINK = $(LIBTOOL) $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(OBJCLD) $(AM_OBJCFLAGS) \
+	$(OBJCFLAGS) $(libCoreFoundation_la_LDFLAGS) $(LDFLAGS) -o $@
 libCoreFoundation_debug_la_DEPENDENCIES =  \
 	$(am__DEPENDENCIES_1)
 am__libCoreFoundation_debug_la_SOURCES_DIST =  \
 	CFApplicationPreferences.c CFArray.c CFBag.c CFBase.c \
-	CFBinaryHeap.c CFBinaryPList.c CFBitVector.c \
+	CFBasicHash.m CFBinaryHeap.c CFBinaryPList.c CFBitVector.c \
 	CFBuiltinConverters.c CFBundle.c CFBundle_Resources.c \
 	CFCalendar.c CFCharacterSet.c CFConcreteStreams.c CFData.c \
 	CFDateFormatter.c CFDate.c CFDictionary.c CFError.c \
-	CFFileDescriptor.c CFFileUtilities.c CFLocaleIdentifier.c \
-	CFLocale.c CFLocaleKeys.c CFMachPort.c CFMessagePort.c \
-	CFNotificationCenter.c CFNumberFormatter.c CFNumber.c \
-	CFPlatform.c CFPlugIn_Factory.c CFPlugIn_Instance.c CFPlugIn.c \
+	CFFileDescriptor.c CFFileUtilities.c CFICUConverters.c \
+	CFLocaleIdentifier.c CFLocale.c CFLocaleKeys.c CFMachPort.c \
+	CFMessagePort.c CFNotificationCenter.c CFNumberFormatter.c \
+	CFNumber.c CFPlatform.c CFPlatformConverters.c \
+	CFPlugIn_Factory.c CFPlugIn_Instance.c CFPlugIn.c \
 	CFPlugIn_PlugIn.c CFPreferences.c CFPropertyList.c CFRunLoop.c \
 	CFRuntime.c CFSet.c CFSocket.c CFSocketStream.c \
 	CFSortFunctions.c CFStorage.c CFStream.c \
-	CFStringEncodingConverter.c CFStringEncodings.c CFString.c \
-	CFStringScanner.c CFStringUtilities.c CFSystemDirectories.c \
-	CFTimeZone.c CFTree.c CFURL.c CFURLAccess.c CFUUID.c \
-	CFUniChar.c CFUnicodeDecomposition.c CFUnicodePrecomposition.c \
+	CFStringEncodingConverter.c CFStringEncodingDatabase.c \
+	CFStringEncodings.c CFString.c CFStringScanner.c \
+	CFStringUtilities.c CFSystemDirectories.c CFTimeZone.c \
+	CFTree.c CFURL.c CFURLAccess.c CFUUID.c CFUniChar.c \
+	CFUnicodeDecomposition.c CFUnicodePrecomposition.c \
 	CFUserNotification.c CFUtilities.c CFVersion.c \
 	CFWindowsMessageQueue.c CFXMLInputStream.c CFXMLNode.c \
 	CFXMLParser.c CFXMLPreferencesDomain.c CFXMLTree.c
@@ -197,6 +202,7 @@ am__objects_2 =  \
 	libCoreFoundation_debug_la-CFArray.lo \
 	libCoreFoundation_debug_la-CFBag.lo \
 	libCoreFoundation_debug_la-CFBase.lo \
+	libCoreFoundation_debug_la-CFBasicHash.lo \
 	libCoreFoundation_debug_la-CFBinaryHeap.lo \
 	libCoreFoundation_debug_la-CFBinaryPList.lo \
 	libCoreFoundation_debug_la-CFBitVector.lo \
@@ -213,6 +219,7 @@ am__objects_2 =  \
 	libCoreFoundation_debug_la-CFError.lo \
 	libCoreFoundation_debug_la-CFFileDescriptor.lo \
 	libCoreFoundation_debug_la-CFFileUtilities.lo \
+	libCoreFoundation_debug_la-CFICUConverters.lo \
 	libCoreFoundation_debug_la-CFLocaleIdentifier.lo \
 	libCoreFoundation_debug_la-CFLocale.lo \
 	libCoreFoundation_debug_la-CFLocaleKeys.lo \
@@ -222,6 +229,7 @@ am__objects_2 =  \
 	libCoreFoundation_debug_la-CFNumberFormatter.lo \
 	libCoreFoundation_debug_la-CFNumber.lo \
 	libCoreFoundation_debug_la-CFPlatform.lo \
+	libCoreFoundation_debug_la-CFPlatformConverters.lo \
 	libCoreFoundation_debug_la-CFPlugIn_Factory.lo \
 	libCoreFoundation_debug_la-CFPlugIn_Instance.lo \
 	libCoreFoundation_debug_la-CFPlugIn.lo \
@@ -237,6 +245,7 @@ am__objects_2 =  \
 	libCoreFoundation_debug_la-CFStorage.lo \
 	libCoreFoundation_debug_la-CFStream.lo \
 	libCoreFoundation_debug_la-CFStringEncodingConverter.lo \
+	libCoreFoundation_debug_la-CFStringEncodingDatabase.lo \
 	libCoreFoundation_debug_la-CFStringEncodings.lo \
 	libCoreFoundation_debug_la-CFString.lo \
 	libCoreFoundation_debug_la-CFStringScanner.lo \
@@ -263,31 +272,33 @@ am_libCoreFoundation_debug_la_OBJECTS =  \
 	$(am__objects_2)
 libCoreFoundation_debug_la_OBJECTS =  \
 	$(am_libCoreFoundation_debug_la_OBJECTS)
-libCoreFoundation_debug_la_LINK = $(LIBTOOL) --tag=CC \
-	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
-	$(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) \
-	$(libCoreFoundation_debug_la_LDFLAGS) $(LDFLAGS) -o $@
+libCoreFoundation_debug_la_LINK = $(LIBTOOL) $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(OBJCLD) $(AM_OBJCFLAGS) \
+	$(OBJCFLAGS) $(libCoreFoundation_debug_la_LDFLAGS) $(LDFLAGS) \
+	-o $@
 am_libCoreFoundation_debug_la_rpath = -rpath \
 	$(libdir)
 libCoreFoundation_profile_la_DEPENDENCIES =  \
 	$(am__DEPENDENCIES_1)
 am__libCoreFoundation_profile_la_SOURCES_DIST =  \
 	CFApplicationPreferences.c CFArray.c CFBag.c CFBase.c \
-	CFBinaryHeap.c CFBinaryPList.c CFBitVector.c \
+	CFBasicHash.m CFBinaryHeap.c CFBinaryPList.c CFBitVector.c \
 	CFBuiltinConverters.c CFBundle.c CFBundle_Resources.c \
 	CFCalendar.c CFCharacterSet.c CFConcreteStreams.c CFData.c \
 	CFDateFormatter.c CFDate.c CFDictionary.c CFError.c \
-	CFFileDescriptor.c CFFileUtilities.c CFLocaleIdentifier.c \
-	CFLocale.c CFLocaleKeys.c CFMachPort.c CFMessagePort.c \
-	CFNotificationCenter.c CFNumberFormatter.c CFNumber.c \
-	CFPlatform.c CFPlugIn_Factory.c CFPlugIn_Instance.c CFPlugIn.c \
+	CFFileDescriptor.c CFFileUtilities.c CFICUConverters.c \
+	CFLocaleIdentifier.c CFLocale.c CFLocaleKeys.c CFMachPort.c \
+	CFMessagePort.c CFNotificationCenter.c CFNumberFormatter.c \
+	CFNumber.c CFPlatform.c CFPlatformConverters.c \
+	CFPlugIn_Factory.c CFPlugIn_Instance.c CFPlugIn.c \
 	CFPlugIn_PlugIn.c CFPreferences.c CFPropertyList.c CFRunLoop.c \
 	CFRuntime.c CFSet.c CFSocket.c CFSocketStream.c \
 	CFSortFunctions.c CFStorage.c CFStream.c \
-	CFStringEncodingConverter.c CFStringEncodings.c CFString.c \
-	CFStringScanner.c CFStringUtilities.c CFSystemDirectories.c \
-	CFTimeZone.c CFTree.c CFURL.c CFURLAccess.c CFUUID.c \
-	CFUniChar.c CFUnicodeDecomposition.c CFUnicodePrecomposition.c \
+	CFStringEncodingConverter.c CFStringEncodingDatabase.c \
+	CFStringEncodings.c CFString.c CFStringScanner.c \
+	CFStringUtilities.c CFSystemDirectories.c CFTimeZone.c \
+	CFTree.c CFURL.c CFURLAccess.c CFUUID.c CFUniChar.c \
+	CFUnicodeDecomposition.c CFUnicodePrecomposition.c \
 	CFUserNotification.c CFUtilities.c CFVersion.c \
 	CFWindowsMessageQueue.c CFXMLInputStream.c CFXMLNode.c \
 	CFXMLParser.c CFXMLPreferencesDomain.c CFXMLTree.c
@@ -296,6 +307,7 @@ am__objects_3 =  \
 	libCoreFoundation_profile_la-CFArray.lo \
 	libCoreFoundation_profile_la-CFBag.lo \
 	libCoreFoundation_profile_la-CFBase.lo \
+	libCoreFoundation_profile_la-CFBasicHash.lo \
 	libCoreFoundation_profile_la-CFBinaryHeap.lo \
 	libCoreFoundation_profile_la-CFBinaryPList.lo \
 	libCoreFoundation_profile_la-CFBitVector.lo \
@@ -312,6 +324,7 @@ am__objects_3 =  \
 	libCoreFoundation_profile_la-CFError.lo \
 	libCoreFoundation_profile_la-CFFileDescriptor.lo \
 	libCoreFoundation_profile_la-CFFileUtilities.lo \
+	libCoreFoundation_profile_la-CFICUConverters.lo \
 	libCoreFoundation_profile_la-CFLocaleIdentifier.lo \
 	libCoreFoundation_profile_la-CFLocale.lo \
 	libCoreFoundation_profile_la-CFLocaleKeys.lo \
@@ -321,6 +334,7 @@ am__objects_3 =  \
 	libCoreFoundation_profile_la-CFNumberFormatter.lo \
 	libCoreFoundation_profile_la-CFNumber.lo \
 	libCoreFoundation_profile_la-CFPlatform.lo \
+	libCoreFoundation_profile_la-CFPlatformConverters.lo \
 	libCoreFoundation_profile_la-CFPlugIn_Factory.lo \
 	libCoreFoundation_profile_la-CFPlugIn_Instance.lo \
 	libCoreFoundation_profile_la-CFPlugIn.lo \
@@ -336,6 +350,7 @@ am__objects_3 =  \
 	libCoreFoundation_profile_la-CFStorage.lo \
 	libCoreFoundation_profile_la-CFStream.lo \
 	libCoreFoundation_profile_la-CFStringEncodingConverter.lo \
+	libCoreFoundation_profile_la-CFStringEncodingDatabase.lo \
 	libCoreFoundation_profile_la-CFStringEncodings.lo \
 	libCoreFoundation_profile_la-CFString.lo \
 	libCoreFoundation_profile_la-CFStringScanner.lo \
@@ -362,10 +377,10 @@ am_libCoreFoundation_profile_la_OBJECTS =  \
 	$(am__objects_3)
 libCoreFoundation_profile_la_OBJECTS =  \
 	$(am_libCoreFoundation_profile_la_OBJECTS)
-libCoreFoundation_profile_la_LINK = $(LIBTOOL) --tag=CC \
-	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
-	$(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) \
-	$(libCoreFoundation_profile_la_LDFLAGS) $(LDFLAGS) -o $@
+libCoreFoundation_profile_la_LINK = $(LIBTOOL) $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(OBJCLD) $(AM_OBJCFLAGS) \
+	$(OBJCFLAGS) $(libCoreFoundation_profile_la_LDFLAGS) \
+	$(LDFLAGS) -o $@
 am_libCoreFoundation_profile_la_rpath = -rpath \
 	$(libdir)
 DEFAULT_INCLUDES = -I. -I$(top_builddir)/include
@@ -380,6 +395,15 @@ LTCOMPILE = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
+OBJCCOMPILE = $(OBJC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_OBJCFLAGS) $(OBJCFLAGS)
+LTOBJCCOMPILE = $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=compile $(OBJC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_OBJCFLAGS) $(OBJCFLAGS)
+OBJCLD = $(OBJC)
+OBJCLINK = $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
+	$(OBJCLD) $(AM_OBJCFLAGS) $(OBJCFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(libCoreFoundation_la_SOURCES) \
 	$(libCoreFoundation_debug_la_SOURCES) \
@@ -692,6 +716,7 @@ CF_COMMON_SOURCES = CFApplicationPreferences.c		\
 				  CFArray.c				\
 				  CFBag.c				\
 				  CFBase.c				\
+				  CFBasicHash.m				\
 				  CFBinaryHeap.c			\
 				  CFBinaryPList.c			\
 				  CFBitVector.c				\
@@ -708,15 +733,17 @@ CF_COMMON_SOURCES = CFApplicationPreferences.c		\
 				  CFError.c				\
 				  CFFileDescriptor.c			\
 				  CFFileUtilities.c			\
+				  CFICUConverters.c			\
 				  CFLocaleIdentifier.c			\
 				  CFLocale.c				\
-				  CFLocaleKeys.c				\
+				  CFLocaleKeys.c			\
 				  CFMachPort.c				\
 				  CFMessagePort.c			\
 				  CFNotificationCenter.c		\
 				  CFNumberFormatter.c			\
 				  CFNumber.c				\
 				  CFPlatform.c				\
+				  CFPlatformConverters.c		\
 				  CFPlugIn_Factory.c			\
 				  CFPlugIn_Instance.c			\
 				  CFPlugIn.c				\
@@ -732,6 +759,7 @@ CF_COMMON_SOURCES = CFApplicationPreferences.c		\
 				  CFStorage.c				\
 				  CFStream.c				\
 				  CFStringEncodingConverter.c		\
+				  CFStringEncodingDatabase.c		\
 				  CFStringEncodings.c			\
 				  CFString.c				\
 				  CFStringScanner.c			\
@@ -930,7 +958,7 @@ EXTRA_DIST = APPLE_LICENSE	\
 all: all-recursive
 
 .SUFFIXES:
-.SUFFIXES: .c .lo .o .obj
+.SUFFIXES: .c .lo .m .o .obj
 am--refresh:
 	@:
 $(srcdir)/Makefile.in: # $(srcdir)/Makefile.am  $(am__configure_deps)
@@ -1015,6 +1043,7 @@ include ./$(DEPDIR)/libCoreFoundation_debug_la-CFApplicationPreferences.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFArray.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFBag.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFBase.Plo
+include ./$(DEPDIR)/libCoreFoundation_debug_la-CFBasicHash.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFBinaryHeap.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFBinaryPList.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFBitVector.Plo
@@ -1031,6 +1060,7 @@ include ./$(DEPDIR)/libCoreFoundation_debug_la-CFDictionary.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFError.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFFileDescriptor.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFFileUtilities.Plo
+include ./$(DEPDIR)/libCoreFoundation_debug_la-CFICUConverters.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFLocale.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFLocaleIdentifier.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFLocaleKeys.Plo
@@ -1040,6 +1070,7 @@ include ./$(DEPDIR)/libCoreFoundation_debug_la-CFNotificationCenter.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFNumber.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFNumberFormatter.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFPlatform.Plo
+include ./$(DEPDIR)/libCoreFoundation_debug_la-CFPlatformConverters.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFPlugIn.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFPlugIn_Factory.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFPlugIn_Instance.Plo
@@ -1056,6 +1087,7 @@ include ./$(DEPDIR)/libCoreFoundation_debug_la-CFStorage.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFStream.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFString.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFStringEncodingConverter.Plo
+include ./$(DEPDIR)/libCoreFoundation_debug_la-CFStringEncodingDatabase.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFStringEncodings.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFStringScanner.Plo
 include ./$(DEPDIR)/libCoreFoundation_debug_la-CFStringUtilities.Plo
@@ -1081,6 +1113,7 @@ include ./$(DEPDIR)/libCoreFoundation_la-CFApplicationPreferences.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFArray.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFBag.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFBase.Plo
+include ./$(DEPDIR)/libCoreFoundation_la-CFBasicHash.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFBinaryHeap.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFBinaryPList.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFBitVector.Plo
@@ -1097,6 +1130,7 @@ include ./$(DEPDIR)/libCoreFoundation_la-CFDictionary.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFError.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFFileDescriptor.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFFileUtilities.Plo
+include ./$(DEPDIR)/libCoreFoundation_la-CFICUConverters.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFLocale.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFLocaleIdentifier.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFLocaleKeys.Plo
@@ -1106,6 +1140,7 @@ include ./$(DEPDIR)/libCoreFoundation_la-CFNotificationCenter.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFNumber.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFNumberFormatter.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFPlatform.Plo
+include ./$(DEPDIR)/libCoreFoundation_la-CFPlatformConverters.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFPlugIn.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFPlugIn_Factory.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFPlugIn_Instance.Plo
@@ -1122,6 +1157,7 @@ include ./$(DEPDIR)/libCoreFoundation_la-CFStorage.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFStream.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFString.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFStringEncodingConverter.Plo
+include ./$(DEPDIR)/libCoreFoundation_la-CFStringEncodingDatabase.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFStringEncodings.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFStringScanner.Plo
 include ./$(DEPDIR)/libCoreFoundation_la-CFStringUtilities.Plo
@@ -1147,6 +1183,7 @@ include ./$(DEPDIR)/libCoreFoundation_profile_la-CFApplicationPreferences.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFArray.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFBag.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFBase.Plo
+include ./$(DEPDIR)/libCoreFoundation_profile_la-CFBasicHash.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFBinaryHeap.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFBinaryPList.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFBitVector.Plo
@@ -1163,6 +1200,7 @@ include ./$(DEPDIR)/libCoreFoundation_profile_la-CFDictionary.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFError.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFFileDescriptor.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFFileUtilities.Plo
+include ./$(DEPDIR)/libCoreFoundation_profile_la-CFICUConverters.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFLocale.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFLocaleIdentifier.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFLocaleKeys.Plo
@@ -1172,6 +1210,7 @@ include ./$(DEPDIR)/libCoreFoundation_profile_la-CFNotificationCenter.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFNumber.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFNumberFormatter.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFPlatform.Plo
+include ./$(DEPDIR)/libCoreFoundation_profile_la-CFPlatformConverters.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFPlugIn.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFPlugIn_Factory.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFPlugIn_Instance.Plo
@@ -1188,6 +1227,7 @@ include ./$(DEPDIR)/libCoreFoundation_profile_la-CFStorage.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFStream.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFString.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFStringEncodingConverter.Plo
+include ./$(DEPDIR)/libCoreFoundation_profile_la-CFStringEncodingDatabase.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFStringEncodings.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFStringScanner.Plo
 include ./$(DEPDIR)/libCoreFoundation_profile_la-CFStringUtilities.Plo
@@ -1371,6 +1411,13 @@ libCoreFoundation_la-CFFileUtilities.lo: CFFileUtilities.c
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_la-CFFileUtilities.lo `test -f 'CFFileUtilities.c' || echo '$(srcdir)/'`CFFileUtilities.c
 
+libCoreFoundation_la-CFICUConverters.lo: CFICUConverters.c
+	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_la-CFICUConverters.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_la-CFICUConverters.Tpo -c -o libCoreFoundation_la-CFICUConverters.lo `test -f 'CFICUConverters.c' || echo '$(srcdir)/'`CFICUConverters.c
+	$(am__mv) $(DEPDIR)/libCoreFoundation_la-CFICUConverters.Tpo $(DEPDIR)/libCoreFoundation_la-CFICUConverters.Plo
+#	source='CFICUConverters.c' object='libCoreFoundation_la-CFICUConverters.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_la-CFICUConverters.lo `test -f 'CFICUConverters.c' || echo '$(srcdir)/'`CFICUConverters.c
+
 libCoreFoundation_la-CFLocaleIdentifier.lo: CFLocaleIdentifier.c
 	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_la-CFLocaleIdentifier.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_la-CFLocaleIdentifier.Tpo -c -o libCoreFoundation_la-CFLocaleIdentifier.lo `test -f 'CFLocaleIdentifier.c' || echo '$(srcdir)/'`CFLocaleIdentifier.c
 	$(am__mv) $(DEPDIR)/libCoreFoundation_la-CFLocaleIdentifier.Tpo $(DEPDIR)/libCoreFoundation_la-CFLocaleIdentifier.Plo
@@ -1433,6 +1480,13 @@ libCoreFoundation_la-CFPlatform.lo: CFPlatform.c
 #	source='CFPlatform.c' object='libCoreFoundation_la-CFPlatform.lo' libtool=yes \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_la-CFPlatform.lo `test -f 'CFPlatform.c' || echo '$(srcdir)/'`CFPlatform.c
+
+libCoreFoundation_la-CFPlatformConverters.lo: CFPlatformConverters.c
+	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_la-CFPlatformConverters.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_la-CFPlatformConverters.Tpo -c -o libCoreFoundation_la-CFPlatformConverters.lo `test -f 'CFPlatformConverters.c' || echo '$(srcdir)/'`CFPlatformConverters.c
+	$(am__mv) $(DEPDIR)/libCoreFoundation_la-CFPlatformConverters.Tpo $(DEPDIR)/libCoreFoundation_la-CFPlatformConverters.Plo
+#	source='CFPlatformConverters.c' object='libCoreFoundation_la-CFPlatformConverters.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_la-CFPlatformConverters.lo `test -f 'CFPlatformConverters.c' || echo '$(srcdir)/'`CFPlatformConverters.c
 
 libCoreFoundation_la-CFPlugIn_Factory.lo: CFPlugIn_Factory.c
 	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_la-CFPlugIn_Factory.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_la-CFPlugIn_Factory.Tpo -c -o libCoreFoundation_la-CFPlugIn_Factory.lo `test -f 'CFPlugIn_Factory.c' || echo '$(srcdir)/'`CFPlugIn_Factory.c
@@ -1538,6 +1592,13 @@ libCoreFoundation_la-CFStringEncodingConverter.lo: CFStringEncodingConverter.c
 #	source='CFStringEncodingConverter.c' object='libCoreFoundation_la-CFStringEncodingConverter.lo' libtool=yes \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_la-CFStringEncodingConverter.lo `test -f 'CFStringEncodingConverter.c' || echo '$(srcdir)/'`CFStringEncodingConverter.c
+
+libCoreFoundation_la-CFStringEncodingDatabase.lo: CFStringEncodingDatabase.c
+	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_la-CFStringEncodingDatabase.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_la-CFStringEncodingDatabase.Tpo -c -o libCoreFoundation_la-CFStringEncodingDatabase.lo `test -f 'CFStringEncodingDatabase.c' || echo '$(srcdir)/'`CFStringEncodingDatabase.c
+	$(am__mv) $(DEPDIR)/libCoreFoundation_la-CFStringEncodingDatabase.Tpo $(DEPDIR)/libCoreFoundation_la-CFStringEncodingDatabase.Plo
+#	source='CFStringEncodingDatabase.c' object='libCoreFoundation_la-CFStringEncodingDatabase.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_la-CFStringEncodingDatabase.lo `test -f 'CFStringEncodingDatabase.c' || echo '$(srcdir)/'`CFStringEncodingDatabase.c
 
 libCoreFoundation_la-CFStringEncodings.lo: CFStringEncodings.c
 	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_la-CFStringEncodings.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_la-CFStringEncodings.Tpo -c -o libCoreFoundation_la-CFStringEncodings.lo `test -f 'CFStringEncodings.c' || echo '$(srcdir)/'`CFStringEncodings.c
@@ -1833,6 +1894,13 @@ libCoreFoundation_debug_la-CFFileUtilities.lo: CFFileUtilities.c
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_debug_la-CFFileUtilities.lo `test -f 'CFFileUtilities.c' || echo '$(srcdir)/'`CFFileUtilities.c
 
+libCoreFoundation_debug_la-CFICUConverters.lo: CFICUConverters.c
+	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_debug_la-CFICUConverters.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_debug_la-CFICUConverters.Tpo -c -o libCoreFoundation_debug_la-CFICUConverters.lo `test -f 'CFICUConverters.c' || echo '$(srcdir)/'`CFICUConverters.c
+	$(am__mv) $(DEPDIR)/libCoreFoundation_debug_la-CFICUConverters.Tpo $(DEPDIR)/libCoreFoundation_debug_la-CFICUConverters.Plo
+#	source='CFICUConverters.c' object='libCoreFoundation_debug_la-CFICUConverters.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_debug_la-CFICUConverters.lo `test -f 'CFICUConverters.c' || echo '$(srcdir)/'`CFICUConverters.c
+
 libCoreFoundation_debug_la-CFLocaleIdentifier.lo: CFLocaleIdentifier.c
 	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_debug_la-CFLocaleIdentifier.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_debug_la-CFLocaleIdentifier.Tpo -c -o libCoreFoundation_debug_la-CFLocaleIdentifier.lo `test -f 'CFLocaleIdentifier.c' || echo '$(srcdir)/'`CFLocaleIdentifier.c
 	$(am__mv) $(DEPDIR)/libCoreFoundation_debug_la-CFLocaleIdentifier.Tpo $(DEPDIR)/libCoreFoundation_debug_la-CFLocaleIdentifier.Plo
@@ -1895,6 +1963,13 @@ libCoreFoundation_debug_la-CFPlatform.lo: CFPlatform.c
 #	source='CFPlatform.c' object='libCoreFoundation_debug_la-CFPlatform.lo' libtool=yes \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_debug_la-CFPlatform.lo `test -f 'CFPlatform.c' || echo '$(srcdir)/'`CFPlatform.c
+
+libCoreFoundation_debug_la-CFPlatformConverters.lo: CFPlatformConverters.c
+	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_debug_la-CFPlatformConverters.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_debug_la-CFPlatformConverters.Tpo -c -o libCoreFoundation_debug_la-CFPlatformConverters.lo `test -f 'CFPlatformConverters.c' || echo '$(srcdir)/'`CFPlatformConverters.c
+	$(am__mv) $(DEPDIR)/libCoreFoundation_debug_la-CFPlatformConverters.Tpo $(DEPDIR)/libCoreFoundation_debug_la-CFPlatformConverters.Plo
+#	source='CFPlatformConverters.c' object='libCoreFoundation_debug_la-CFPlatformConverters.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_debug_la-CFPlatformConverters.lo `test -f 'CFPlatformConverters.c' || echo '$(srcdir)/'`CFPlatformConverters.c
 
 libCoreFoundation_debug_la-CFPlugIn_Factory.lo: CFPlugIn_Factory.c
 	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_debug_la-CFPlugIn_Factory.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_debug_la-CFPlugIn_Factory.Tpo -c -o libCoreFoundation_debug_la-CFPlugIn_Factory.lo `test -f 'CFPlugIn_Factory.c' || echo '$(srcdir)/'`CFPlugIn_Factory.c
@@ -2000,6 +2075,13 @@ libCoreFoundation_debug_la-CFStringEncodingConverter.lo: CFStringEncodingConvert
 #	source='CFStringEncodingConverter.c' object='libCoreFoundation_debug_la-CFStringEncodingConverter.lo' libtool=yes \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_debug_la-CFStringEncodingConverter.lo `test -f 'CFStringEncodingConverter.c' || echo '$(srcdir)/'`CFStringEncodingConverter.c
+
+libCoreFoundation_debug_la-CFStringEncodingDatabase.lo: CFStringEncodingDatabase.c
+	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_debug_la-CFStringEncodingDatabase.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_debug_la-CFStringEncodingDatabase.Tpo -c -o libCoreFoundation_debug_la-CFStringEncodingDatabase.lo `test -f 'CFStringEncodingDatabase.c' || echo '$(srcdir)/'`CFStringEncodingDatabase.c
+	$(am__mv) $(DEPDIR)/libCoreFoundation_debug_la-CFStringEncodingDatabase.Tpo $(DEPDIR)/libCoreFoundation_debug_la-CFStringEncodingDatabase.Plo
+#	source='CFStringEncodingDatabase.c' object='libCoreFoundation_debug_la-CFStringEncodingDatabase.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_debug_la-CFStringEncodingDatabase.lo `test -f 'CFStringEncodingDatabase.c' || echo '$(srcdir)/'`CFStringEncodingDatabase.c
 
 libCoreFoundation_debug_la-CFStringEncodings.lo: CFStringEncodings.c
 	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_debug_la-CFStringEncodings.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_debug_la-CFStringEncodings.Tpo -c -o libCoreFoundation_debug_la-CFStringEncodings.lo `test -f 'CFStringEncodings.c' || echo '$(srcdir)/'`CFStringEncodings.c
@@ -2295,6 +2377,13 @@ libCoreFoundation_profile_la-CFFileUtilities.lo: CFFileUtilities.c
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_profile_la-CFFileUtilities.lo `test -f 'CFFileUtilities.c' || echo '$(srcdir)/'`CFFileUtilities.c
 
+libCoreFoundation_profile_la-CFICUConverters.lo: CFICUConverters.c
+	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_profile_la-CFICUConverters.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_profile_la-CFICUConverters.Tpo -c -o libCoreFoundation_profile_la-CFICUConverters.lo `test -f 'CFICUConverters.c' || echo '$(srcdir)/'`CFICUConverters.c
+	$(am__mv) $(DEPDIR)/libCoreFoundation_profile_la-CFICUConverters.Tpo $(DEPDIR)/libCoreFoundation_profile_la-CFICUConverters.Plo
+#	source='CFICUConverters.c' object='libCoreFoundation_profile_la-CFICUConverters.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_profile_la-CFICUConverters.lo `test -f 'CFICUConverters.c' || echo '$(srcdir)/'`CFICUConverters.c
+
 libCoreFoundation_profile_la-CFLocaleIdentifier.lo: CFLocaleIdentifier.c
 	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_profile_la-CFLocaleIdentifier.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_profile_la-CFLocaleIdentifier.Tpo -c -o libCoreFoundation_profile_la-CFLocaleIdentifier.lo `test -f 'CFLocaleIdentifier.c' || echo '$(srcdir)/'`CFLocaleIdentifier.c
 	$(am__mv) $(DEPDIR)/libCoreFoundation_profile_la-CFLocaleIdentifier.Tpo $(DEPDIR)/libCoreFoundation_profile_la-CFLocaleIdentifier.Plo
@@ -2357,6 +2446,13 @@ libCoreFoundation_profile_la-CFPlatform.lo: CFPlatform.c
 #	source='CFPlatform.c' object='libCoreFoundation_profile_la-CFPlatform.lo' libtool=yes \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_profile_la-CFPlatform.lo `test -f 'CFPlatform.c' || echo '$(srcdir)/'`CFPlatform.c
+
+libCoreFoundation_profile_la-CFPlatformConverters.lo: CFPlatformConverters.c
+	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_profile_la-CFPlatformConverters.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_profile_la-CFPlatformConverters.Tpo -c -o libCoreFoundation_profile_la-CFPlatformConverters.lo `test -f 'CFPlatformConverters.c' || echo '$(srcdir)/'`CFPlatformConverters.c
+	$(am__mv) $(DEPDIR)/libCoreFoundation_profile_la-CFPlatformConverters.Tpo $(DEPDIR)/libCoreFoundation_profile_la-CFPlatformConverters.Plo
+#	source='CFPlatformConverters.c' object='libCoreFoundation_profile_la-CFPlatformConverters.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_profile_la-CFPlatformConverters.lo `test -f 'CFPlatformConverters.c' || echo '$(srcdir)/'`CFPlatformConverters.c
 
 libCoreFoundation_profile_la-CFPlugIn_Factory.lo: CFPlugIn_Factory.c
 	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_profile_la-CFPlugIn_Factory.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_profile_la-CFPlugIn_Factory.Tpo -c -o libCoreFoundation_profile_la-CFPlugIn_Factory.lo `test -f 'CFPlugIn_Factory.c' || echo '$(srcdir)/'`CFPlugIn_Factory.c
@@ -2462,6 +2558,13 @@ libCoreFoundation_profile_la-CFStringEncodingConverter.lo: CFStringEncodingConve
 #	source='CFStringEncodingConverter.c' object='libCoreFoundation_profile_la-CFStringEncodingConverter.lo' libtool=yes \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_profile_la-CFStringEncodingConverter.lo `test -f 'CFStringEncodingConverter.c' || echo '$(srcdir)/'`CFStringEncodingConverter.c
+
+libCoreFoundation_profile_la-CFStringEncodingDatabase.lo: CFStringEncodingDatabase.c
+	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_profile_la-CFStringEncodingDatabase.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_profile_la-CFStringEncodingDatabase.Tpo -c -o libCoreFoundation_profile_la-CFStringEncodingDatabase.lo `test -f 'CFStringEncodingDatabase.c' || echo '$(srcdir)/'`CFStringEncodingDatabase.c
+	$(am__mv) $(DEPDIR)/libCoreFoundation_profile_la-CFStringEncodingDatabase.Tpo $(DEPDIR)/libCoreFoundation_profile_la-CFStringEncodingDatabase.Plo
+#	source='CFStringEncodingDatabase.c' object='libCoreFoundation_profile_la-CFStringEncodingDatabase.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_profile_la-CFStringEncodingDatabase.lo `test -f 'CFStringEncodingDatabase.c' || echo '$(srcdir)/'`CFStringEncodingDatabase.c
 
 libCoreFoundation_profile_la-CFStringEncodings.lo: CFStringEncodings.c
 	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_profile_la-CFStringEncodings.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_profile_la-CFStringEncodings.Tpo -c -o libCoreFoundation_profile_la-CFStringEncodings.lo `test -f 'CFStringEncodings.c' || echo '$(srcdir)/'`CFStringEncodings.c
@@ -2616,6 +2719,48 @@ libCoreFoundation_profile_la-CFXMLTree.lo: CFXMLTree.c
 #	source='CFXMLTree.c' object='libCoreFoundation_profile_la-CFXMLTree.lo' libtool=yes \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_profile_la-CFXMLTree.lo `test -f 'CFXMLTree.c' || echo '$(srcdir)/'`CFXMLTree.c
+
+.m.o:
+	$(OBJCCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+#	source='$<' object='$@' libtool=no \
+#	DEPDIR=$(DEPDIR) $(OBJCDEPMODE) $(depcomp) \
+#	$(OBJCCOMPILE) -c -o $@ $<
+
+.m.obj:
+	$(OBJCCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
+	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+#	source='$<' object='$@' libtool=no \
+#	DEPDIR=$(DEPDIR) $(OBJCDEPMODE) $(depcomp) \
+#	$(OBJCCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+
+.m.lo:
+	$(LTOBJCCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+#	source='$<' object='$@' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(OBJCDEPMODE) $(depcomp) \
+#	$(LTOBJCCOMPILE) -c -o $@ $<
+
+libCoreFoundation_la-CFBasicHash.lo: CFBasicHash.m
+	$(LIBTOOL)  $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(OBJC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(AM_OBJCFLAGS) $(OBJCFLAGS) -MT libCoreFoundation_la-CFBasicHash.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_la-CFBasicHash.Tpo -c -o libCoreFoundation_la-CFBasicHash.lo `test -f 'CFBasicHash.m' || echo '$(srcdir)/'`CFBasicHash.m
+	$(am__mv) $(DEPDIR)/libCoreFoundation_la-CFBasicHash.Tpo $(DEPDIR)/libCoreFoundation_la-CFBasicHash.Plo
+#	source='CFBasicHash.m' object='libCoreFoundation_la-CFBasicHash.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(OBJCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(OBJC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(AM_OBJCFLAGS) $(OBJCFLAGS) -c -o libCoreFoundation_la-CFBasicHash.lo `test -f 'CFBasicHash.m' || echo '$(srcdir)/'`CFBasicHash.m
+
+libCoreFoundation_debug_la-CFBasicHash.lo: CFBasicHash.m
+	$(LIBTOOL)  $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(OBJC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(AM_OBJCFLAGS) $(OBJCFLAGS) -MT libCoreFoundation_debug_la-CFBasicHash.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_debug_la-CFBasicHash.Tpo -c -o libCoreFoundation_debug_la-CFBasicHash.lo `test -f 'CFBasicHash.m' || echo '$(srcdir)/'`CFBasicHash.m
+	$(am__mv) $(DEPDIR)/libCoreFoundation_debug_la-CFBasicHash.Tpo $(DEPDIR)/libCoreFoundation_debug_la-CFBasicHash.Plo
+#	source='CFBasicHash.m' object='libCoreFoundation_debug_la-CFBasicHash.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(OBJCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(OBJC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(AM_OBJCFLAGS) $(OBJCFLAGS) -c -o libCoreFoundation_debug_la-CFBasicHash.lo `test -f 'CFBasicHash.m' || echo '$(srcdir)/'`CFBasicHash.m
+
+libCoreFoundation_profile_la-CFBasicHash.lo: CFBasicHash.m
+	$(LIBTOOL)  $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(OBJC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(AM_OBJCFLAGS) $(OBJCFLAGS) -MT libCoreFoundation_profile_la-CFBasicHash.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_profile_la-CFBasicHash.Tpo -c -o libCoreFoundation_profile_la-CFBasicHash.lo `test -f 'CFBasicHash.m' || echo '$(srcdir)/'`CFBasicHash.m
+	$(am__mv) $(DEPDIR)/libCoreFoundation_profile_la-CFBasicHash.Tpo $(DEPDIR)/libCoreFoundation_profile_la-CFBasicHash.Plo
+#	source='CFBasicHash.m' object='libCoreFoundation_profile_la-CFBasicHash.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(OBJCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(OBJC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(AM_OBJCFLAGS) $(OBJCFLAGS) -c -o libCoreFoundation_profile_la-CFBasicHash.lo `test -f 'CFBasicHash.m' || echo '$(srcdir)/'`CFBasicHash.m
 
 mostlyclean-libtool:
 	-rm -f *.lo

@@ -39,8 +39,8 @@
 #include "CFXMLInputStream.h"
 #include <CoreFoundation/CFCharacterSet.h>
 #include <string.h>
-#include "CFStringEncodingConverter.h"
-#include "CFUniChar.h"
+#include <CoreFoundation/CFStringEncodingConverter.h>
+#include <CoreFoundation/CFUniChar.h>
 
 /* Utility functions used in parsing */
 static Boolean determineEncoding(_CFXMLInputStream *stream) {

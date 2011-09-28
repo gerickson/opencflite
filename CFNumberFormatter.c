@@ -37,7 +37,7 @@
 */
 
 #include <CoreFoundation/CFNumberFormatter.h>
-#include <CoreFoundation/ForFoundationOnly.h>
+#include "ForFoundationOnly.h"
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include "CFLocaleInternal.h"

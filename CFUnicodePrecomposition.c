@@ -39,8 +39,8 @@
 #include <string.h>
 #include <CoreFoundation/CFBase.h>
 #include <CoreFoundation/CFCharacterSet.h>
-#include "CFUniChar.h"
-#include "CFUnicodePrecomposition.h"
+#include <CoreFoundation/CFUniChar.h>
+#include <CoreFoundation/CFUnicodePrecomposition.h>
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include "CFUniCharPriv.h"

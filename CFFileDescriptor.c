@@ -23,7 +23,7 @@
 #include "CFPriv.h"
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
-#include "CFFileDescriptor.h"
+#include <CoreFoundation/CFFileDescriptor.h>
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX
 // for kqueue

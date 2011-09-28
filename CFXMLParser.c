@@ -38,8 +38,8 @@
 
 #include <CoreFoundation/CFXMLParser.h>
 #include <CoreFoundation/CFNumber.h>
-#include "CFXMLInputStream.h"
-#include "CFUniChar.h" 
+#include <CoreFoundation/CFXMLInputStream.h>
+#include <CoreFoundation/CFUniChar.h>
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 

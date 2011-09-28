@@ -43,7 +43,7 @@
         On Windows, it calls the enumeration functions defined here.
 */
 
-#include <CoreFoundation/CFPriv.h>
+#include "CFPriv.h"
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 

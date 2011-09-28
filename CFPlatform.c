@@ -39,7 +39,7 @@
 
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
-#include <CoreFoundation/CFPriv.h>
+#include "CFPriv.h"
 #include <fcntl.h>
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
     #include <stdlib.h>
@@ -62,6 +62,7 @@
 #include <WinIoCtl.h>
 
 #define getcwd _NS_getcwd
+#define strdup _strdup
 
 #endif
 

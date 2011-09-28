@@ -143,7 +143,7 @@ test_gcc_flag() {
 }
 
 if test "x$GCC" = "xyes" ; then
-    DESIRED_CFLAGS="-Wall -Wmost -pipe -Wno-trigraphs -Wno-parentheses -fexceptions -std=gnu99 -mmacosx-version-min=10.5 -fconstant-cfstrings"
+    DESIRED_CFLAGS="-Wall -Wmost -pipe -Wno-trigraphs -Wno-parentheses -fexceptions -std=gnu99 -x c -mmacosx-version-min=10.5 -fconstant-cfstrings"
 
     for flag in $DESIRED_CFLAGS ; do
         AC_MSG_CHECKING([whether ${CC} accepts ${flag}])

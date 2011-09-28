@@ -7,8 +7,8 @@
 #if !defined(__COREFOUNDATION_CFNOTIFICATIONCENTER__)
 #define __COREFOUNDATION_CFNOTIFICATIONCENTER__ 1
 
-#include <CoreFoundation/CoreFoundation_Prefix.h>
-#include "CFInternal.h"
+//#include <CoreFoundation/CoreFoundation_Prefix.h>
+//#include "CFInternal.h"
 #include <CoreFoundation/CFBase.h>
 #include <CoreFoundation/CFDictionary.h>
 

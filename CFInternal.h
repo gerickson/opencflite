@@ -123,7 +123,7 @@ CF_EXTERN_C_BEGIN
 #endif
 
 
-#include <CoreFoundation/ForFoundationOnly.h>
+#include "ForFoundationOnly.h"
 
 CF_EXPORT const char *_CFProcessName(void);
 CF_EXPORT CFStringRef _CFProcessNameString(void);

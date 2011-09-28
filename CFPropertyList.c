@@ -41,11 +41,11 @@
 #include <CoreFoundation/CFNumber.h>
 #include <CoreFoundation/CFSet.h>
 #include <CoreFoundation/CFError.h>
-#include <CoreFoundation/CFError_Private.h>
-#include <CoreFoundation/CFPriv.h>
+#include "CFError_Private.h"
+#include "CFPriv.h"
 #include <CoreFoundation/CFStringEncodingConverter.h>
 #include <CoreFoundation/CoreFoundation_Prefix.h>
-#include <CoreFoundation/CFInternal.h>
+#include "CFInternal.h"
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS
 #include <CoreFoundation/CFStream.h>
 #endif

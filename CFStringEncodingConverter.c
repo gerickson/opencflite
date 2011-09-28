@@ -40,11 +40,11 @@
 #include "CFInternal.h"
 #include <CoreFoundation/CFArray.h>
 #include <CoreFoundation/CFDictionary.h>
-#include "CFICUConverters.h"
+#include <CoreFoundation/CFICUConverters.h>
 #include <CoreFoundation/CFUniChar.h>
-#include <CoreFoundation/CFPriv.h>
-#include "CFUnicodeDecomposition.h"
-#include "CFStringEncodingConverterExt.h"
+#include "CFPriv.h"
+#include <CoreFoundation/CFUnicodeDecomposition.h>
+#include <CoreFoundation/CFStringEncodingConverterExt.h>
 #include "CFStringEncodingConverterPriv.h"
 #include <stdlib.h>
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD

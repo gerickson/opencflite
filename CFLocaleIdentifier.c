@@ -91,6 +91,10 @@
 #include "CFInternal.h"
 #include "CFLocaleInternal.h"
 
+#if DEPLOYMENT_TARGET_WINDOWS
+#define strdup _strdup
+#endif
+
 // Max byte length of locale identifier (ASCII) as C string, including terminating null byte
 enum {
     kLocaleIdentifierCStringMax = ULOC_FULLNAME_CAPACITY + ULOC_KEYWORD_AND_VALUES_CAPACITY	// currently 56 + 100

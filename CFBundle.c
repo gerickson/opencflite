@@ -44,11 +44,11 @@
 #include <CoreFoundation/CFURLAccess.h>
 #include <CoreFoundation/CFError.h>
 #include <string.h>
-#include <CoreFoundation/CFPriv.h>
+#include "CFPriv.h"
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include <CoreFoundation/CFByteOrder.h>
-#include "CFBundle_BinaryTypes.h"
+#include <CoreFoundation/CFBundle_BinaryTypes.h>
 // NOT IN DIST: #include <CoreFoundation/CFVersionCheck.h>
 #include <ctype.h>
 #include <sys/stat.h>

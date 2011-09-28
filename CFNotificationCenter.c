@@ -26,7 +26,7 @@
 #include <CoreFoundation/CFStream.h>
 #include <CoreFoundation/CFString.h>
 
-#include "CFRuntime.h"
+#include <CoreFoundation/CFRuntime.h>
 #include "CFPriv.h"
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"

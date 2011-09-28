@@ -40,9 +40,9 @@
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include "CFBundle_Internal.h"
-#include "CFUniChar.h" 
-#include "CFStringEncodingConverterExt.h"
-#include "CFUnicodeDecomposition.h"
+#include <CoreFoundation/CFUniChar.h>
+#include <CoreFoundation/CFStringEncodingConverterExt.h>
+#include <CoreFoundation/CFUnicodeDecomposition.h>
 #include "CFUniCharPriv.h"
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #include <fcntl.h>

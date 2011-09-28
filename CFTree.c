@@ -39,7 +39,7 @@
 #include <CoreFoundation/CFTree.h>
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
-#include <CoreFoundation/CFPriv.h>
+#include "CFPriv.h"
 
 struct __CFTreeCallBacks {
     CFTreeRetainCallBack		retain;

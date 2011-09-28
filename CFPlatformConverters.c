@@ -39,13 +39,13 @@
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
 #include <CoreFoundation/CFString.h>
-#include "CFStringEncodingConverterExt.h"
+#include <CoreFoundation/CFStringEncodingConverterExt.h>
 #include <CoreFoundation/CFStringEncodingExt.h>
 #include <CoreFoundation/CFPreferences.h>
-#include "CFUniChar.h"
-#include "CFUnicodeDecomposition.h"
+#include <CoreFoundation/CFUniChar.h>
+#include <CoreFoundation/CFUnicodeDecomposition.h>
 #include "CFStringEncodingConverterPriv.h"
-#include "CFICUConverters.h"
+#include <CoreFoundation/CFICUConverters.h>
 
 
 CF_INLINE bool __CFIsPlatformConverterAvailable(int encoding) {

@@ -40,7 +40,7 @@
 #include "CFInternal.h"
 #include <CoreFoundation/CFString.h>
 #include <CoreFoundation/CFByteOrder.h>
-#include <CoreFoundation/CFPriv.h>
+#include "CFPriv.h"
 #include <string.h>
 #include <CoreFoundation/CFStringEncodingConverterExt.h>
 #include <CoreFoundation/CFUniChar.h>

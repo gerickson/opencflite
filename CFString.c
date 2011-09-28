@@ -45,7 +45,7 @@
 #include <CoreFoundation/CFUniChar.h>
 #include <CoreFoundation/CFUnicodeDecomposition.h>
 #include <CoreFoundation/CFUnicodePrecomposition.h>
-#include <CoreFoundation/CFPriv.h>
+#include "CFPriv.h"
 #include <CoreFoundation/CFNumber.h>
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"

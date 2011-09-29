@@ -46,7 +46,7 @@
 #include <CoreFoundation/CFStringEncodingConverter.h>
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
 #include <CoreFoundation/CFStream.h>
 #endif
 #include <CoreFoundation/CFCalendar.h>
@@ -2370,7 +2370,7 @@ CFDataRef CFPropertyListCreateData(CFAllocatorRef allocator, CFPropertyListRef p
     } else if (format == kCFPropertyListXMLFormat_v1_0) {
         data = _CFPropertyListCreateXMLData(allocator, propertyList, true);
     } else if (format == kCFPropertyListBinaryFormat_v1_0) {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
         // TODO: Is it more efficient to create a stream here or just use a mutable data?
         CFWriteStreamRef stream = CFWriteStreamCreateWithAllocatedBuffers(kCFAllocatorSystemDefault, allocator);
         CFWriteStreamOpen(stream);
@@ -2392,7 +2392,7 @@ CFDataRef CFPropertyListCreateData(CFAllocatorRef allocator, CFPropertyListRef p
     return data;
 }
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
 
 CFIndex CFPropertyListWrite(CFPropertyListRef propertyList, CFWriteStreamRef stream, CFPropertyListFormat format, CFOptionFlags options, CFErrorRef *error) {
     initStatics();

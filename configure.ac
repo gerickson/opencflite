@@ -13,13 +13,13 @@ AC_PREREQ(2.61)
 # the Apple CoreFoundation release version and z tracks the OpenCFLite
 # release thereof.
 #
-AC_INIT([CoreFoundation],[550.1.0],[bfulgham@users.sourceforge.net],[opencflite])
+AC_INIT([CoreFoundation],[635.1.0],[bfulgham@users.sourceforge.net],[opencflite])
 
 #
 # Interface number, revision and age of the library interface passed to
 # libtool when the library is linked.
 #
-AC_SUBST(CF_VERSION_INFO, [550:1:0])
+AC_SUBST(CF_VERSION_INFO, [635:1:0])
 
 #
 # Check the sanity of thes source directory by checking for the
@@ -73,22 +73,22 @@ AC_MSG_CHECKING([for supported deployment target])
 
 case ${host_os} in
 	*darwin*)
-		CPPFLAGS="-DDEPLOYMENT_TARGET_MACOSX=1 ${CPPFLAGS}"
+		CPPFLAGS="-DDEPLOYMENT_TARGET_MACOSX=1 -DTARGET_OS_MAC=1 ${CPPFLAGS}"
 		deployment_target="Mac OS X"
 		;;
 
 	*freebsd*)
-		CPPFLAGS="-DDEPLOYMENT_TARGET_FREEBSD=1 ${CPPFLAGS}"
+		CPPFLAGS="-DDEPLOYMENT_TARGET_FREEBSD=1 -DTARGET_OS_FREEBSD=1 ${CPPFLAGS}"
 		deployment_target="FreeBSD"
 		;;
 
 	*linux*)
-		CPPFLAGS="-DDEPLOYMENT_TARGET_LINUX=1 ${CPPFLAGS}"
+		CPPFLAGS="-DDEPLOYMENT_TARGET_LINUX=1 -DTARGET_OS_LINUX=1 ${CPPFLAGS}"
 		deployment_target="Linux"
 		;;
 
 	*mingw*)
-		CPPFLAGS="-DDEPLOYMENT_TARGET_WINDOWS=1 ${CPPFLAGS}"
+		CPPFLAGS="-DDEPLOYMENT_TARGET_WINDOWS=1 -DTARGET_OS_WIN32=1 ${CPPFLAGS}"
 		deployment_target="Windows"
 		;;
 
@@ -111,10 +111,14 @@ AC_GNU_SOURCE
 AM_PROG_CC_C_O
 AC_PROG_CPP
 AC_PROG_INSTALL
-AC_PROG_LIBTOOL
 AC_PROG_LN_S
 AC_PROG_RANLIB
 AC_PATH_PROG(CMP, cmp)
+
+LT_PREREQ([2.2])
+LT_INIT
+AC_SUBST([LIBTOOL_DEPS])
+
 
 # Support building DLLs on Windows
 AC_LIBTOOL_WIN32_DLL
@@ -143,7 +147,8 @@ test_gcc_flag() {
 }
 
 if test "x$GCC" = "xyes" ; then
-    DESIRED_CFLAGS="-Wall -Wmost -pipe -Wno-trigraphs -Wno-parentheses -fexceptions -std=gnu99 -x c -mmacosx-version-min=10.5 -fconstant-cfstrings"
+#    DESIRED_CFLAGS="-Wall -Wmost -pipe -Wno-trigraphs -Wno-parentheses -fexceptions -std=gnu99 -xc -mmacosx-version-min=10.5 -fconstant-cfstrings"
+    DESIRED_CFLAGS="-Wall -Wmost -pipe -Wno-trigraphs -Wno-parentheses -fexceptions -std=gnu99 -mmacosx-version-min=10.5 -fconstant-cfstrings"
 
     for flag in $DESIRED_CFLAGS ; do
         AC_MSG_CHECKING([whether ${CC} accepts ${flag}])
@@ -154,6 +159,8 @@ if test "x$GCC" = "xyes" ; then
            AC_MSG_RESULT([no])
         fi
     done
+
+     OBJCFLAGS="$CFLAGS"
 fi
 
 # Check whether the current compiler supports atomic built-ins
@@ -494,7 +501,7 @@ AC_CHECK_HEADERS([uuid/uuid.h])
 #
 # Check for POSIX thread support.
 #
-ACX_PTHREAD([],AC_MSG_ERROR([${PACKAGE_NAME} requires POSIX threads.]))
+AX_PTHREAD([],AC_MSG_ERROR([${PACKAGE_NAME} requires POSIX threads.]))
 
 CFLAGS="${PTHREAD_CFLAGS} ${CFLAGS}"
 CPPFLAGS="${PTHREAD_CPPFLAGS} ${CPPFLAGS}"

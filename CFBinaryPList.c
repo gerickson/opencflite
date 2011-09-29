@@ -54,7 +54,7 @@
 #include <string.h>
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
 #include <CoreFoundation/CFStream.h>
 #endif
 

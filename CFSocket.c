@@ -1035,7 +1035,7 @@ void gettimeofday(struct timeval *tp, void *tzp) {
 
 //#define LOG_CFSOCKET
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX
 #define INVALID_SOCKET (CFSocketNativeHandle)(-1)
 #define closesocket(a) close((a))
 #define ioctlsocket(a,b,c) ioctl((a),(b),(c))

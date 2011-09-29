@@ -135,7 +135,7 @@ __private_extern__ void __CFDateInitialize(void) {
     __CF1_TSRRate = 1.0 / __CFTSRRate;
 #elif DEPLOYMENT_TARGET_LINUX
     struct timespec res;
-    if (!clock_getres(CLOCK_MONOTONIC, &res)) {
+    if (0 != clock_getres(CLOCK_MONOTONIC, &res)) {
         HALT;
     }
     __CFTSRRate = res.tv_sec + (1000000000 * res.tv_nsec);

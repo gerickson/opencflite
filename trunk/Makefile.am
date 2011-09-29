@@ -1,3 +1,5 @@
+ACLOCAL_AMFLAGS = -I m4
+
 # We need to ensure that the top-level (i.e. source) directory is
 # built before tests and examples, so we explicitly add '.' to the
 # list of subdirectories.l
@@ -19,6 +21,14 @@ DEFS				+= -include ${CONFIG_HEADER}
 
 pkgconfigdir			= ${libdir}/pkgconfig
 pkgconfig_DATA			= CoreFoundation.pc
+
+#
+#
+#
+
+LIBTOOL_DEPS = @LIBTOOL_DEPS@
+libtool: $(LIBTOOL_DEPS)
+	$(SHELL) ./config.status libtool
 
 #
 # Define where we will install and where CoreFoundation can find its
@@ -123,7 +133,7 @@ CF_COMMON_SOURCES		= CFApplicationPreferences.c		\
 				  CFArray.c				\
 				  CFBag.c				\
 				  CFBase.c				\
-				  CFBasicHash.m				\
+				  CFBasicHash.c				\
 				  CFBinaryHeap.c			\
 				  CFBinaryPList.c			\
 				  CFBitVector.c				\

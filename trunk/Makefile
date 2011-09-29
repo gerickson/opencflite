@@ -15,10 +15,6 @@
 
 
 
-# We need to ensure that the top-level (i.e. source) directory is
-# built before tests and examples, so we explicitly add '.' to the
-# list of subdirectories.l
-
 
 
 
@@ -51,7 +47,7 @@ am__append_1 = libCoreFoundation_debug.la
 # Only generate a profile instance of the library if --enable-debug was
 # passed at configuration time.
 #
-am__append_2 = libCoreFoundation_profile.la
+#am__append_2 = libCoreFoundation_profile.la
 subdir = .
 DIST_COMMON = README $(CF_include_HEADERS) $(am__configure_deps) \
 	$(noinst_HEADERS) $(srcdir)/CoreFoundation.pc.in \
@@ -62,7 +58,7 @@ DIST_COMMON = README $(CF_include_HEADERS) $(am__configure_deps) \
 	config/mkinstalldirs
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acinclude.m4 \
-	$(top_srcdir)/m4/acx_pthread.m4 $(top_srcdir)/m4/libtool.m4 \
+	$(top_srcdir)/m4/ax_pthread.m4 $(top_srcdir)/m4/libtool.m4 \
 	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
 	$(top_srcdir)/m4/ltversion.m4 $(top_srcdir)/m4/lt~obsolete.m4 \
 	$(top_srcdir)/configure.ac
@@ -170,14 +166,15 @@ am__objects_1 = libCoreFoundation_la-CFApplicationPreferences.lo \
 	libCoreFoundation_la-CFXMLTree.lo
 am_libCoreFoundation_la_OBJECTS = $(am__objects_1)
 libCoreFoundation_la_OBJECTS = $(am_libCoreFoundation_la_OBJECTS)
-libCoreFoundation_la_LINK = $(LIBTOOL) $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(OBJCLD) $(AM_OBJCFLAGS) \
-	$(OBJCFLAGS) $(libCoreFoundation_la_LDFLAGS) $(LDFLAGS) -o $@
+libCoreFoundation_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(libCoreFoundation_la_CFLAGS) $(CFLAGS) \
+	$(libCoreFoundation_la_LDFLAGS) $(LDFLAGS) -o $@
 libCoreFoundation_debug_la_DEPENDENCIES =  \
 	$(am__DEPENDENCIES_1)
 am__libCoreFoundation_debug_la_SOURCES_DIST =  \
 	CFApplicationPreferences.c CFArray.c CFBag.c CFBase.c \
-	CFBasicHash.m CFBinaryHeap.c CFBinaryPList.c CFBitVector.c \
+	CFBasicHash.c CFBinaryHeap.c CFBinaryPList.c CFBitVector.c \
 	CFBuiltinConverters.c CFBundle.c CFBundle_Resources.c \
 	CFCalendar.c CFCharacterSet.c CFConcreteStreams.c CFData.c \
 	CFDateFormatter.c CFDate.c CFDictionary.c CFError.c \
@@ -272,17 +269,17 @@ am_libCoreFoundation_debug_la_OBJECTS =  \
 	$(am__objects_2)
 libCoreFoundation_debug_la_OBJECTS =  \
 	$(am_libCoreFoundation_debug_la_OBJECTS)
-libCoreFoundation_debug_la_LINK = $(LIBTOOL) $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(OBJCLD) $(AM_OBJCFLAGS) \
-	$(OBJCFLAGS) $(libCoreFoundation_debug_la_LDFLAGS) $(LDFLAGS) \
-	-o $@
+libCoreFoundation_debug_la_LINK = $(LIBTOOL) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) \
+	$(libCoreFoundation_debug_la_LDFLAGS) $(LDFLAGS) -o $@
 am_libCoreFoundation_debug_la_rpath = -rpath \
 	$(libdir)
-libCoreFoundation_profile_la_DEPENDENCIES =  \
-	$(am__DEPENDENCIES_1)
+#libCoreFoundation_profile_la_DEPENDENCIES =  \
+#	$(am__DEPENDENCIES_1)
 am__libCoreFoundation_profile_la_SOURCES_DIST =  \
 	CFApplicationPreferences.c CFArray.c CFBag.c CFBase.c \
-	CFBasicHash.m CFBinaryHeap.c CFBinaryPList.c CFBitVector.c \
+	CFBasicHash.c CFBinaryHeap.c CFBinaryPList.c CFBitVector.c \
 	CFBuiltinConverters.c CFBundle.c CFBundle_Resources.c \
 	CFCalendar.c CFCharacterSet.c CFConcreteStreams.c CFData.c \
 	CFDateFormatter.c CFDate.c CFDictionary.c CFError.c \
@@ -373,16 +370,16 @@ am__objects_3 =  \
 	libCoreFoundation_profile_la-CFXMLParser.lo \
 	libCoreFoundation_profile_la-CFXMLPreferencesDomain.lo \
 	libCoreFoundation_profile_la-CFXMLTree.lo
-am_libCoreFoundation_profile_la_OBJECTS =  \
-	$(am__objects_3)
+#am_libCoreFoundation_profile_la_OBJECTS =  \
+#	$(am__objects_3)
 libCoreFoundation_profile_la_OBJECTS =  \
 	$(am_libCoreFoundation_profile_la_OBJECTS)
-libCoreFoundation_profile_la_LINK = $(LIBTOOL) $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(OBJCLD) $(AM_OBJCFLAGS) \
-	$(OBJCFLAGS) $(libCoreFoundation_profile_la_LDFLAGS) \
-	$(LDFLAGS) -o $@
-am_libCoreFoundation_profile_la_rpath = -rpath \
-	$(libdir)
+libCoreFoundation_profile_la_LINK = $(LIBTOOL) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) \
+	$(libCoreFoundation_profile_la_LDFLAGS) $(LDFLAGS) -o $@
+#am_libCoreFoundation_profile_la_rpath = -rpath \
+#	$(libdir)
 DEFAULT_INCLUDES = -I. -I$(top_builddir)/include
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -395,15 +392,6 @@ LTCOMPILE = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
-	$(LDFLAGS) -o $@
-OBJCCOMPILE = $(OBJC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
-	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_OBJCFLAGS) $(OBJCFLAGS)
-LTOBJCCOMPILE = $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
-	--mode=compile $(OBJC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
-	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_OBJCFLAGS) $(OBJCFLAGS)
-OBJCLD = $(OBJC)
-OBJCLINK = $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
-	$(OBJCLD) $(AM_OBJCFLAGS) $(OBJCFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(libCoreFoundation_la_SOURCES) \
 	$(libCoreFoundation_debug_la_SOURCES) \
@@ -476,10 +464,10 @@ AWK = mawk
 CC = gcc
 CCDEPMODE = depmode=gcc3
 CFLAGS = -pthread -g -O2 -Wall -pipe -Wno-trigraphs -Wno-parentheses -fexceptions -std=gnu99
-CF_VERSION_INFO = 550:1:0
+CF_VERSION_INFO = 635:1:0
 CMP = /usr/bin/cmp
 CPP = gcc -E
-CPPFLAGS = -I./include  -I/usr/include/uuid   -D_REENTRANT  -I/usr/include  -DDEPLOYMENT_TARGET_LINUX=1 
+CPPFLAGS = -I./include  -I/usr/include/uuid   -D_REENTRANT  -I/usr/include  -DDEPLOYMENT_TARGET_LINUX=1 -DTARGET_OS_LINUX=1 
 CXX = g++
 CXXCPP = g++ -E
 CXXDEPMODE = depmode=gcc3
@@ -518,6 +506,11 @@ LDFLAGS =  -L/usr/lib/i386-linux-gnu    -ldl -lm   -L/usr/lib -licui18n -licuuc 
 LIBOBJS = 
 LIBS = -lm -ldl -lrt  -luuid   -licui18n -licuuc -licudata  
 LIBTOOL = $(SHELL) $(top_builddir)/libtool
+
+#
+#
+#
+LIBTOOL_DEPS = config/ltmain.sh
 LIPO = 
 LN_S = ln -s
 LTLIBOBJS = 
@@ -528,7 +521,7 @@ NM = /usr/bin/nm -B
 NMEDIT = 
 OBJC = gcc
 OBJCDEPMODE = depmode=gcc3
-OBJCFLAGS = -g -O2
+OBJCFLAGS = -g -O2 -Wall -pipe -Wno-trigraphs -Wno-parentheses -fexceptions -std=gnu99
 OBJDUMP = objdump
 OBJEXT = o
 OTOOL = 
@@ -536,10 +529,10 @@ OTOOL64 =
 PACKAGE = opencflite
 PACKAGE_BUGREPORT = bfulgham@users.sourceforge.net
 PACKAGE_NAME = CoreFoundation
-PACKAGE_STRING = CoreFoundation 550.1.0
+PACKAGE_STRING = CoreFoundation 635.1.0
 PACKAGE_TARNAME = opencflite
 PACKAGE_URL = 
-PACKAGE_VERSION = 550.1.0
+PACKAGE_VERSION = 635.1.0
 PATH_SEPARATOR = :
 PKG_CONFIG = /usr/bin/pkg-config
 PTHREAD_CC = gcc
@@ -554,7 +547,7 @@ UUID_CONFIG =
 UUID_CPPFLAGS = -I/usr/include/uuid  
 UUID_LDFLAGS = -L/usr/lib/i386-linux-gnu  
 UUID_LIBS = -luuid  
-VERSION = 550.1.0
+VERSION = 635.1.0
 abs_builddir = /home/brent/Projects/opencflite
 abs_srcdir = /home/brent/Projects/opencflite
 abs_top_builddir = /home/brent/Projects/opencflite
@@ -563,12 +556,12 @@ ac_ct_CC = gcc
 ac_ct_CXX = g++
 ac_ct_DUMPBIN = 
 ac_ct_OBJC = gcc
-acx_pthread_config = 
 am__include = include
 am__leading_dot = .
 am__quote = 
 am__tar = ${AMTAR} chof - "$$tardir"
 am__untar = ${AMTAR} xf -
+ax_pthread_config = 
 bindir = ${exec_prefix}/bin
 build = i686-pc-linux-gnu
 build_alias = 
@@ -610,6 +603,11 @@ target_alias =
 top_build_prefix = 
 top_builddir = .
 top_srcdir = .
+ACLOCAL_AMFLAGS = -I m4
+
+# We need to ensure that the top-level (i.e. source) directory is
+# built before tests and examples, so we explicitly add '.' to the
+# list of subdirectories.l
 SUBDIRS = include compat . tests examples
 
 #
@@ -716,7 +714,7 @@ CF_COMMON_SOURCES = CFApplicationPreferences.c		\
 				  CFArray.c				\
 				  CFBag.c				\
 				  CFBase.c				\
-				  CFBasicHash.m				\
+				  CFBasicHash.c				\
 				  CFBinaryHeap.c			\
 				  CFBinaryPList.c			\
 				  CFBitVector.c				\
@@ -796,11 +794,11 @@ libCoreFoundation_debug_la_CFLAGS = $(CF_COMMON_CFLAGS)
 libCoreFoundation_debug_la_LDFLAGS = $(CF_COMMON_LDFLAGS)
 libCoreFoundation_debug_la_LIBADD = $(CF_COMMON_LIBADD)
 libCoreFoundation_debug_la_SOURCES = $(CF_COMMON_SOURCES)
-libCoreFoundation_profile_la_CPPFLAGS = $(CF_COMMON_CPPFLAGS) -DPROFILE
-libCoreFoundation_profile_la_CFLAGS = $(CF_COMMON_CFLAGS) -pg
-libCoreFoundation_profile_la_LDFLAGS = $(CF_COMMON_LDFLAGS)
-libCoreFoundation_profile_la_LIBADD = $(CF_COMMON_LIBADD)
-libCoreFoundation_profile_la_SOURCES = $(CF_COMMON_SOURCES)
+#libCoreFoundation_profile_la_CPPFLAGS = $(CF_COMMON_CPPFLAGS) -DPROFILE
+#libCoreFoundation_profile_la_CFLAGS = $(CF_COMMON_CFLAGS) -pg
+#libCoreFoundation_profile_la_LDFLAGS = $(CF_COMMON_LDFLAGS)
+#libCoreFoundation_profile_la_LIBADD = $(CF_COMMON_LIBADD)
+#libCoreFoundation_profile_la_SOURCES = $(CF_COMMON_SOURCES)
 EXTRA_DIST = APPLE_LICENSE	\
 				  CHANGES \
 				  CONTRIBUTORS \
@@ -958,7 +956,7 @@ EXTRA_DIST = APPLE_LICENSE	\
 all: all-recursive
 
 .SUFFIXES:
-.SUFFIXES: .c .lo .m .o .obj
+.SUFFIXES: .c .lo .o .obj
 am--refresh:
 	@:
 $(srcdir)/Makefile.in: # $(srcdir)/Makefile.am  $(am__configure_deps)
@@ -1298,6 +1296,13 @@ libCoreFoundation_la-CFBase.lo: CFBase.c
 #	source='CFBase.c' object='libCoreFoundation_la-CFBase.lo' libtool=yes \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_la-CFBase.lo `test -f 'CFBase.c' || echo '$(srcdir)/'`CFBase.c
+
+libCoreFoundation_la-CFBasicHash.lo: CFBasicHash.c
+	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_la-CFBasicHash.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_la-CFBasicHash.Tpo -c -o libCoreFoundation_la-CFBasicHash.lo `test -f 'CFBasicHash.c' || echo '$(srcdir)/'`CFBasicHash.c
+	$(am__mv) $(DEPDIR)/libCoreFoundation_la-CFBasicHash.Tpo $(DEPDIR)/libCoreFoundation_la-CFBasicHash.Plo
+#	source='CFBasicHash.c' object='libCoreFoundation_la-CFBasicHash.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_la-CFBasicHash.lo `test -f 'CFBasicHash.c' || echo '$(srcdir)/'`CFBasicHash.c
 
 libCoreFoundation_la-CFBinaryHeap.lo: CFBinaryHeap.c
 	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_la-CFBinaryHeap.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_la-CFBinaryHeap.Tpo -c -o libCoreFoundation_la-CFBinaryHeap.lo `test -f 'CFBinaryHeap.c' || echo '$(srcdir)/'`CFBinaryHeap.c
@@ -1782,6 +1787,13 @@ libCoreFoundation_debug_la-CFBase.lo: CFBase.c
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_debug_la-CFBase.lo `test -f 'CFBase.c' || echo '$(srcdir)/'`CFBase.c
 
+libCoreFoundation_debug_la-CFBasicHash.lo: CFBasicHash.c
+	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_debug_la-CFBasicHash.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_debug_la-CFBasicHash.Tpo -c -o libCoreFoundation_debug_la-CFBasicHash.lo `test -f 'CFBasicHash.c' || echo '$(srcdir)/'`CFBasicHash.c
+	$(am__mv) $(DEPDIR)/libCoreFoundation_debug_la-CFBasicHash.Tpo $(DEPDIR)/libCoreFoundation_debug_la-CFBasicHash.Plo
+#	source='CFBasicHash.c' object='libCoreFoundation_debug_la-CFBasicHash.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_debug_la-CFBasicHash.lo `test -f 'CFBasicHash.c' || echo '$(srcdir)/'`CFBasicHash.c
+
 libCoreFoundation_debug_la-CFBinaryHeap.lo: CFBinaryHeap.c
 	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_debug_la-CFBinaryHeap.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_debug_la-CFBinaryHeap.Tpo -c -o libCoreFoundation_debug_la-CFBinaryHeap.lo `test -f 'CFBinaryHeap.c' || echo '$(srcdir)/'`CFBinaryHeap.c
 	$(am__mv) $(DEPDIR)/libCoreFoundation_debug_la-CFBinaryHeap.Tpo $(DEPDIR)/libCoreFoundation_debug_la-CFBinaryHeap.Plo
@@ -2265,6 +2277,13 @@ libCoreFoundation_profile_la-CFBase.lo: CFBase.c
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_profile_la-CFBase.lo `test -f 'CFBase.c' || echo '$(srcdir)/'`CFBase.c
 
+libCoreFoundation_profile_la-CFBasicHash.lo: CFBasicHash.c
+	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_profile_la-CFBasicHash.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_profile_la-CFBasicHash.Tpo -c -o libCoreFoundation_profile_la-CFBasicHash.lo `test -f 'CFBasicHash.c' || echo '$(srcdir)/'`CFBasicHash.c
+	$(am__mv) $(DEPDIR)/libCoreFoundation_profile_la-CFBasicHash.Tpo $(DEPDIR)/libCoreFoundation_profile_la-CFBasicHash.Plo
+#	source='CFBasicHash.c' object='libCoreFoundation_profile_la-CFBasicHash.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_profile_la-CFBasicHash.lo `test -f 'CFBasicHash.c' || echo '$(srcdir)/'`CFBasicHash.c
+
 libCoreFoundation_profile_la-CFBinaryHeap.lo: CFBinaryHeap.c
 	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_profile_la-CFBinaryHeap.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_profile_la-CFBinaryHeap.Tpo -c -o libCoreFoundation_profile_la-CFBinaryHeap.lo `test -f 'CFBinaryHeap.c' || echo '$(srcdir)/'`CFBinaryHeap.c
 	$(am__mv) $(DEPDIR)/libCoreFoundation_profile_la-CFBinaryHeap.Tpo $(DEPDIR)/libCoreFoundation_profile_la-CFBinaryHeap.Plo
@@ -2719,48 +2738,6 @@ libCoreFoundation_profile_la-CFXMLTree.lo: CFXMLTree.c
 #	source='CFXMLTree.c' object='libCoreFoundation_profile_la-CFXMLTree.lo' libtool=yes \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_profile_la-CFXMLTree.lo `test -f 'CFXMLTree.c' || echo '$(srcdir)/'`CFXMLTree.c
-
-.m.o:
-	$(OBJCCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-#	source='$<' object='$@' libtool=no \
-#	DEPDIR=$(DEPDIR) $(OBJCDEPMODE) $(depcomp) \
-#	$(OBJCCOMPILE) -c -o $@ $<
-
-.m.obj:
-	$(OBJCCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-#	source='$<' object='$@' libtool=no \
-#	DEPDIR=$(DEPDIR) $(OBJCDEPMODE) $(depcomp) \
-#	$(OBJCCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
-
-.m.lo:
-	$(LTOBJCCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
-#	source='$<' object='$@' libtool=yes \
-#	DEPDIR=$(DEPDIR) $(OBJCDEPMODE) $(depcomp) \
-#	$(LTOBJCCOMPILE) -c -o $@ $<
-
-libCoreFoundation_la-CFBasicHash.lo: CFBasicHash.m
-	$(LIBTOOL)  $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(OBJC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(AM_OBJCFLAGS) $(OBJCFLAGS) -MT libCoreFoundation_la-CFBasicHash.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_la-CFBasicHash.Tpo -c -o libCoreFoundation_la-CFBasicHash.lo `test -f 'CFBasicHash.m' || echo '$(srcdir)/'`CFBasicHash.m
-	$(am__mv) $(DEPDIR)/libCoreFoundation_la-CFBasicHash.Tpo $(DEPDIR)/libCoreFoundation_la-CFBasicHash.Plo
-#	source='CFBasicHash.m' object='libCoreFoundation_la-CFBasicHash.lo' libtool=yes \
-#	DEPDIR=$(DEPDIR) $(OBJCDEPMODE) $(depcomp) \
-#	$(LIBTOOL)  $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(OBJC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(AM_OBJCFLAGS) $(OBJCFLAGS) -c -o libCoreFoundation_la-CFBasicHash.lo `test -f 'CFBasicHash.m' || echo '$(srcdir)/'`CFBasicHash.m
-
-libCoreFoundation_debug_la-CFBasicHash.lo: CFBasicHash.m
-	$(LIBTOOL)  $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(OBJC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(AM_OBJCFLAGS) $(OBJCFLAGS) -MT libCoreFoundation_debug_la-CFBasicHash.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_debug_la-CFBasicHash.Tpo -c -o libCoreFoundation_debug_la-CFBasicHash.lo `test -f 'CFBasicHash.m' || echo '$(srcdir)/'`CFBasicHash.m
-	$(am__mv) $(DEPDIR)/libCoreFoundation_debug_la-CFBasicHash.Tpo $(DEPDIR)/libCoreFoundation_debug_la-CFBasicHash.Plo
-#	source='CFBasicHash.m' object='libCoreFoundation_debug_la-CFBasicHash.lo' libtool=yes \
-#	DEPDIR=$(DEPDIR) $(OBJCDEPMODE) $(depcomp) \
-#	$(LIBTOOL)  $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(OBJC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(AM_OBJCFLAGS) $(OBJCFLAGS) -c -o libCoreFoundation_debug_la-CFBasicHash.lo `test -f 'CFBasicHash.m' || echo '$(srcdir)/'`CFBasicHash.m
-
-libCoreFoundation_profile_la-CFBasicHash.lo: CFBasicHash.m
-	$(LIBTOOL)  $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(OBJC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(AM_OBJCFLAGS) $(OBJCFLAGS) -MT libCoreFoundation_profile_la-CFBasicHash.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_profile_la-CFBasicHash.Tpo -c -o libCoreFoundation_profile_la-CFBasicHash.lo `test -f 'CFBasicHash.m' || echo '$(srcdir)/'`CFBasicHash.m
-	$(am__mv) $(DEPDIR)/libCoreFoundation_profile_la-CFBasicHash.Tpo $(DEPDIR)/libCoreFoundation_profile_la-CFBasicHash.Plo
-#	source='CFBasicHash.m' object='libCoreFoundation_profile_la-CFBasicHash.lo' libtool=yes \
-#	DEPDIR=$(DEPDIR) $(OBJCDEPMODE) $(depcomp) \
-#	$(LIBTOOL)  $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(OBJC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(AM_OBJCFLAGS) $(OBJCFLAGS) -c -o libCoreFoundation_profile_la-CFBasicHash.lo `test -f 'CFBasicHash.m' || echo '$(srcdir)/'`CFBasicHash.m
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -3275,6 +3252,8 @@ uninstall-am: uninstall-CF_includeHEADERS \
 	uninstall-am uninstall-libCoreFoundation_la_dataDATA \
 	uninstall-libLTLIBRARIES uninstall-pkgconfigDATA
 
+libtool: $(LIBTOOL_DEPS)
+	$(SHELL) ./config.status libtool
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

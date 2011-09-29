@@ -152,6 +152,9 @@
 /* Define to 1 if you have the <poll.h> header file. */
 #undef HAVE_POLL_H
 
+/* Define if you have POSIX threads libraries and header files. */
+#undef HAVE_PTHREAD
+
 /* Define to 1 if you have the <pwd.h> header file. */
 #undef HAVE_PWD_H
 
@@ -224,11 +227,23 @@
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
 
+/* Define to 1 if you have the `strlcat' function. */
+#undef HAVE_STRLCAT
+
+/* Define to 1 if you have the `strlcpy' function. */
+#undef HAVE_STRLCPY
+
 /* Define to 1 if you have the `strncasecmp' function. */
 #undef HAVE_STRNCASECMP
 
+/* Define to 1 if you have the `strncat' function. */
+#undef HAVE_STRNCAT
+
 /* Define to 1 if you have the `strncmp' function. */
 #undef HAVE_STRNCMP
+
+/* Define to 1 if you have the `strncpy' function. */
+#undef HAVE_STRNCPY
 
 /* Define to 1 if you have the `strrchr' function. */
 #undef HAVE_STRRCHR
@@ -407,6 +422,10 @@
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
 
+/* Define to necessary symbol if this constant uses a non-standard name on
+   your system. */
+#undef PTHREAD_CREATE_JOINABLE
+
 /* Define to the type of arg 1 for `select'. */
 #undef SELECT_TYPE_ARG1
 
@@ -465,6 +484,11 @@
 
 /* Version number of package */
 #undef VERSION
+
+/* Enable BSD extensions on systems that have them.  */
+#ifndef _BSD_SOURCE
+# undef _BSD_SOURCE
+#endif
 
 /* Define to 1 if on MINIX. */
 #undef _MINIX
@@ -552,6 +576,12 @@
 
 /* Define to `int' if <sys/types.h> does not define. */
 #undef ssize_t
+
+/* Define this if the target system has strncat but not strlcat. */
+#undef strlcat
+
+/* Define this if the target system has strncpy but not strlcpy. */
+#undef strlcpy
 
 /* Define to `int' if <sys/types.h> doesn't define. */
 #undef uid_t

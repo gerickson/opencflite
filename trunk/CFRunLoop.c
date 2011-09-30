@@ -473,7 +473,7 @@ struct __CFRunLoopMode {
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
     mach_port_t _timerPort;
 #elif DEPLOYMENT_TARGET_LINUX
-    sem_t* _timerPort;
+    timer_t _timerPort;
 #elif DEPLOYMENT_TARGET_WINDOWS
     HANDLE _timerPort;
     DWORD _msgQMask;
@@ -530,7 +530,15 @@ static void __CFRunLoopModeDeallocate(CFTypeRef cf) {
 #elif DEPLOYMENT_TARGET_WINDOWS
     if (NULL != rlm->_timerPort) CloseHandle(rlm->_timerPort);
 #elif DEPLOYMENT_TARGET_LINUX
-    if (NULL != rlm->_timerPort) sem_destroy(rlm->_timerPort);
+    if (NULL != rlm->_timerPort) {
+        struct itimerspec disarm;
+        disarm.it_interval.tv_sec = 0;
+        disarm.it_interval.tv_nsec = 0;
+
+        disarm.it_value.tv_sec = 0;
+        disarm.it_value.tv_nsec = 0;
+        timer_settime(rlm->_timerPort, TIMER_ABSTIME, &disarm, 0); 
+    }
 #endif
     pthread_mutex_destroy(&rlm->_lock);
     memset((char *)cf + sizeof(CFRuntimeBase), 0x7C, sizeof(struct __CFRunLoopMode) - sizeof(CFRuntimeBase));
@@ -684,7 +692,8 @@ static CFRunLoopModeRef __CFRunLoopFindMode(CFRunLoopRef rl, CFStringRef modeNam
     // We use a manual reset timer because it is possible that we will WaitForMultipleObjectsEx on the timer port but not service it on that run loop iteration. The event is reset when we handle the timers.
     rlm->_timerPort = CreateWaitableTimer(NULL, TRUE, NULL);
 #elif DEPLOYMENT_TARGET_LINUX
-    sem_init(rlm->_timerPort, 0, 0);
+    struct sigevent makeAlarm = {0};
+    timer_create(CLOCK_MONOTONIC, NULL, &rlm->_timerPort);
 #endif
     if (!__CFPortSetInsert(rlm->_timerPort, rlm->_portSet)) HALT;
     if (!__CFPortSetInsert(rl->_wakeUpPort, rlm->_portSet)) HALT;
@@ -1839,7 +1848,13 @@ static void __CFRepositionTimerInMode(CFRunLoopModeRef rlm, CFRunLoopTimerRef rl
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
         mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
 #elif DEPLOYMENT_TARGET_LINUX
-        // Implement Me!
+        struct itimerspec its;
+        its.it_interval.tv_sec = 0;
+        its.it_interval.tv_nsec = 1;
+
+        its.it_value.tv_sec = fireTSR; //__CFUInt64ToAbsoluteTime(fireTSR);
+        its.it_value.tv_nsec = 0;
+        timer_settime(rlm->_timerPort, TIMER_ABSTIME, &its, 0); 
 #elif DEPLOYMENT_TARGET_WINDOWS
         LARGE_INTEGER dueTime;
         dueTime.QuadPart = __CFTSRToFiletime(fireTSR);
@@ -1888,7 +1903,13 @@ static Boolean __CFRunLoopDoTimer(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLo
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
             mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
 #elif DEPLOYMENT_TARGET_LINUX
-            // Implement me!
+            struct itimerspec its;
+            its.it_interval.tv_sec = 0;
+            its.it_interval.tv_nsec = 1;
+
+            its.it_value.tv_sec = fireTSR; //__CFUInt64ToAbsoluteTime(fireTSR);
+            its.it_value.tv_nsec = 0;
+            timer_settime(rlm->_timerPort, TIMER_ABSTIME, &its, 0); 
 #elif DEPLOYMENT_TARGET_WINDOWS
             LARGE_INTEGER dueTime;
             dueTime.QuadPart = __CFTSRToFiletime(fireTSR);
@@ -1940,7 +1961,13 @@ static Boolean __CFRunLoopDoTimer(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLo
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
                 mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
 #elif DEPLOYMENT_TARGET_LINUX
-                // Implement Me!
+                struct itimerspec its;
+                its.it_interval.tv_sec = 0;
+                its.it_interval.tv_nsec = 1;
+
+                its.it_value.tv_sec = fireTSR; //__CFUInt64ToAbsoluteTime(fireTSR);
+                its.it_value.tv_nsec = 0;
+                timer_settime(rlm->_timerPort, TIMER_ABSTIME, &its, 0); 
 #else
                 LARGE_INTEGER dueTime;
                 dueTime.QuadPart = __CFTSRToFiletime(fireTSR);
@@ -3000,7 +3027,13 @@ void CFRunLoopRemoveTimer(CFRunLoopRef rl, CFRunLoopTimerRef rlt, CFStringRef mo
 #elif DEPLOYMENT_TARGET_WINDOWS
                 CancelWaitableTimer(rlm->_timerPort);
 #elif DEPLOYMENT_TARGET_LINUX
-                // Implement Me!
+                struct itimerspec its;
+                its.it_interval.tv_sec = 0;
+                its.it_interval.tv_nsec = 1;
+
+                its.it_value.tv_sec = 0;
+                its.it_value.tv_nsec = 0;
+                timer_settime(rlm->_timerPort, TIMER_ABSTIME, &its, 0); 
 #endif
             } else if (0 == idx) {
                 CFRunLoopTimerRef nextTimer = NULL;
@@ -3017,7 +3050,13 @@ void CFRunLoopRemoveTimer(CFRunLoopRef rl, CFRunLoopTimerRef rlt, CFStringRef mo
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 		    mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
 #elif DEPLOYMENT_TARGET_LINUX
-                    // Implement Me!
+                    struct itimerspec its;
+                    its.it_interval.tv_sec = 0;
+                    its.it_interval.tv_nsec = 1;
+
+                    its.it_value.tv_sec = fireTSR; //__CFUInt64ToAbsoluteTime(fireTSR);
+                    its.it_value.tv_nsec = 0;
+                    timer_settime(rlm->_timerPort, TIMER_ABSTIME, &its, 0); 
 #elif DEPLOYMENT_TARGET_WINDOWS
                     LARGE_INTEGER dueTime;
                     dueTime.QuadPart = __CFTSRToFiletime(fireTSR);

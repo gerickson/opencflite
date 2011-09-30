@@ -67,7 +67,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="netapi32.lib ole32.lib ws2_32.lib kernel32.lib icuuc.lib icuin.lib rpcrt4.lib msvcrt.lib pthreadVC2.lib"
+				AdditionalDependencies="netapi32.lib ole32.lib ws2_32.lib kernel32.lib libicuuc.lib libicuin.lib rpcrt4.lib msvcrt.lib pthreadVC2.lib"
 				OutputFile="$(OutDir)\$(ProjectName)_$(ConfigurationName).dll"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)\icu\lib&quot;;&quot;$(SolutionDir)\pthreads\lib&quot;;&quot;$(SolutionDir)\dist\lib&quot;"
@@ -153,7 +153,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="netapi32.lib ole32.lib ws2_32.lib kernel32.lib icuuc.lib icuin.lib rpcrt4.lib msvcrt.lib pthreadVC2.lib"
+				AdditionalDependencies="netapi32.lib ole32.lib ws2_32.lib kernel32.lib libicuuc.lib libicuin.lib rpcrt4.lib msvcrt.lib pthreadVC2.lib"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)\icu\lib&quot;;&quot;$(SolutionDir)\pthreads\lib&quot;;&quot;$(SolutionDir)\dist\lib&quot;"
 				IgnoreAllDefaultLibraries="false"

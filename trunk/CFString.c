@@ -6053,6 +6053,14 @@ void CFShowStr(CFStringRef str) {
     fprintf(stdout, "Contents %p\n", (void *)__CFStrContents(str));
 }
 
+CFIndex CFStringGetHyphenationLocationBeforeIndex(CFStringRef string, CFIndex location, CFRange limitRange, CFOptionFlags options, CFLocaleRef locale, UTF32Char *character) {
+    return kCFNotFound;
+}
+
+Boolean CFStringIsHyphenationAvailableForLocale(CFLocaleRef locale) {
+    /* Not supplied by Apple! */
+    return false;
+}
 
 
 #undef HANGUL_SBASE

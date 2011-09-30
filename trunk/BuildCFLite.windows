@@ -70,7 +70,7 @@ Build () {
 	done
 	echo "Linking $STYLE ..."
 	echo $CC $STYLE_LFLAGS $ARCHFLAGS $OBJBASE/$STYLE/*.o $LFLAGS -licuuc -licuin -lobjc -o $OBJBASE/CoreFoundation_$STYLE
-	$CC -shared $STYLE_LFLAGS $ARCHFLAGS $OBJBASE/$STYLE/*.o $LFLAGS lib/icuuc.lib lib/icuin.lib -lobjc -o $OBJBASE/libCFlite_476_19.dll
+	$CC -shared $STYLE_LFLAGS $ARCHFLAGS $OBJBASE/$STYLE/*.o $LFLAGS lib/libicuuc.lib lib/libicuin.lib -lobjc -o $OBJBASE/libCFlite_635_0.dll
 	if [ $? -ne 0 ]; then
 		echo "*** Linking $STYLE failed ***"
 		exit 1

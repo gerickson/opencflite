@@ -289,9 +289,10 @@ void stringManipulation(void) {
    CFStringRef strOuter, find, replace, find2, replace2, find3, replace3, bigger, smaller, result;
    CFComparisonResult comp;
    CFLocaleRef curLocale;
+   Boolean isHyphenationSupported = false;
    
    show(CFSTR("------------------String Manipulations---------------"));
-   
+
    // Create a simple immutable string from a Pascal string and convert it to Unicode
    strOuter = CFStringCreateWithCString(NULL, "Hello Cruel World", kCFStringEncodingASCII);
    strChange = CFStringCreateMutableCopy(NULL, CFStringGetLength(strOuter), strOuter);
@@ -318,6 +319,9 @@ void stringManipulation(void) {
    show(CFSTR("Appended           : %@"), strChange);
    
    curLocale = CFLocaleCopyCurrent ();
+
+   isHyphenationSupported = CFStringIsHyphenationAvailableForLocale(curLocale);
+   show(CFSTR("Is Hyphenation supported for this locale? %@"), ((isHyphenationSupported) ? CFSTR ("Yes") : CFSTR("No")));
 
    CFStringUppercase(strChange, curLocale);
    

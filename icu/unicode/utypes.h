@@ -234,7 +234,7 @@
  */
 #define U_ICUDATA_NAME    "icudt" U_ICU_VERSION_SHORT U_ICUDATA_TYPE_LETTER  /**< @internal */
 #define U_USRDATA_NAME    "usrdt" U_ICU_VERSION_SHORT U_ICUDATA_TYPE_LETTER  /**< @internal */
-#define U_USE_USRDATA     1  /**< @internal */
+#define U_USE_USRDATA     0  /**< @internal */
 
 /**
  *  U_ICU_ENTRY_POINT is the name of the DLL entry point to the ICU data library.

@@ -529,6 +529,8 @@ static void __CFRunLoopModeDeallocate(CFTypeRef cf) {
     if (MACH_PORT_NULL != rlm->_timerPort) mk_timer_destroy(rlm->_timerPort);
 #elif DEPLOYMENT_TARGET_WINDOWS
     if (NULL != rlm->_timerPort) CloseHandle(rlm->_timerPort);
+#elif DEPLOYMENT_TARGET_LINUX
+    if (NULL != rlm->_timerPort) sem_destroy(rlm->_timerPort);
 #endif
     pthread_mutex_destroy(&rlm->_lock);
     memset((char *)cf + sizeof(CFRuntimeBase), 0x7C, sizeof(struct __CFRunLoopMode) - sizeof(CFRuntimeBase));
@@ -681,6 +683,8 @@ static CFRunLoopModeRef __CFRunLoopFindMode(CFRunLoopRef rl, CFStringRef modeNam
 #elif DEPLOYMENT_TARGET_WINDOWS
     // We use a manual reset timer because it is possible that we will WaitForMultipleObjectsEx on the timer port but not service it on that run loop iteration. The event is reset when we handle the timers.
     rlm->_timerPort = CreateWaitableTimer(NULL, TRUE, NULL);
+#elif DEPLOYMENT_TARGET_LINUX
+    sem_init(rlm->_timerPort, 0, 0);
 #endif
     if (!__CFPortSetInsert(rlm->_timerPort, rlm->_portSet)) HALT;
     if (!__CFPortSetInsert(rl->_wakeUpPort, rlm->_portSet)) HALT;
@@ -2495,7 +2499,7 @@ void CFRunLoopWakeUp(CFRunLoopRef rl) {
 #elif DEPLOYMENT_TARGET_WINDOWS
     SetEvent(rl->_wakeUpPort);
 #elif DEPLOYMENT_TARGET_LINUX
-	sem_post(rl->_wakeUpPort);
+    sem_post(rl->_wakeUpPort);
 #endif
     __CFRunLoopUnlock(rl);
 }
@@ -2995,6 +2999,8 @@ void CFRunLoopRemoveTimer(CFRunLoopRef rl, CFRunLoopTimerRef rlt, CFStringRef mo
                 mk_timer_cancel(rlm->_timerPort, &dummy);
 #elif DEPLOYMENT_TARGET_WINDOWS
                 CancelWaitableTimer(rlm->_timerPort);
+#elif DEPLOYMENT_TARGET_LINUX
+                // Implement Me!
 #endif
             } else if (0 == idx) {
                 CFRunLoopTimerRef nextTimer = NULL;

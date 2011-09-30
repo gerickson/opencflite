@@ -40,7 +40,8 @@ libCoreFoundation_la_datadir	= ${datadir}/CoreServices
 libCoreFoundation_la_data_DATA	= CFCharacterSetBitmaps.bitmap		\
 				  CFUniCharPropertyDatabase.data	\
 				  CFUnicodeData-B.mapping		\
-				  CFUnicodeData-L.mapping
+				  CFUnicodeData-L.mapping		\
+				  Info.plist
 
 CF_COMMON_CPPFLAGS		= $(AM_CPPFLAGS)			\
 				  -DU_SHOW_DRAFT_API=1			\
@@ -387,7 +388,6 @@ EXTRA_DIST			= APPLE_LICENSE	\
 				  icu/unicode/utypes.h \
 				  icu/unicode/uversion.h \
 				  icu/unicode/vtzone.h \
-				  Info.plist \
 				  Makefile \
 				  XCode_Configs/ConfigDebug.xcconfig \
 				  XCode_Configs/Config_Master.xcconfig \

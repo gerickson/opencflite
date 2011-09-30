@@ -169,7 +169,13 @@ int main () {
     CFBundleRef safariBundleRef = 0;
     CFURLRef bundleUrlRef = 0;
     CFURLRef cfLiteURLRef = 0;
-    CFURLRef safariPathRef = 0; 
+    CFURLRef safariPathRef = 0;
+
+#if defined(__linux__)
+    CFStringRef cfLiteBundlePath = CFSTR("/usr/local/share/CoreServices");
+#else
+    CFStringRef cfLiteBundlePath = CFSTR("./CFLite.resources");
+#endif
 
     // 1. Use bundle routines on this application.
     printf("1. Test Application Bundle:\n");
@@ -187,7 +193,7 @@ int main () {
     // 2. Inspect our CFLite bundle.
     printf("2. CFLite Bundle:\n");
     bundleUrlRef = CFBundleCopyBundleURL(bundleRef);
-    cfLiteURLRef = CFURLCreateWithFileSystemPathRelativeToBase(kCFAllocatorDefault, CFSTR("./CFLite.resources"), kCFURLPOSIXPathStyle, false, bundleUrlRef);
+    cfLiteURLRef = CFURLCreateWithFileSystemPathRelativeToBase(kCFAllocatorDefault, cfLiteBundlePath, kCFURLPOSIXPathStyle, false, bundleUrlRef);
     CFRelease(bundleUrlRef);
     show(CFSTR("CFLite path: %@"), cfLiteURLRef);
     cfLiteBundleRef = CFBundleCreate (kCFAllocatorDefault, cfLiteURLRef);

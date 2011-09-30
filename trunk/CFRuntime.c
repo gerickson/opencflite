@@ -838,8 +838,10 @@ __private_extern__ void __CFTSDWindowsCleanup(void);
 __private_extern__ void __CFFinalizeWindowsThreadData();
 #endif
 extern void __CFStreamInitialize(void);
-extern void __CFCalendarInitialize();
-extern void __CFTimeZoneInitialize();
+extern void __CFPreferencesDomainInitialize(void);
+extern void __CFUserNotificationInitialize(void);
+extern void __CFCalendarInitialize(void);
+extern void __CFTimeZoneInitialize(void);
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 __private_extern__ uint8_t __CF120290 = false;
@@ -1071,6 +1073,8 @@ void __CFInitialize(void) {
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
         __CFStreamInitialize();
 #endif
+        __CFPreferencesDomainInitialize();
+        __CFUserNotificationInitialize();
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
         __CFRunLoopInitialize();
         __CFRunLoopObserverInitialize();

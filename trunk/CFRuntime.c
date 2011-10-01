@@ -1074,7 +1074,9 @@ void __CFInitialize(void) {
         __CFStreamInitialize();
 #endif
         __CFPreferencesDomainInitialize();
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS
         __CFUserNotificationInitialize();
+#endif
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
         __CFRunLoopInitialize();
         __CFRunLoopObserverInitialize();

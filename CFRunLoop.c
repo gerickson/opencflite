@@ -530,15 +530,7 @@ static void __CFRunLoopModeDeallocate(CFTypeRef cf) {
 #elif DEPLOYMENT_TARGET_WINDOWS
     if (NULL != rlm->_timerPort) CloseHandle(rlm->_timerPort);
 #elif DEPLOYMENT_TARGET_LINUX
-    if (NULL != rlm->_timerPort) {
-        struct itimerspec disarm;
-        disarm.it_interval.tv_sec = 0;
-        disarm.it_interval.tv_nsec = 0;
-
-        disarm.it_value.tv_sec = 0;
-        disarm.it_value.tv_nsec = 0;
-        timer_settime(rlm->_timerPort, TIMER_ABSTIME, &disarm, 0); 
-    }
+    if (NULL != rlm->_timerPort) timer_delete(rlm->_timerPort);
 #endif
     pthread_mutex_destroy(&rlm->_lock);
     memset((char *)cf + sizeof(CFRuntimeBase), 0x7C, sizeof(struct __CFRunLoopMode) - sizeof(CFRuntimeBase));
@@ -692,8 +684,11 @@ static CFRunLoopModeRef __CFRunLoopFindMode(CFRunLoopRef rl, CFStringRef modeNam
     // We use a manual reset timer because it is possible that we will WaitForMultipleObjectsEx on the timer port but not service it on that run loop iteration. The event is reset when we handle the timers.
     rlm->_timerPort = CreateWaitableTimer(NULL, TRUE, NULL);
 #elif DEPLOYMENT_TARGET_LINUX
-    struct sigevent makeAlarm = {0};
-    timer_create(CLOCK_MONOTONIC, NULL, &rlm->_timerPort);
+    struct sigevent evp;
+    memset(&evp, 0x00, sizeof(evp));
+    evp.sigev_notify = SIGEV_NONE;
+
+    timer_create(CLOCK_MONOTONIC, &evp, &rlm->_timerPort);
 #endif
     if (!__CFPortSetInsert(rlm->_timerPort, rlm->_portSet)) HALT;
     if (!__CFPortSetInsert(rl->_wakeUpPort, rlm->_portSet)) HALT;
@@ -1849,12 +1844,10 @@ static void __CFRepositionTimerInMode(CFRunLoopModeRef rlm, CFRunLoopTimerRef rl
         mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
 #elif DEPLOYMENT_TARGET_LINUX
         struct itimerspec its;
-        its.it_interval.tv_sec = 0;
-        its.it_interval.tv_nsec = 1;
-
-        its.it_value.tv_sec = fireTSR; //__CFUInt64ToAbsoluteTime(fireTSR);
-        its.it_value.tv_nsec = 0;
-        timer_settime(rlm->_timerPort, TIMER_ABSTIME, &its, 0); 
+        //? (void)signal_no_reset(SIGALRM, alarming);
+        its.it_interval.tv_sec = its.it_value.tv_sec = fireTSR; // __CFUInt64ToAbsoluteTime(fireTSR);
+        its.it_interval.tv_nsec = its.it_value.tv_nsec = 0;
+        timer_settime(rlm->_timerPort, 0, &its, 0); 
 #elif DEPLOYMENT_TARGET_WINDOWS
         LARGE_INTEGER dueTime;
         dueTime.QuadPart = __CFTSRToFiletime(fireTSR);
@@ -1904,12 +1897,10 @@ static Boolean __CFRunLoopDoTimer(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLo
             mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
 #elif DEPLOYMENT_TARGET_LINUX
             struct itimerspec its;
-            its.it_interval.tv_sec = 0;
-            its.it_interval.tv_nsec = 1;
-
-            its.it_value.tv_sec = fireTSR; //__CFUInt64ToAbsoluteTime(fireTSR);
-            its.it_value.tv_nsec = 0;
-            timer_settime(rlm->_timerPort, TIMER_ABSTIME, &its, 0); 
+            //? (void)signal_no_reset(SIGALRM, alarming);
+            its.it_interval.tv_sec = its.it_value.tv_sec = fireTSR; // __CFUInt64ToAbsoluteTime(fireTSR);
+            its.it_interval.tv_nsec = its.it_value.tv_nsec = 0;
+            timer_settime(rlm->_timerPort, 0, &its, 0); 
 #elif DEPLOYMENT_TARGET_WINDOWS
             LARGE_INTEGER dueTime;
             dueTime.QuadPart = __CFTSRToFiletime(fireTSR);
@@ -1962,12 +1953,10 @@ static Boolean __CFRunLoopDoTimer(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLo
                 mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
 #elif DEPLOYMENT_TARGET_LINUX
                 struct itimerspec its;
-                its.it_interval.tv_sec = 0;
-                its.it_interval.tv_nsec = 1;
-
-                its.it_value.tv_sec = fireTSR; //__CFUInt64ToAbsoluteTime(fireTSR);
-                its.it_value.tv_nsec = 0;
-                timer_settime(rlm->_timerPort, TIMER_ABSTIME, &its, 0); 
+                //? (void)signal_no_reset(SIGALRM, alarming);
+                its.it_interval.tv_sec = its.it_value.tv_sec = fireTSR; // __CFUInt64ToAbsoluteTime(fireTSR);
+                its.it_interval.tv_nsec = its.it_value.tv_nsec = 0;
+                timer_settime(rlm->_timerPort, 0, &its, 0); 
 #else
                 LARGE_INTEGER dueTime;
                 dueTime.QuadPart = __CFTSRToFiletime(fireTSR);
@@ -2241,8 +2230,8 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
 #if __DISPATCH__
 	    dispatch_set_context(timeout_timer, timeout_context); // source gets ownership of context
 	    dispatch_source_set_event_handler_f(timeout_timer, __CFRunLoopTimeout);
-        dispatch_source_set_cancel_handler_f(timeout_timer, __CFRunLoopTimeoutCancel);
-        uint64_t nanos = (uint64_t)(seconds * 1000 * 1000 + 1) * 1000;
+            dispatch_source_set_cancel_handler_f(timeout_timer, __CFRunLoopTimeoutCancel);
+            uint64_t nanos = (uint64_t)(seconds * 1000 * 1000 + 1) * 1000;
 	    dispatch_source_set_timer(timeout_timer, dispatch_time(DISPATCH_TIME_NOW, nanos), DISPATCH_TIME_FOREVER, 0);
 	    dispatch_resume(timeout_timer);
 #endif
@@ -2289,6 +2278,8 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
             if (__CFRunLoopWaitForMultipleObjects(NULL, &dispatchPort, 0, 0, &livePort, NULL)) {
                 goto handle_msg;
             }
+#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+            // Implement Me!
 #endif
         }
 
@@ -2318,8 +2309,8 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
         // Here, use the app-supplied message queue mask. They will set this if they are interested in having this run loop receive windows messages.
         // Note: don't pass 0 for polling, or this thread will never yield the CPU.
         __CFRunLoopWaitForMultipleObjects(waitSet, NULL, poll ? 0 : TIMEOUT_INFINITY, rlm->_msgQMask, &livePort, &windowsMessageReceived);
-#elif DEPLOYMENT_TARGET_LINUX
-		// XXX - More to fill in here.
+#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+        // XXX - More to fill in here.
 #endif
         
 	__CFRunLoopLock(rl);
@@ -2365,7 +2356,7 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
  	    sourceHandledThisLoop = true;
         } else
 #elif DEPLOYMENT_TARGET_LINUX
-		// XXX - More to fill in here.
+            // XXX - More to fill in here.
 #endif
 	if (MACH_PORT_NULL == livePort) {
             // handle nothing
@@ -3027,13 +3018,10 @@ void CFRunLoopRemoveTimer(CFRunLoopRef rl, CFRunLoopTimerRef rlt, CFStringRef mo
 #elif DEPLOYMENT_TARGET_WINDOWS
                 CancelWaitableTimer(rlm->_timerPort);
 #elif DEPLOYMENT_TARGET_LINUX
-                struct itimerspec its;
-                its.it_interval.tv_sec = 0;
-                its.it_interval.tv_nsec = 1;
-
-                its.it_value.tv_sec = 0;
-                its.it_value.tv_nsec = 0;
-                timer_settime(rlm->_timerPort, TIMER_ABSTIME, &its, 0); 
+                struct itimerspec disarm;
+                disarm.it_interval.tv_sec = disarm.it_value.tv_sec = 0;
+                disarm.it_interval.tv_nsec = disarm.it_value.tv_nsec = 0;
+                timer_settime(rlm->_timerPort, 0, &disarm, 0); 
 #endif
             } else if (0 == idx) {
                 CFRunLoopTimerRef nextTimer = NULL;
@@ -3051,11 +3039,9 @@ void CFRunLoopRemoveTimer(CFRunLoopRef rl, CFRunLoopTimerRef rlt, CFStringRef mo
 		    mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
 #elif DEPLOYMENT_TARGET_LINUX
                     struct itimerspec its;
-                    its.it_interval.tv_sec = 0;
-                    its.it_interval.tv_nsec = 1;
-
-                    its.it_value.tv_sec = fireTSR; //__CFUInt64ToAbsoluteTime(fireTSR);
-                    its.it_value.tv_nsec = 0;
+                    //? (void)signal_no_reset(SIGALRM, alarming);
+                    its.it_interval.tv_sec = its.it_value.tv_sec = fireTSR; // __CFUInt64ToAbsoluteTime(fireTSR);
+                    its.it_interval.tv_nsec = its.it_value.tv_nsec = 0;
                     timer_settime(rlm->_timerPort, TIMER_ABSTIME, &its, 0); 
 #elif DEPLOYMENT_TARGET_WINDOWS
                     LARGE_INTEGER dueTime;

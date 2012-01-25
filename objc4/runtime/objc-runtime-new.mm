@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2008 Apple Inc.  All Rights Reserved.
+ * Copyright (c) 2005-2009 Apple Inc.  All Rights Reserved.
  * 
  * @APPLE_LICENSE_HEADER_START@
  * 
@@ -30,47 +30,49 @@
 
 #include "objc-private.h"
 #include "objc-runtime-new.h"
+#include "objc-file.h"
 #include <objc/message.h>
+#include <mach/shared_region.h>
 
-#define newcls(cls) ((struct class_t *)cls)
-#define newcat(cat) ((struct category_t *)cat)
-#define newmethod(meth) ((struct method_t *)meth)
-#define newivar(ivar) ((struct ivar_t *)ivar)
-#define newcategory(cat) ((struct category_t *)cat)
-#define newprotocol(p) ((struct protocol_t *)p)
+#define newcls(cls) ((class_t *)cls)
+#define newmethod(meth) ((method_t *)meth)
+#define newivar(ivar) ((ivar_t *)ivar)
+#define newcategory(cat) ((category_t *)cat)
+#define newprotocol(p) ((protocol_t *)p)
+#define newproperty(p) ((property_t *)p)
 
-#ifdef __LP64__
-#define WORD_SHIFT 3UL
-#define WORD_MASK 7UL
-#else
-#define WORD_SHIFT 2UL
-#define WORD_MASK 3UL
-#endif
-
-static const char *getName(struct class_t *cls);
-static uint32_t instanceSize(struct class_t *cls);
-static BOOL isMetaClass(struct class_t *cls);
-static struct class_t *getSuperclass(struct class_t *cls);
+static const char *getName(class_t *cls);
+static uint32_t unalignedInstanceSize(class_t *cls);
+static uint32_t alignedInstanceSize(class_t *cls);
+static BOOL isMetaClass(class_t *cls);
+static class_t *getSuperclass(class_t *cls);
 static void unload_class(class_t *cls, BOOL isMeta);
 static class_t *setSuperclass(class_t *cls, class_t *newSuper);
 static class_t *realizeClass(class_t *cls);
 static void flushCaches(class_t *cls);
 static void flushVtables(class_t *cls);
-static method_t *getMethodNoSuper_nolock(struct class_t *cls, SEL sel);
+static method_t *getMethodNoSuper_nolock(class_t *cls, SEL sel);
 static method_t *getMethod_nolock(class_t *cls, SEL sel);
 static void changeInfo(class_t *cls, unsigned int set, unsigned int clear);
 static IMP _method_getImplementation(method_t *m);
+static BOOL hasCxxStructors(class_t *cls);
+static IMP addMethod(class_t *cls, SEL name, IMP imp, const char *types, BOOL replace);
+static NXHashTable *realizedClasses(void);
+static BOOL isRRSelector(SEL sel);
 
+PRIVATE_EXTERN id objc_noop_imp(id self, SEL _cmd __unused) {
+    return self;
+}
 
 /***********************************************************************
 * Lock management
 * Every lock used anywhere must be managed here. 
 * Locks not managed here may cause gdb deadlocks.
 **********************************************************************/
-__private_extern__ rwlock_t runtimeLock = {0};
-__private_extern__ rwlock_t selLock = {0};
-__private_extern__ mutex_t cacheUpdateLock = MUTEX_INITIALIZER;
-__private_extern__ recursive_mutex_t loadMethodLock = RECURSIVE_MUTEX_INITIALIZER;
+PRIVATE_EXTERN rwlock_t runtimeLock = {0};
+PRIVATE_EXTERN rwlock_t selLock = {0};
+PRIVATE_EXTERN mutex_t cacheUpdateLock = MUTEX_INITIALIZER;
+PRIVATE_EXTERN recursive_mutex_t loadMethodLock = RECURSIVE_MUTEX_INITIALIZER;
 static int debugger_runtimeLock;
 static int debugger_selLock;
 static int debugger_cacheUpdateLock;
@@ -78,7 +80,7 @@ static int debugger_loadMethodLock;
 #define RDONLY 1
 #define RDWR 2
 
-__private_extern__ void lock_init(void)
+PRIVATE_EXTERN void lock_init(void)
 {
     rwlock_init(&selLock);
     rwlock_init(&runtimeLock);
@@ -96,7 +98,7 @@ __private_extern__ void lock_init(void)
 *   attempt to manipulate them will cause a trap.
 * Locks not handled here may cause deadlocks in gdb.
 **********************************************************************/
-__private_extern__ int startDebuggerMode(void)
+PRIVATE_EXTERN int startDebuggerMode(void)
 {
     int result = DEBUGGER_FULL;
 
@@ -146,7 +148,7 @@ __private_extern__ int startDebuggerMode(void)
 * endDebuggerMode
 * Relinquish locks acquired in startDebuggerMode().
 **********************************************************************/
-__private_extern__ void endDebuggerMode(void)
+PRIVATE_EXTERN void endDebuggerMode(void)
 {
     assert(debugger_runtimeLock != 0);
 
@@ -171,7 +173,7 @@ __private_extern__ void endDebuggerMode(void)
 * Returns YES if the given lock is handled specially during debugger 
 * mode (i.e. debugger mode tries to acquire it).
 **********************************************************************/
-__private_extern__ BOOL isManagedDuringDebugger(void *lock)
+PRIVATE_EXTERN BOOL isManagedDuringDebugger(void *lock)
 {
     if (lock == &selLock) return YES;
     if (lock == &cacheUpdateLock) return YES;
@@ -186,7 +188,7 @@ __private_extern__ BOOL isManagedDuringDebugger(void *lock)
 * Locking a managed mutex during debugger mode causes a trap unless 
 *   this returns YES.
 **********************************************************************/
-__private_extern__ BOOL isLockedDuringDebugger(mutex_t *lock)
+PRIVATE_EXTERN BOOL isLockedDuringDebugger(mutex_t *lock)
 {
     assert(DebuggerMode);
 
@@ -202,7 +204,7 @@ __private_extern__ BOOL isLockedDuringDebugger(mutex_t *lock)
 * Read-locking a managed rwlock during debugger mode causes a trap unless
 *   this returns YES.
 **********************************************************************/
-__private_extern__ BOOL isReadingDuringDebugger(rwlock_t *lock)
+PRIVATE_EXTERN BOOL isReadingDuringDebugger(rwlock_t *lock)
 {
     assert(DebuggerMode);
     
@@ -219,7 +221,7 @@ __private_extern__ BOOL isReadingDuringDebugger(rwlock_t *lock)
 * Write-locking a managed rwlock during debugger mode causes a trap unless
 *   this returns YES.
 **********************************************************************/
-__private_extern__ BOOL isWritingDuringDebugger(rwlock_t *lock)
+PRIVATE_EXTERN BOOL isWritingDuringDebugger(rwlock_t *lock)
 {
     assert(DebuggerMode);
     
@@ -260,20 +262,35 @@ __private_extern__ BOOL isWritingDuringDebugger(rwlock_t *lock)
 *   vtable selectors are affected.
 **********************************************************************/
 
+/***********************************************************************
+* ABI WARNING ABI WARNING ABI WARNING ABI WARNING ABI WARNING
+* vtable_prototype on x86_64 steals %rax and does not clear %rdx on return
+* This means vtable dispatch must never be used for vararg calls
+* or very large return values.
+* ABI WARNING ABI WARNING ABI WARNING ABI WARNING ABI WARNING
+**********************************************************************/
+
 #define X8(x) \
-    x, x, x, x, x, x, x, x
+    x x x x x x x x
 #define X64(x) \
-    X8(x), X8(x), X8(x), X8(x), X8(x), X8(x), X8(x), X8(x)
+    X8(x) X8(x) X8(x) X8(x) X8(x) X8(x) X8(x) X8(x)
 #define X128(x) \
-    X64(x), X64(x)
+    X64(x) X64(x)
 
 #define vtableMax 128
 
-IMP _objc_empty_vtable[vtableMax] = {
-    X128(objc_msgSend)
-};
+// hack to avoid conflicts with compiler's internal declaration
+asm("\n .data"
+    "\n .globl __objc_empty_vtable "
+    "\n __objc_empty_vtable:"
+#if __LP64__
+    X128("\n .quad _objc_msgSend")
+#else
+    X128("\n .long _objc_msgSend")
+#endif
+    );
 
-#ifndef NO_VTABLE
+#if SUPPORT_VTABLE
 
 // Trampoline descriptors for gdb.
 
@@ -349,22 +366,22 @@ static const char * const defaultVtableGC[] = {
     "countByEnumeratingWithState:objects:count:", 
 };
 
-extern id objc_msgSend_vtable0(id, SEL, ...);
-extern id objc_msgSend_vtable1(id, SEL, ...);
-extern id objc_msgSend_vtable2(id, SEL, ...);
-extern id objc_msgSend_vtable3(id, SEL, ...);
-extern id objc_msgSend_vtable4(id, SEL, ...);
-extern id objc_msgSend_vtable5(id, SEL, ...);
-extern id objc_msgSend_vtable6(id, SEL, ...);
-extern id objc_msgSend_vtable7(id, SEL, ...);
-extern id objc_msgSend_vtable8(id, SEL, ...);
-extern id objc_msgSend_vtable9(id, SEL, ...); 
-extern id objc_msgSend_vtable10(id, SEL, ...);
-extern id objc_msgSend_vtable11(id, SEL, ...);
-extern id objc_msgSend_vtable12(id, SEL, ...);
-extern id objc_msgSend_vtable13(id, SEL, ...);
-extern id objc_msgSend_vtable14(id, SEL, ...);
-extern id objc_msgSend_vtable15(id, SEL, ...);    
+OBJC_EXTERN id objc_msgSend_vtable0(id, SEL, ...);
+OBJC_EXTERN id objc_msgSend_vtable1(id, SEL, ...);
+OBJC_EXTERN id objc_msgSend_vtable2(id, SEL, ...);
+OBJC_EXTERN id objc_msgSend_vtable3(id, SEL, ...);
+OBJC_EXTERN id objc_msgSend_vtable4(id, SEL, ...);
+OBJC_EXTERN id objc_msgSend_vtable5(id, SEL, ...);
+OBJC_EXTERN id objc_msgSend_vtable6(id, SEL, ...);
+OBJC_EXTERN id objc_msgSend_vtable7(id, SEL, ...);
+OBJC_EXTERN id objc_msgSend_vtable8(id, SEL, ...);
+OBJC_EXTERN id objc_msgSend_vtable9(id, SEL, ...); 
+OBJC_EXTERN id objc_msgSend_vtable10(id, SEL, ...);
+OBJC_EXTERN id objc_msgSend_vtable11(id, SEL, ...);
+OBJC_EXTERN id objc_msgSend_vtable12(id, SEL, ...);
+OBJC_EXTERN id objc_msgSend_vtable13(id, SEL, ...);
+OBJC_EXTERN id objc_msgSend_vtable14(id, SEL, ...);
+OBJC_EXTERN id objc_msgSend_vtable15(id, SEL, ...);    
 
 static IMP const defaultVtableTrampolines[] = {
     objc_msgSend_vtable0, 
@@ -400,37 +417,53 @@ static void check_vtable_size(void)
     int c6[vtableMax - sizeof(defaultVtableGC)] __unused;
 }
 
-/*
-  x86_64 
 
-  monomorphic (self rdi, sel* rsi, temp r10 and r11) {
-      test %rdi, %rdi
-      jeq  returnZero      // nil check
-      movq 8(%rsi), %rsi   // load _cmd (fixme schedule)
-      movq $xxxx, %r10
-      cmp  0(%rdi), %r10   // isa check
-      jeq  imp             // fixme long branches
-        movq $yyyy, %r10
-        cmp  0(%rdi), %r10 // fixme load rdi once for multiple isas
-        jeq  imp2          // fixme long branches
-      jmp  objc_msgSend    // fixme long branches
-  }
-  
-*/
 extern uint8_t vtable_prototype;
 extern uint8_t vtable_ignored;
 extern int vtable_prototype_size;
 extern int vtable_prototype_index_offset;
+extern int vtable_prototype_index2_offset;
+extern int vtable_prototype_tagtable_offset;
+extern int vtable_prototype_tagtable_size;
 static size_t makeVtableTrampoline(uint8_t *dst, size_t index)
 {
     // copy boilerplate
     memcpy(dst, &vtable_prototype, vtable_prototype_size);
     
-    // insert index
+    // insert indexes
 #if defined(__x86_64__)
-    uint16_t *p = (uint16_t *)(dst + vtable_prototype_index_offset + 3);
-    if (*p != 0x7fff) _objc_fatal("vtable_prototype busted");
-    *p = index * 8;
+    if (index > 255) _objc_fatal("vtable_prototype busted");
+    {
+        // `jmpq *0x7fff(%rax)`  ff a0 ff 7f
+        uint16_t *p = (uint16_t *)(dst + vtable_prototype_index_offset + 2);
+        if (*p != 0x7fff) _objc_fatal("vtable_prototype busted");
+        *p = index * 8;
+    }
+    {
+        uint16_t *p = (uint16_t *)(dst + vtable_prototype_index2_offset + 2);
+        if (*p != 0x7fff) _objc_fatal("vtable_prototype busted");
+        *p = index * 8;
+    }
+#else
+#   warning unknown architecture
+#endif
+
+    // insert tagged isa table
+#if defined(__x86_64__)
+    {
+        // `movq $0x1122334455667788, %r10`  49 ba 88 77 66 55 44 33 22 11
+        if (vtable_prototype_tagtable_size != 10) {
+            _objc_fatal("vtable_prototype busted");
+        }
+        uint8_t *p = (uint8_t *)(dst + vtable_prototype_tagtable_offset);
+        if (*p++ != 0x49) _objc_fatal("vtable_prototype busted");
+        if (*p++ != 0xba) _objc_fatal("vtable_prototype busted");
+        if (*(uintptr_t *)p != 0x1122334455667788) {
+            _objc_fatal("vtable_prototype busted");
+        }
+        uintptr_t addr = (uintptr_t)_objc_tagged_isa_table;
+        memcpy(p, &addr, sizeof(addr));
+    }
 #else
 #   warning unknown architecture
 #endif
@@ -463,8 +496,8 @@ static void initVtables(void)
     }
     if (vtableCount > vtableMax) vtableCount = vtableMax;
 
-    vtableSelectors = _malloc_internal(vtableCount * sizeof(SEL));
-    vtableTrampolines = _malloc_internal(vtableCount * sizeof(IMP));
+    vtableSelectors = (SEL*)_malloc_internal(vtableCount * sizeof(SEL));
+    vtableTrampolines = (IMP*)_malloc_internal(vtableCount * sizeof(IMP));
 
     // Built-in trampolines and their descriptors
 
@@ -472,7 +505,8 @@ static void initVtables(void)
         sizeof(defaultVtableTrampolines) / sizeof(defaultVtableTrampolines[0]);
 #ifndef NDEBUG
     // debug: use generated code for 3/4 of the table
-    defaultVtableTrampolineCount /= 4;
+    // Disabled even in Debug builds to avoid breaking backtrace symbol names.
+    // defaultVtableTrampolineCount /= 4;
 #endif
 
     for (i = 0; i < defaultVtableTrampolineCount && i < vtableCount; i++) {
@@ -518,7 +552,7 @@ static void initVtables(void)
              i++, tdi++) 
         {
             vtableSelectors[i] = sel_registerName(names[i]);
-            if (vtableSelectors[i] == (SEL)kIgnore) {
+            if (ignoreSelector(vtableSelectors[i])) {
                 vtableTrampolines[i] = (IMP)&vtable_ignored;
                 tdesc[tdi].offset = 0;
                 tdesc[tdi].flags = 0;
@@ -575,7 +609,7 @@ static void initVtables(void)
 
 static int vtable_getIndex(SEL sel)
 {
-    int i;
+    unsigned int i;
     for (i = 0; i < vtableCount; i++) {
         if (vtableSelectors[i] == sel) return i;
     }
@@ -590,14 +624,14 @@ static BOOL vtable_containsSelector(SEL sel)
 static void printVtableOverrides(class_t *cls, class_t *supercls)
 {
     char overrideMap[vtableCount+1];
-    int i;
+    unsigned int i;
 
     if (supercls) {
         size_t overridesBufferSize = vtableStrlen + 2*vtableCount + 1;
         char *overrides =
-            _calloc_internal(overridesBufferSize, 1);
+            (char *)_calloc_internal(overridesBufferSize, 1);
         for (i = 0; i < vtableCount; i++) {
-            if (vtableSelectors[i] == (SEL)kIgnore) {
+            if (ignoreSelector(vtableSelectors[i])) {
                 overrideMap[i] = '-';
                 continue;
             }
@@ -658,20 +692,20 @@ static void updateVtable(class_t *cls, BOOL force)
 
     // Decide whether this class can share its superclass's vtable.
 
-    struct class_t *supercls = getSuperclass(cls);
+    class_t *supercls = getSuperclass(cls);
     BOOL needVtable = NO;
-    int i;
+    unsigned int i;
     if (!supercls) {
         // Root classes always need a vtable
         needVtable = YES;
     } 
-    else if (cls->data->flags & RW_SPECIALIZED_VTABLE) {
+    else if (cls->data()->flags & RW_SPECIALIZED_VTABLE) {
         // Once you have your own vtable, you never go back
         needVtable = YES;
     } 
     else {
         for (i = 0; i < vtableCount; i++) {
-            if (vtableSelectors[i] == (SEL)kIgnore) continue;
+            if (ignoreSelector(vtableSelectors[i])) continue;
             method_t *m = getMethodNoSuper_nolock(cls, vtableSelectors[i]);
             // assume any local implementation differs from super's
             if (m) {
@@ -693,7 +727,7 @@ static void updateVtable(class_t *cls, BOOL force)
     else {
         if (PrintVtables) {
             _objc_inform("VTABLES: %s vtable for class %s%s",
-                         (cls->data->flags & RW_SPECIALIZED_VTABLE) ? 
+                         (cls->data()->flags & RW_SPECIALIZED_VTABLE) ? 
                          "UPDATING SPECIALIZED" : "CREATING SPECIALIZED", 
                          getName(cls), isMetaClass(cls) ? "(meta)" : "");
         }
@@ -701,22 +735,22 @@ static void updateVtable(class_t *cls, BOOL force)
             printVtableOverrides(cls, supercls);
         }
 
-        IMP *new_vtable = cls->vtable;
-        IMP *super_vtable = supercls ? supercls->vtable : _objc_empty_vtable;
+        IMP *new_vtable;
+        IMP *super_vtable = supercls ? supercls->vtable : &_objc_empty_vtable;
         // fixme use msgForward (instead of msgSend from empty vtable) ?
 
-        if (cls->data->flags & RW_SPECIALIZED_VTABLE) {
+        if (cls->data()->flags & RW_SPECIALIZED_VTABLE) {
             // update cls->vtable in place
             new_vtable = cls->vtable;
-            assert(new_vtable != _objc_empty_vtable);
+            assert(new_vtable != &_objc_empty_vtable);
         } else {
             // make new vtable
-            new_vtable = malloc(vtableCount * sizeof(IMP));
+            new_vtable = (IMP*)malloc(vtableCount * sizeof(IMP));
             changeInfo(cls, RW_SPECIALIZED_VTABLE, 0);
         }
         
         for (i = 0; i < vtableCount; i++) {
-            if (vtableSelectors[i] == (SEL)kIgnore) {
+            if (ignoreSelector(vtableSelectors[i])) {
                 new_vtable[i] = (IMP)&vtable_ignored;
             } else {
                 method_t *m = getMethodNoSuper_nolock(cls, vtableSelectors[i]);
@@ -733,9 +767,9 @@ static void updateVtable(class_t *cls, BOOL force)
     }
 }
 
-// ! NO_VTABLE
+// SUPPORT_VTABLE
 #else
-// NO_VTABLE
+// !SUPPORT_VTABLE
 
 static void initVtables(void)
 {
@@ -753,7 +787,7 @@ static void updateVtable(class_t *cls, BOOL force)
 {
 }
 
-// NO_VTABLE
+// !SUPPORT_VTABLE
 #endif
 
 typedef struct {
@@ -769,22 +803,51 @@ typedef struct {
 #define FOREACH_METHOD_LIST(_mlist, _cls, code)                         \
     do {                                                                \
         const method_list_t *_mlist;                                    \
-        if (_cls->data->methods) {                                      \
+        if (_cls->data()->methods) {                                      \
             method_list_t **_mlistp;                                    \
-            for (_mlistp = _cls->data->methods; *_mlistp; _mlistp++) {  \
+            for (_mlistp = _cls->data()->methods; *_mlistp; _mlistp++) {  \
                 _mlist = *_mlistp;                                      \
                 code                                                    \
             }                                                           \
         }                                                               \
     } while (0) 
 
+#define FOREACH_REALIZED_CLASS_AND_SUBCLASS(_c, _cls, code)             \
+    do {                                                                \
+        rwlock_assert_writing(&runtimeLock);                            \
+        class_t *_top = _cls;                                           \
+        class_t *_c = _top;                                             \
+        if (_c) {                                                       \
+            while (1) {                                                 \
+                code                                                    \
+                if (_c->data()->firstSubclass) {                          \
+                    _c = _c->data()->firstSubclass;                       \
+                } else {                                                \
+                    while (!_c->data()->nextSiblingClass  &&  _c != _top) { \
+                        _c = getSuperclass(_c);                         \
+                    }                                                   \
+                    if (_c == _top) break;                              \
+                    _c = _c->data()->nextSiblingClass;                    \
+                }                                                       \
+            }                                                           \
+        } else {                                                        \
+            /* nil means all realized classes */                        \
+            NXHashTable *_classes = realizedClasses();                  \
+            NXHashTable *_metaclasses = realizedMetaclasses();          \
+            NXHashState _state;                                         \
+            _state = NXInitHashState(_classes);                         \
+            while (NXNextHashState(_classes, &_state, (void**)&_c))    \
+            {                                                           \
+                code                                                    \
+            }                                                           \
+            _state = NXInitHashState(_metaclasses);                     \
+            while (NXNextHashState(_metaclasses, &_state, (void**)&_c)) \
+            {                                                           \
+                code                                                    \
+            }                                                           \
+        }                                                               \
+    } while (0)
 
-// fixme don't chain property lists
-typedef struct chained_property_list {
-    struct chained_property_list *next;
-    uint32_t count;
-    struct objc_property list[0];  // variable-size
-} chained_property_list;
 
 /*
   Low two bits of mlist->entsize is used as the fixed-up marker.
@@ -798,8 +861,8 @@ typedef struct chained_property_list {
 
 static uint32_t fixed_up_method_list = 3;
 
-__private_extern__ void
-disableSelectorPreoptimization(void)
+PRIVATE_EXTERN void
+disableSharedCacheOptimizations(void)
 {
     fixed_up_method_list = 1;
 }
@@ -820,14 +883,15 @@ static void setMethodListFixedUp(method_list_t *mlist)
 static size_t chained_property_list_size(const chained_property_list *plist)
 {
     return sizeof(chained_property_list) + 
-        plist->count * sizeof(struct objc_property);
+        plist->count * sizeof(property_t);
 }
+*/
 
 static size_t protocol_list_size(const protocol_list_t *plist)
 {
     return sizeof(protocol_list_t) + plist->count * sizeof(protocol_t *);
 }
-*/
+
 
 // low bit used by dyld shared cache
 static uint32_t method_list_entsize(const method_list_t *mlist)
@@ -857,6 +921,22 @@ static ivar_t *ivar_list_nth(const ivar_list_t *ilist, uint32_t i)
 }
 
 
+// part of ivar_t, with non-deprecated alignment
+typedef struct {
+    uintptr_t *offset;
+    const char *name;
+    const char *type;
+    uint32_t alignment;
+} ivar_alignment_t;
+
+static uint32_t ivar_alignment(const ivar_t *ivar)
+{
+    uint32_t alignment = ((ivar_alignment_t *)ivar)->alignment;
+    if (alignment == (uint32_t)-1) alignment = (uint32_t)WORD_SHIFT;
+    return 1<<alignment;
+}
+
+
 static method_list_t *cat_method_list(const category_t *cat, BOOL isMeta)
 {
     if (!cat) return NULL;
@@ -880,20 +960,18 @@ static method_t *cat_method_nth(const category_t *cat, BOOL isMeta, uint32_t i)
 }
 
 
-// part of ivar_t, with non-deprecated alignment
-typedef struct {
-    uintptr_t *offset;
-    const char *name;
-    const char *type;
-    uint32_t alignment;
-} ivar_alignment_t;
-
-static uint32_t ivar_alignment(const ivar_t *ivar)
+static property_t *
+property_list_nth(const property_list_t *plist, uint32_t i)
 {
-    uint32_t alignment = ((ivar_alignment_t *)ivar)->alignment;
-    if (alignment == (uint32_t)-1) alignment = (uint32_t)WORD_SHIFT;
-    return 1<<alignment;
+    return (property_t *)(i*plist->entsize + (char *)&plist->first);
 }
+
+// fixme don't chain property lists
+typedef struct chained_property_list {
+    struct chained_property_list *next;
+    uint32_t count;
+    property_t list[0];  // variable-size
+} chained_property_list;
 
 
 static void try_free(const void *p) 
@@ -914,7 +992,8 @@ static class_ro_t *make_ro_writeable(class_rw_t *rw)
     if (rw->flags & RW_COPIED_RO) {
         // already writeable, do nothing
     } else {
-        class_ro_t *ro = _memdup_internal(rw->ro, sizeof(*rw->ro));
+        class_ro_t *ro = (class_ro_t *)
+            _memdup_internal(rw->ro, sizeof(*rw->ro));
         rw->ro = ro;
         rw->flags |= RW_COPIED_RO;
     }
@@ -960,11 +1039,13 @@ static void addUnattachedCategoryForClass(category_t *cat, class_t *cls,
     NXMapTable *cats = unattachedCategories();
     category_list *list;
 
-    list = NXMapGet(cats, cls);
+    list = (category_list *)NXMapGet(cats, cls);
     if (!list) {
-        list = _calloc_internal(sizeof(*list) + sizeof(list->list[0]), 1);
+        list = (category_list *)
+            _calloc_internal(sizeof(*list) + sizeof(list->list[0]), 1);
     } else {
-        list = _realloc_internal(list, sizeof(*list) + sizeof(list->list[0]) * (list->count + 1));
+        list = (category_list *)
+            _realloc_internal(list, sizeof(*list) + sizeof(list->list[0]) * (list->count + 1));
     }
     list->list[list->count++] = (category_pair_t){cat, catFromBundle};
     NXMapInsert(cats, cls, list);
@@ -985,7 +1066,7 @@ static void removeUnattachedCategoryForClass(category_t *cat, class_t *cls)
     NXMapTable *cats = unattachedCategories();
     category_list *list;
 
-    list = NXMapGet(cats, cls);
+    list = (category_list *)NXMapGet(cats, cls);
     if (!list) return;
 
     uint32_t i;
@@ -1011,7 +1092,7 @@ static void removeUnattachedCategoryForClass(category_t *cat, class_t *cls)
 static category_list *unattachedCategoriesForClass(class_t *cls)
 {
     rwlock_assert_writing(&runtimeLock);
-    return NXMapRemove(unattachedCategories(), cls);
+    return (category_list *)NXMapRemove(unattachedCategories(), cls);
 }
 
 
@@ -1022,7 +1103,7 @@ static category_list *unattachedCategoriesForClass(class_t *cls)
 **********************************************************************/
 static BOOL isRealized(class_t *cls)
 {
-    return (cls->data->flags & RW_REALIZED) ? YES : NO;
+    return (cls->data()->flags & RW_REALIZED) ? YES : NO;
 }
 
 
@@ -1031,10 +1112,13 @@ static BOOL isRealized(class_t *cls)
 * Returns YES if class cls is an unrealized future class.
 * Locking: To prevent concurrent realization, hold runtimeLock.
 **********************************************************************/
+#ifndef NDEBUG
+// currently used in asserts only
 static BOOL isFuture(class_t *cls)
 {
-    return (cls->data->flags & RW_FUTURE) ? YES : NO;
+    return (cls->data()->flags & RW_FUTURE) ? YES : NO;
 }
+#endif
 
 
 /***********************************************************************
@@ -1063,7 +1147,7 @@ static void printReplacements(class_t *cls, category_list *cats)
             SEL s = sel_registerName((const char *)meth->name);
 
             // Don't warn about GC-ignored selectors
-            if (s == (SEL)kIgnore) continue;
+            if (ignoreSelector(s)) continue;
             
             // Look for method in earlier categories
             for (c2 = 0; c2 < c; c2++) {
@@ -1100,95 +1184,137 @@ static void printReplacements(class_t *cls, category_list *cats)
 
 static BOOL isBundleClass(class_t *cls)
 {
-    return (cls->data->ro->flags & RO_FROM_BUNDLE) ? YES : NO;
+    return (cls->data()->ro->flags & RO_FROM_BUNDLE) ? YES : NO;
 }
 
 
-static void
+static method_list_t *
 fixupMethodList(method_list_t *mlist, BOOL bundleCopy)
 {
     assert(!isMethodListFixedUp(mlist));
 
+    mlist = (method_list_t *)
+        _memdup_internal(mlist, method_list_size(mlist));
+
     // fixme lock less in attachMethodLists ?
     sel_lock();
 
+    // Unique selectors in list.
     uint32_t m;
     for (m = 0; m < mlist->count; m++) {
         method_t *meth = method_list_nth(mlist, m);
         SEL sel = sel_registerNameNoLock((const char *)meth->name, bundleCopy);
         meth->name = sel;
 
-        if (sel == (SEL)kIgnore) {
+        if (ignoreSelector(sel)) {
             meth->imp = (IMP)&_objc_ignored_method;
         }
     }
 
     sel_unlock();
 
+    // Sort by selector address.
+    method_t::SortBySELAddress sorter;
+    std::stable_sort(mlist->begin(), mlist->end(), sorter);
+    
+    // Mark method list as uniqued and sorted
     setMethodListFixedUp(mlist);
+
+    return mlist;
 }
 
+
 static void 
-attachMethodLists(class_t *cls, method_list_t **lists, int count, 
-                  BOOL methodsFromBundle, BOOL *outVtablesAffected)
+attachMethodLists(class_t *cls, method_list_t **addedLists, int addedCount, 
+                  BOOL methodsFromBundle, BOOL *inoutVtablesAffected)
 {
     rwlock_assert_writing(&runtimeLock);
 
-    BOOL vtablesAffected = NO;
-    size_t listsSize = count * sizeof(*lists);
+    // Don't scan redundantly
+    BOOL scanForCustomRR = !UseGC && !cls->hasCustomRR();
 
-    // Create or extend method list array
-    // Leave `count` empty slots at the start of the array to be filled below.
+    // Method list array is NULL-terminated.
+    // Some elements of lists are NULL; we must filter them out.
 
-    if (!cls->data->methods) {
-        // no bonus method lists yet
-        cls->data->methods = _calloc_internal(1 + count, sizeof(*lists));
-    } else {
-        size_t oldSize = malloc_size(cls->data->methods);
-        cls->data->methods = 
-            _realloc_internal(cls->data->methods, oldSize + listsSize);
-        memmove(cls->data->methods + count, cls->data->methods, oldSize);
+    method_list_t **oldLists = cls->data()->methods;
+    int oldCount = 0;
+    if (oldLists) {
+        while (oldLists[oldCount]) oldCount++;
     }
+        
+    int newCount = oldCount + 1;  // including NULL terminator
+    for (int i = 0; i < addedCount; i++) {
+        if (addedLists[i]) newCount++;  // only non-NULL entries get added
+    }
+
+    method_list_t **newLists = (method_list_t **)
+        _malloc_internal(newCount * sizeof(*newLists));
 
     // Add method lists to array.
     // Reallocate un-fixed method lists.
+    // The new methods are PREPENDED to the method list array.
 
+    newCount = 0;
     int i;
-    for (i = 0; i < count; i++) {
-        method_list_t *mlist = lists[i];
+    for (i = 0; i < addedCount; i++) {
+        method_list_t *mlist = addedLists[i];
         if (!mlist) continue;
 
         // Fixup selectors if necessary
         if (!isMethodListFixedUp(mlist)) {
-            mlist = _memdup_internal(mlist, method_list_size(mlist));
-            fixupMethodList(mlist, methodsFromBundle);
+            mlist = fixupMethodList(mlist, methodsFromBundle);
         }
 
         // Scan for vtable updates
-        if (outVtablesAffected  &&  !vtablesAffected) {
+        if (inoutVtablesAffected  &&  !*inoutVtablesAffected) {
             uint32_t m;
             for (m = 0; m < mlist->count; m++) {
                 SEL sel = method_list_nth(mlist, m)->name;
-                if (vtable_containsSelector(sel)) vtablesAffected = YES;
+                if (vtable_containsSelector(sel)) {
+                    *inoutVtablesAffected = YES;
+                    break;
+                }
+            }
+        }
+
+        // Scan for method implementations tracked by the class's flags
+        if (scanForCustomRR) {
+            uint32_t m;
+            for (m = 0; m < mlist->count; m++) {
+                SEL sel = method_list_nth(mlist, m)->name;
+                if (isRRSelector(sel)) {
+                    cls->setHasCustomRR();
+                    scanForCustomRR = NO;
+                    break;
+                }
             }
         }
         
         // Fill method list array
-        cls->data->methods[i] = mlist;
+        newLists[newCount++] = mlist;
     }
 
-    if (outVtablesAffected) *outVtablesAffected = vtablesAffected;
+    // Copy old methods to the method list array
+    for (i = 0; i < oldCount; i++) {
+        newLists[newCount++] = oldLists[i];
+    }
+    if (oldLists) free(oldLists);
+
+    // NULL-terminate
+    newLists[newCount++] = NULL;
+    cls->data()->methods = newLists;
 }
 
 static void 
 attachCategoryMethods(class_t *cls, category_list *cats, 
-                      BOOL *outVtablesAffected)
+                      BOOL *inoutVtablesAffected)
 {
     if (!cats) return;
     if (PrintReplacedMethods) printReplacements(cls, cats);
 
     BOOL isMeta = isMetaClass(cls);
-    method_list_t **mlists = _malloc_internal(cats->count * sizeof(*mlists));
+    method_list_t **mlists = (method_list_t **)
+        _malloc_internal(cats->count * sizeof(*mlists));
 
     // Count backwards through cats to get newest categories first
     int mcount = 0;
@@ -1202,7 +1328,7 @@ attachCategoryMethods(class_t *cls, category_list *cats,
         }
     }
 
-    attachMethodLists(cls, mlists, mcount, fromBundle, outVtablesAffected);
+    attachMethodLists(cls, mlists, mcount, fromBundle, inoutVtablesAffected);
 
     _free_internal(mlists);
 
@@ -1210,7 +1336,7 @@ attachCategoryMethods(class_t *cls, category_list *cats,
 
 
 static chained_property_list *
-buildPropertyList(const struct objc_property_list *plist, category_list *cats, BOOL isMeta)
+buildPropertyList(const property_list_t *plist, category_list *cats, BOOL isMeta)
 {
     // Do NOT use cat->cls! It may have been remapped.
     chained_property_list *newlist;
@@ -1236,7 +1362,8 @@ buildPropertyList(const struct objc_property_list *plist, category_list *cats, B
     if (count == 0) return NULL;
 
     // Allocate new list. 
-    newlist = _malloc_internal(sizeof(*newlist) + count * sizeof(struct objc_property));
+    newlist = (chained_property_list *)
+        _malloc_internal(sizeof(*newlist) + count * sizeof(property_t));
     newlist->count = 0;
     newlist->next = NULL;
 
@@ -1244,7 +1371,7 @@ buildPropertyList(const struct objc_property_list *plist, category_list *cats, B
     if (cats) {
         c = cats->count;
         while (c--) {
-            struct objc_property_list *cplist;
+            property_list_t *cplist;
             category_t *cat = cats->list[c].cat;
             /*
             if (isMeta) {
@@ -1273,15 +1400,15 @@ buildPropertyList(const struct objc_property_list *plist, category_list *cats, B
 }
 
 
-static protocol_list_t **
-buildProtocolList(category_list *cats, struct protocol_list_t *base, 
-                  struct protocol_list_t **protos)
+static const protocol_list_t **
+buildProtocolList(category_list *cats, const protocol_list_t *base, 
+                  const protocol_list_t **protos)
 {
     // Do NOT use cat->cls! It may have been remapped.
-    struct protocol_list_t **p, **newp;
-    struct protocol_list_t **newprotos;
-    int count = 0;
-    int i;
+    const protocol_list_t **p, **newp;
+    const protocol_list_t **newprotos;
+    unsigned int count = 0;
+    unsigned int i;
 
     // count protocol list in base
     if (base) count++;
@@ -1302,8 +1429,8 @@ buildProtocolList(category_list *cats, struct protocol_list_t *base,
 
     if (count == 0) return NULL;
     
-    newprotos = (struct protocol_list_t **)
-        _malloc_internal((count+1) * sizeof(struct protocol_list_t *));
+    newprotos = (const protocol_list_t **)
+        _malloc_internal((count+1) * sizeof(protocol_list_t *));
     newp = newprotos;
 
     if (base) {
@@ -1334,7 +1461,7 @@ buildProtocolList(category_list *cats, struct protocol_list_t *base,
 * Builds vtable.
 * Locking: runtimeLock must be held by the caller
 **********************************************************************/
-static void methodizeClass(struct class_t *cls)
+static void methodizeClass(class_t *cls)
 {
     category_list *cats;
     BOOL isMeta;
@@ -1353,22 +1480,41 @@ static void methodizeClass(struct class_t *cls)
     // Include methods and protocols and properties from categories, if any
     // Do NOT use cat->cls! It may have been remapped.
 
-    attachMethodLists(cls, (method_list_t **)&cls->data->ro->baseMethods, 1, 
+    attachMethodLists(cls, (method_list_t **)&cls->data()->ro->baseMethods, 1, 
                       isBundleClass(cls), NULL);
+
+    // Root classes get bonus method implementations if they don't have 
+    // them already. These apply before category replacements.
+
+    if (cls->isRootClass()) {
+        // root class
+        if (!UseGC) {
+            // Assume custom RR except NSObject, even without MM method imps.
+            if (0 != strcmp(getName(cls), "NSObject")) cls->setHasCustomRR();
+        }
+    } 
+    else if (cls->isRootMetaclass()) {
+        // root metaclass
+        addMethod(cls, SEL_initialize, (IMP)&objc_noop_imp, "", NO);
+        if (!UseGC) {
+            // Assume custom RR always.
+            cls->setHasCustomRR();
+        }
+    }
 
     cats = unattachedCategoriesForClass(cls);
     attachCategoryMethods(cls, cats, NULL);
-    
-    if (cats  ||  cls->data->ro->baseProperties) {
-        cls->data->properties = 
-            buildPropertyList(cls->data->ro->baseProperties, cats, isMeta);
+
+    if (cats  ||  cls->data()->ro->baseProperties) {
+        cls->data()->properties = 
+            buildPropertyList(cls->data()->ro->baseProperties, cats, isMeta);
     }
     
-    if (cats  ||  cls->data->ro->baseProtocols) {
-        cls->data->protocols = 
-            buildProtocolList(cats, cls->data->ro->baseProtocols, NULL);
+    if (cats  ||  cls->data()->ro->baseProtocols) {
+        cls->data()->protocols = 
+            buildProtocolList(cats, cls->data()->ro->baseProtocols, NULL);
     }
-    
+
     if (PrintConnecting) {
         uint32_t i;
         if (cats) {
@@ -1383,7 +1529,22 @@ static void methodizeClass(struct class_t *cls)
     if (cats) _free_internal(cats);
 
     // No vtable until +initialize completes
-    assert(cls->vtable == _objc_empty_vtable);
+    assert(cls->vtable == &_objc_empty_vtable);
+
+#ifndef NDEBUG
+    // Debug: sanity-check all SELs; log method list contents
+    FOREACH_METHOD_LIST(mlist, cls, {
+        method_list_t::method_iterator iter = mlist->begin();
+        method_list_t::method_iterator end = mlist->end();
+        for ( ; iter != end; ++iter) {
+            if (PrintConnecting) {
+                _objc_inform("METHOD %c[%s %s]", isMeta ? '+' : '-', 
+                             getName(cls), sel_getName(iter->name));
+            }
+            assert(ignoreSelector(iter->name)  ||  sel_registerName(sel_getName(iter->name))==iter->name); 
+        }
+    });
+#endif
 }
 
 
@@ -1394,7 +1555,7 @@ static void methodizeClass(struct class_t *cls)
 * Updates method caches and vtables for cls and its subclasses.
 * Locking: runtimeLock must be held by the caller
 **********************************************************************/
-static void remethodizeClass(struct class_t *cls)
+static void remethodizeClass(class_t *cls)
 {
     category_list *cats;
     BOOL isMeta;
@@ -1406,8 +1567,7 @@ static void remethodizeClass(struct class_t *cls)
     // Re-methodizing: check for more categories
     if ((cats = unattachedCategoriesForClass(cls))) {
         chained_property_list *newproperties;
-        struct protocol_list_t **newprotos;
-        BOOL vtableAffected = NO;
+        const protocol_list_t **newprotos;
         
         if (PrintConnecting) {
             _objc_inform("CLASS: attaching categories to class '%s' %s", 
@@ -1416,19 +1576,20 @@ static void remethodizeClass(struct class_t *cls)
         
         // Update methods, properties, protocols
         
+        BOOL vtableAffected = NO;
         attachCategoryMethods(cls, cats, &vtableAffected);
         
         newproperties = buildPropertyList(NULL, cats, isMeta);
         if (newproperties) {
-            newproperties->next = cls->data->properties;
-            cls->data->properties = newproperties;
+            newproperties->next = cls->data()->properties;
+            cls->data()->properties = newproperties;
         }
         
-        newprotos = buildProtocolList(cats, NULL, cls->data->protocols);
-        if (cls->data->protocols  &&  cls->data->protocols != newprotos) {
-            _free_internal(cls->data->protocols);
+        newprotos = buildProtocolList(cats, NULL, cls->data()->protocols);
+        if (cls->data()->protocols  &&  cls->data()->protocols != newprotos) {
+            _free_internal(cls->data()->protocols);
         }
-        cls->data->protocols = newprotos;
+        cls->data()->protocols = newprotos;
         
         _free_internal(cats);
 
@@ -1451,9 +1612,9 @@ static void changeInfo(class_t *cls, unsigned int set, unsigned int clear)
     assert(isFuture(cls)  ||  isRealized(cls));
 
     do {
-        oldf = cls->data->flags;
+        oldf = cls->data()->flags;
         newf = (oldf | set) & ~clear;
-    } while (!OSAtomicCompareAndSwap32Barrier(oldf, newf, (volatile int32_t *)&cls->data->flags));
+    } while (!OSAtomicCompareAndSwap32Barrier(oldf, newf, (volatile int32_t *)&cls->data()->flags));
 }
 
 
@@ -1469,10 +1630,8 @@ static NXMapTable *namedClasses(void)
 {
     rwlock_assert_locked(&runtimeLock);
 
-    INIT_ONCE_PTR(gdb_objc_realized_classes, 
-                  NXCreateMapTableFromZone(NXStrValueMapPrototype, 1024, 
-                                           _objc_internal_zone()), 
-                  NXFreeMapTable(v) );
+    // allocated in _read_images
+    assert(gdb_objc_realized_classes);
 
     return gdb_objc_realized_classes;
 }
@@ -1488,12 +1647,12 @@ static void addNamedClass(class_t *cls, const char *name)
 {
     rwlock_assert_writing(&runtimeLock);
     class_t *old;
-    if ((old = NXMapGet(namedClasses(), name))) {
+    if ((old = (class_t *)NXMapGet(namedClasses(), name))) {
         inform_duplicate(name, (Class)old, (Class)cls);
     } else {
         NXMapInsert(namedClasses(), name, cls);
     }
-    assert(!(cls->data->flags & RO_META));
+    assert(!(cls->data()->flags & RO_META));
 
     // wrong: constructed classes are already realized when they get here
     // assert(!isRealized(cls));
@@ -1508,7 +1667,7 @@ static void addNamedClass(class_t *cls, const char *name)
 static void removeNamedClass(class_t *cls, const char *name)
 {
     rwlock_assert_writing(&runtimeLock);
-    assert(!(cls->data->flags & RO_META));
+    assert(!(cls->data()->flags & RO_META));
     if (cls == NXMapGet(namedClasses(), name)) {
         NXMapRemove(namedClasses(), name);
     } else {
@@ -1522,18 +1681,16 @@ static void removeNamedClass(class_t *cls, const char *name)
 * Returns the class list for realized non-meta classes.
 * Locking: runtimeLock must be read- or write-locked by the caller
 **********************************************************************/
+static NXHashTable *realized_class_hash = NULL;
+
 static NXHashTable *realizedClasses(void)
-{
-    static NXHashTable *class_hash = NULL;
-    
+{    
     rwlock_assert_locked(&runtimeLock);
 
-    INIT_ONCE_PTR(class_hash, 
-                  NXCreateHashTableFromZone(NXPtrPrototype, 1024, NULL, 
-                                            _objc_internal_zone()), 
-                  NXFreeHashTable(v));
+    // allocated in _read_images
+    assert(realized_class_hash);
 
-    return class_hash;
+    return realized_class_hash;
 }
 
 
@@ -1542,18 +1699,15 @@ static NXHashTable *realizedClasses(void)
 * Returns the class list for realized metaclasses.
 * Locking: runtimeLock must be read- or write-locked by the caller
 **********************************************************************/
+static NXHashTable *realized_metaclass_hash = NULL;
 static NXHashTable *realizedMetaclasses(void)
-{
-    static NXHashTable *class_hash = NULL;
-    
+{    
     rwlock_assert_locked(&runtimeLock);
 
-    INIT_ONCE_PTR(class_hash, 
-                  NXCreateHashTableFromZone(NXPtrPrototype, 1024, NULL, 
-                                            _objc_internal_zone()), 
-                  NXFreeHashTable(v));
+    // allocated in _read_images
+    assert(realized_metaclass_hash);
 
-    return class_hash;
+    return realized_metaclass_hash;
 }
 
 
@@ -1625,18 +1779,15 @@ static void removeRealizedMetaclass(class_t *cls)
 * Replaces the 32-bit cls = objc_getName(metacls) during +initialize.
 * Locking: runtimeLock must be read- or write-locked by the caller
 **********************************************************************/
+static NXMapTable *uninitialized_class_map = NULL;
 static NXMapTable *uninitializedClasses(void)
 {
-    static NXMapTable *class_map = NULL;
-    
     rwlock_assert_locked(&runtimeLock);
 
-    INIT_ONCE_PTR(class_map, 
-                  NXCreateMapTableFromZone(NXPtrValueMapPrototype, 1024, 
-                                           _objc_internal_zone()), 
-                  NXFreeMapTable(v) );
+    // allocated in _read_images
+    assert(uninitialized_class_map);
 
-    return class_map;
+    return uninitialized_class_map;
 }
 
 
@@ -1650,8 +1801,8 @@ static void addUninitializedClass(class_t *cls, class_t *metacls)
     rwlock_assert_writing(&runtimeLock);
     void *old;
     old = NXMapInsert(uninitializedClasses(), metacls, cls);
-    assert(isRealized(metacls) ? isMetaClass(metacls) : metacls->data->flags & RO_META);
-    assert(! (isRealized(cls) ? isMetaClass(cls) : cls->data->flags & RO_META));
+    assert(isRealized(metacls) ? isMetaClass(metacls) : metacls->data()->flags & RO_META);
+    assert(! (isRealized(cls) ? isMetaClass(cls) : cls->data()->flags & RO_META));
     assert(!old);
 }
 
@@ -1673,7 +1824,7 @@ static class_t *getNonMetaClass(class_t *cls)
 {
     rwlock_assert_locked(&runtimeLock);
     if (isMetaClass(cls)) {
-        cls = NXMapGet(uninitializedClasses(), cls);
+        cls = (class_t *)NXMapGet(uninitializedClasses(), cls);
     }
     return cls;
 }
@@ -1685,7 +1836,7 @@ static class_t *getNonMetaClass(class_t *cls)
 * Used by +initialize. 
 * Locking: acquires runtimeLock
 **********************************************************************/
-__private_extern__ Class _class_getNonMetaClass(Class cls_gen)
+PRIVATE_EXTERN Class _class_getNonMetaClass(Class cls_gen)
 {
     class_t *cls = newcls(cls_gen);
     rwlock_write(&runtimeLock);
@@ -1734,8 +1885,8 @@ static void addFutureClass(const char *name, class_t *cls)
         _objc_inform("FUTURE: reserving %p for %s", cls, name);
     }
 
-    cls->data = _calloc_internal(sizeof(*cls->data), 1);
-    cls->data->flags = RO_FUTURE;
+    cls->setData((class_rw_t *)_calloc_internal(sizeof(*cls->data()), 1));
+    cls->data()->flags = RO_FUTURE;
 
     old = NXMapKeyCopyingInsert(futureClasses(), name, cls);
     assert(!old);
@@ -1759,6 +1910,7 @@ static void removeFutureClass(const char *name)
 /***********************************************************************
 * remappedClasses
 * Returns the oldClass => newClass map for realized future classes.
+* Returns the oldClass => NULL map for ignored weak-linked classes.
 * Locking: runtimeLock must be read- or write-locked by the caller
 **********************************************************************/
 static NXMapTable *remappedClasses(BOOL create)
@@ -1797,6 +1949,7 @@ static BOOL noClassesRemapped(void)
 /***********************************************************************
 * addRemappedClass
 * newcls is a realized future class, replacing oldcls.
+* OR newcls is NULL, replacing ignored weak-linked class oldcls.
 * Locking: runtimeLock must be write-locked by the caller
 **********************************************************************/
 static void addRemappedClass(class_t *oldcls, class_t *newcls)
@@ -1818,20 +1971,29 @@ static void addRemappedClass(class_t *oldcls, class_t *newcls)
 * remapClass
 * Returns the live class pointer for cls, which may be pointing to 
 * a class struct that has been reallocated.
+* Returns NULL if cls is ignored because of weak linking.
 * Locking: runtimeLock must be read- or write-locked by the caller
 **********************************************************************/
 static class_t *remapClass(class_t *cls)
 {
     rwlock_assert_locked(&runtimeLock);
 
-    class_t *newcls = NXMapGet(remappedClasses(YES), cls);
-    return newcls ? newcls : cls;
+    class_t *c2;
+
+    if (!cls) return NULL;
+
+    if (NXMapMember(remappedClasses(YES), cls, (void**)&c2) == NX_MAPNOTAKEY) {
+        return cls;
+    } else {
+        return c2;
+    }
 }
 
 
 /***********************************************************************
 * remapClassRef
-* Fix up a class ref, in case the class referenced has been reallocated.
+* Fix up a class ref, in case the class referenced has been reallocated 
+* or is an ignored weak-linked class.
 * Locking: runtimeLock must be read- or write-locked by the caller
 **********************************************************************/
 static void remapClassRef(class_t **clsref)
@@ -1855,8 +2017,16 @@ static void addSubclass(class_t *supercls, class_t *subcls)
     if (supercls  &&  subcls) {
         assert(isRealized(supercls));
         assert(isRealized(subcls));
-        subcls->data->nextSiblingClass = supercls->data->firstSubclass;
-        supercls->data->firstSubclass = subcls;
+        subcls->data()->nextSiblingClass = supercls->data()->firstSubclass;
+        supercls->data()->firstSubclass = subcls;
+
+        if (supercls->data()->flags & RW_HAS_CXX_STRUCTORS) {
+            subcls->data()->flags |= RW_HAS_CXX_STRUCTORS;
+        }
+
+        if (supercls->hasCustomRR()) {
+            subcls->setHasCustomRR();
+        }
     }
 }
 
@@ -1872,12 +2042,12 @@ static void removeSubclass(class_t *supercls, class_t *subcls)
     assert(getSuperclass(subcls) == supercls);
 
     class_t **cp;
-    for (cp = &supercls->data->firstSubclass; 
+    for (cp = &supercls->data()->firstSubclass; 
          *cp  &&  *cp != subcls; 
-         cp = &(*cp)->data->nextSiblingClass)
+         cp = &(*cp)->data()->nextSiblingClass)
         ;
     assert(*cp == subcls);
-    *cp = subcls->data->nextSiblingClass;
+    *cp = subcls->data()->nextSiblingClass;
 }
 
 
@@ -1912,7 +2082,8 @@ static protocol_t *remapProtocol(protocol_ref_t proto)
 {
     rwlock_assert_locked(&runtimeLock);
 
-    protocol_t *newproto = NXMapGet(protocols(), ((protocol_t *)proto)->name);
+    protocol_t *newproto = (protocol_t *)
+        NXMapGet(protocols(), ((protocol_t *)proto)->name);
     return newproto ? newproto : (protocol_t *)proto;
 }
 
@@ -2019,10 +2190,10 @@ static ivar_t *getIvar(class_t *cls, const char *name)
 
     const ivar_list_t *ivars;
     assert(isRealized(cls));
-    if ((ivars = cls->data->ro->ivars)) {
+    if ((ivars = cls->data()->ro->ivars)) {
         uint32_t i;
         for (i = 0; i < ivars->count; i++) {
-            struct ivar_t *ivar = ivar_list_nth(ivars, i);
+            ivar_t *ivar = ivar_list_nth(ivars, i);
             if (!ivar->offset) continue;  // anonymous bitfield
 
             // ivar->name may be NULL for anonymous bitfields etc.
@@ -2035,6 +2206,181 @@ static ivar_t *getIvar(class_t *cls, const char *name)
     return NULL;
 }
 
+static void reconcileInstanceVariables(class_t *cls, class_t *supercls) {
+    class_rw_t *rw = cls->data();
+    const class_ro_t *ro = rw->ro;
+    
+    if (supercls) {
+        // Non-fragile ivars - reconcile this class with its superclass
+        // Does this really need to happen for the isMETA case?
+        layout_bitmap ivarBitmap;
+        layout_bitmap weakBitmap;
+        BOOL layoutsChanged = NO;
+        BOOL mergeLayouts = UseGC;
+        const class_ro_t *super_ro = supercls->data()->ro;
+        
+        if (DebugNonFragileIvars) {
+            // Debugging: Force non-fragile ivars to slide.
+            // Intended to find compiler, runtime, and program bugs.
+            // If it fails with this and works without, you have a problem.
+            
+            // Operation: Reset everything to 0 + misalignment. 
+            // Then force the normal sliding logic to push everything back.
+            
+            // Exceptions: root classes, metaclasses, *NSCF* classes, 
+            // __CF* classes, NSConstantString, NSSimpleCString
+            
+            // (already know it's not root because supercls != nil)
+            if (!strstr(getName(cls), "NSCF")  &&  
+                0 != strncmp(getName(cls), "__CF", 4)  &&  
+                0 != strcmp(getName(cls), "NSConstantString")  &&  
+                0 != strcmp(getName(cls), "NSSimpleCString")) 
+            {
+                uint32_t oldStart = ro->instanceStart;
+                uint32_t oldSize = ro->instanceSize;
+                class_ro_t *ro_w = make_ro_writeable(rw);
+                ro = rw->ro;
+                
+                // Find max ivar alignment in class.
+                // default to word size to simplify ivar update
+                uint32_t alignment = 1<<WORD_SHIFT;
+                if (ro->ivars) {
+                    uint32_t i;
+                    for (i = 0; i < ro->ivars->count; i++) {
+                        ivar_t *ivar = ivar_list_nth(ro->ivars, i);
+                        if (ivar_alignment(ivar) > alignment) {
+                            alignment = ivar_alignment(ivar);
+                        }
+                    }
+                }
+                uint32_t misalignment = ro->instanceStart % alignment;
+                uint32_t delta = ro->instanceStart - misalignment;
+                ro_w->instanceStart = misalignment;
+                ro_w->instanceSize -= delta;
+                
+                if (PrintIvars) {
+                    _objc_inform("IVARS: DEBUG: forcing ivars for class '%s' "
+                                 "to slide (instanceStart %zu -> %zu)", 
+                                 getName(cls), (size_t)oldStart, 
+                                 (size_t)ro->instanceStart);
+                }
+                
+                if (ro->ivars) {
+                    uint32_t i;
+                    for (i = 0; i < ro->ivars->count; i++) {
+                        ivar_t *ivar = ivar_list_nth(ro->ivars, i);
+                        if (!ivar->offset) continue;  // anonymous bitfield
+                        *ivar->offset -= delta;
+                    }
+                }
+                
+                if (mergeLayouts) {
+                    layout_bitmap layout;
+                    if (ro->ivarLayout) {
+                        layout = layout_bitmap_create(ro->ivarLayout, 
+                                                      oldSize, oldSize, NO);
+                        layout_bitmap_slide_anywhere(&layout, 
+                                                     delta >> WORD_SHIFT, 0);
+                        ro_w->ivarLayout = layout_string_create(layout);
+                        layout_bitmap_free(layout);
+                    }
+                    if (ro->weakIvarLayout) {
+                        layout = layout_bitmap_create(ro->weakIvarLayout, 
+                                                      oldSize, oldSize, YES);
+                        layout_bitmap_slide_anywhere(&layout, 
+                                                     delta >> WORD_SHIFT, 0);
+                        ro_w->weakIvarLayout = layout_string_create(layout);
+                        layout_bitmap_free(layout);
+                    }
+                }
+            }
+        }
+        
+        // fixme can optimize for "class has no new ivars", etc
+        // WARNING: gcc c++ sets instanceStart/Size=0 for classes with  
+        //   no local ivars, but does provide a layout bitmap. 
+        //   Handle that case specially so layout_bitmap_create doesn't die
+        //   The other ivar sliding code below still works fine, and 
+        //   the final result is a good class.
+        if (ro->instanceStart == 0  &&  ro->instanceSize == 0) {
+            // We can't use ro->ivarLayout because we don't know
+            // how long it is. Force a new layout to be created.
+            if (PrintIvars) {
+                _objc_inform("IVARS: instanceStart/Size==0 for class %s; "
+                             "disregarding ivar layout", ro->name);
+            }
+            ivarBitmap = layout_bitmap_create_empty(super_ro->instanceSize, NO);
+            weakBitmap = layout_bitmap_create_empty(super_ro->instanceSize, YES);
+            layoutsChanged = YES;
+        } else {
+            ivarBitmap = 
+            layout_bitmap_create(ro->ivarLayout, 
+                                 ro->instanceSize, 
+                                 ro->instanceSize, NO);
+            weakBitmap = 
+            layout_bitmap_create(ro->weakIvarLayout, 
+                                 ro->instanceSize,
+                                 ro->instanceSize, YES);
+        }
+        
+        if (ro->instanceStart < super_ro->instanceSize) {
+            // Superclass has changed size. This class's ivars must move.
+            // Also slide layout bits in parallel.
+            // This code is incapable of compacting the subclass to 
+            //   compensate for a superclass that shrunk, so don't do that.
+            if (PrintIvars) {
+                _objc_inform("IVARS: sliding ivars for class %s "
+                             "(superclass was %u bytes, now %u)", 
+                             ro->name, ro->instanceStart, 
+                             super_ro->instanceSize);
+            }
+            class_ro_t *ro_w = make_ro_writeable(rw);
+            ro = rw->ro;
+            moveIvars(ro_w, super_ro->instanceSize, 
+                      mergeLayouts ? &ivarBitmap : NULL, mergeLayouts ? &weakBitmap : NULL);
+            gdb_objc_class_changed((Class)cls, OBJC_CLASS_IVARS_CHANGED, ro->name);
+            layoutsChanged = mergeLayouts;
+        } 
+        
+        if (mergeLayouts) {
+            // Check superclass's layout against this class's layout.
+            // This needs to be done even if the superclass is not bigger.
+            layout_bitmap superBitmap = layout_bitmap_create(super_ro->ivarLayout, 
+                                                             super_ro->instanceSize, 
+                                                             super_ro->instanceSize, NO);
+            layoutsChanged |= layout_bitmap_splat(ivarBitmap, superBitmap, 
+                                                  ro->instanceStart);
+            layout_bitmap_free(superBitmap);
+            
+            // check the superclass' weak layout.
+            superBitmap = layout_bitmap_create(super_ro->weakIvarLayout, 
+                                               super_ro->instanceSize, 
+                                               super_ro->instanceSize, YES);
+            layoutsChanged |= layout_bitmap_splat(weakBitmap, superBitmap, 
+                                                  ro->instanceStart);
+            layout_bitmap_free(superBitmap);
+        }
+        
+        if (layoutsChanged) {
+            // Rebuild layout strings. 
+            if (PrintIvars) {
+                _objc_inform("IVARS: gc layout changed for class %s",
+                             ro->name);
+            }
+            class_ro_t *ro_w = make_ro_writeable(rw);
+            ro = rw->ro;
+            if (DebugNonFragileIvars) {
+                try_free(ro_w->ivarLayout);
+                try_free(ro_w->weakIvarLayout);
+            }
+            ro_w->ivarLayout = layout_string_create(ivarBitmap);
+            ro_w->weakIvarLayout = layout_string_create(weakBitmap);
+        }
+        
+        layout_bitmap_free(ivarBitmap);
+        layout_bitmap_free(weakBitmap);
+    }
+}
 
 /***********************************************************************
 * realizeClass
@@ -2057,18 +2403,18 @@ static class_t *realizeClass(class_t *cls)
     if (isRealized(cls)) return cls;
     assert(cls == remapClass(cls));
 
-    ro = (const class_ro_t *)cls->data;
+    ro = (const class_ro_t *)cls->data();
     if (ro->flags & RO_FUTURE) {
         // This was a future class. rw data is already allocated.
-        rw = cls->data;
-        ro = cls->data->ro;
+        rw = cls->data();
+        ro = cls->data()->ro;
         changeInfo(cls, RW_REALIZED, RW_FUTURE);
     } else {
         // Normal class. Allocate writeable class data.
-        rw = _calloc_internal(sizeof(class_rw_t), 1);
+        rw = (class_rw_t *)_calloc_internal(sizeof(class_rw_t), 1);
         rw->ro = ro;
         rw->flags = RW_REALIZED;
-        cls->data = rw;
+        cls->setData(rw);
     }
 
     isMeta = (ro->flags & RO_META) ? YES : NO;
@@ -2106,102 +2452,11 @@ static class_t *realizeClass(class_t *cls)
     }
     */
 
+    // Reconcile instance variable offsets / layout.
+    if (!isMeta) reconcileInstanceVariables(cls, supercls);
 
-    if (supercls) {
-        // Non-fragile ivars - reconcile this class with its superclass
-        layout_bitmap ivarBitmap;
-        layout_bitmap weakBitmap;
-        BOOL layoutsChanged = NO;
-
-        if (UseGC) {
-            // fixme can optimize for "class has no new ivars", etc
-            // WARNING: gcc c++ sets instanceStart/Size=0 for classes with  
-            //   no local ivars, but does provide a layout bitmap. 
-            //   Handle that case specially so layout_bitmap_create doesn't die
-            //   The other ivar sliding code below still works fine, and 
-            //   the final result is a good class.
-            if (ro->instanceStart == 0  &&  ro->instanceSize == 0) {
-                // We can't use ro->ivarLayout because we don't know
-                // how long it is. Force a new layout to be created.
-                if (PrintIvars) {
-                    _objc_inform("IVARS: instanceStart/Size==0 for class %s; "
-                                 "disregarding ivar layout", ro->name);
-                }
-                ivarBitmap = 
-                    layout_bitmap_create(NULL, 
-                                         supercls->data->ro->instanceSize, 
-                                         supercls->data->ro->instanceSize, NO);
-                weakBitmap = 
-                    layout_bitmap_create(NULL, 
-                                         supercls->data->ro->instanceSize, 
-                                         supercls->data->ro->instanceSize, YES);
-                layoutsChanged = YES;
-            } else {
-                ivarBitmap = 
-                    layout_bitmap_create(ro->ivarLayout, 
-                                         ro->instanceSize, 
-                                         ro->instanceSize, NO);
-                weakBitmap = 
-                    layout_bitmap_create(ro->weakIvarLayout, 
-                                         ro->instanceSize,
-                                         ro->instanceSize, YES);
-            }
-        }
-
-        if (ro->instanceStart < supercls->data->ro->instanceSize) {
-            // Superclass has changed size. This class's ivars must move.
-            // Also slide layout bits in parallel.
-            // This code is incapable of compacting the subclass to 
-            //   compensate for a superclass that shrunk, so don't do that.
-            if (PrintIvars) {
-                _objc_inform("IVARS: sliding ivars for class %s "
-                             "(superclass was %u bytes, now %u)", 
-                             ro->name, ro->instanceStart, 
-                             supercls->data->ro->instanceSize);
-            }
-            class_ro_t *ro_w = make_ro_writeable(rw);
-            ro = rw->ro;
-            moveIvars(ro_w, supercls->data->ro->instanceSize, 
-                      UseGC ? &ivarBitmap : NULL, UseGC ? &weakBitmap : NULL);
-            gdb_objc_class_changed((Class)cls, OBJC_CLASS_IVARS_CHANGED, ro->name);
-            layoutsChanged = YES;
-        } 
-        
-        if (UseGC) {
-            // Check superclass's layout against this class's layout.
-            // This needs to be done even if the superclass is not bigger.
-            layout_bitmap superBitmap = 
-                layout_bitmap_create(supercls->data->ro->ivarLayout, 
-                                     supercls->data->ro->instanceSize, 
-                                     supercls->data->ro->instanceSize, NO);
-            layoutsChanged |= layout_bitmap_splat(ivarBitmap, superBitmap, 
-                                                  ro->instanceStart);
-            layout_bitmap_free(superBitmap);
-
-            superBitmap = 
-                layout_bitmap_create(supercls->data->ro->weakIvarLayout, 
-                                     supercls->data->ro->instanceSize, 
-                                     supercls->data->ro->instanceSize, YES);
-            layoutsChanged |= layout_bitmap_splat(weakBitmap, superBitmap, 
-                                                  ro->instanceStart);
-            layout_bitmap_free(superBitmap);
-
-            if (layoutsChanged) {
-                // Rebuild layout strings. 
-                if (PrintIvars) {
-                    _objc_inform("IVARS: gc layout changed for class %s",
-                                 ro->name);
-                }
-                class_ro_t *ro_w = make_ro_writeable(rw);
-                ro = rw->ro;
-                ro_w->ivarLayout = layout_string_create(ivarBitmap);
-                ro_w->weakIvarLayout = layout_string_create(weakBitmap);
-            }
-
-            layout_bitmap_free(ivarBitmap);
-            layout_bitmap_free(weakBitmap);
-        }
-    }
+    // Copy some flags from ro to rw
+    if (ro->flags & RO_HAS_CXX_STRUCTORS) rw->flags |= RW_HAS_CXX_STRUCTORS;
 
     // Connect this class to its superclass's subclass lists
     if (supercls) {
@@ -2231,6 +2486,28 @@ static class_t *getClass(const char *name)
     rwlock_assert_locked(&runtimeLock);
 
     return (class_t *)NXMapGet(namedClasses(), name);
+}
+
+
+/***********************************************************************
+* missingWeakSuperclass
+* Return YES if some superclass of cls was weak-linked and is missing.
+**********************************************************************/
+static BOOL 
+missingWeakSuperclass(class_t *cls)
+{
+    assert(!isRealized(cls));
+
+    if (!cls->superclass) {
+        // superclass NULL. This is normal for root classes only.
+        return (!(cls->data()->flags & RO_ROOT));
+    } else {
+        // superclass not NULL. Check if a higher superclass is missing.
+        class_t *supercls = remapClass(cls->superclass);
+        if (!supercls) return YES;
+        if (isRealized(supercls)) return NO;
+        return missingWeakSuperclass(supercls);
+    }
 }
 
 
@@ -2281,14 +2558,14 @@ static void realizeAllClasses(void)
 * Assumes the named class doesn't exist yet.
 * Locking: acquires runtimeLock
 **********************************************************************/
-__private_extern__ Class _objc_allocateFutureClass(const char *name)
+PRIVATE_EXTERN Class _objc_allocateFutureClass(const char *name)
 {
     rwlock_write(&runtimeLock);
 
-    struct class_t *cls;
+    class_t *cls;
     NXMapTable *future_class_map = futureClasses();
 
-    if ((cls = NXMapGet(future_class_map, name))) {
+    if ((cls = (class_t *)NXMapGet(future_class_map, name))) {
         // Already have a future class for this name.
         rwlock_unlock_write(&runtimeLock);
         return (Class)cls;
@@ -2311,43 +2588,6 @@ void objc_setFutureClass(Class cls, const char *name)
 }
 
 
-#define FOREACH_REALIZED_SUBCLASS(_c, _cls, code)                       \
-    do {                                                                \
-        rwlock_assert_writing(&runtimeLock);                                \
-        class_t *_top = _cls;                                           \
-        class_t *_c = _top;                                             \
-        if (_c) {                                                       \
-            while (1) {                                                 \
-                code                                                    \
-                if (_c->data->firstSubclass) {                          \
-                    _c = _c->data->firstSubclass;                       \
-                } else {                                                \
-                    while (!_c->data->nextSiblingClass  &&  _c != _top) { \
-                        _c = getSuperclass(_c);                         \
-                    }                                                   \
-                    if (_c == _top) break;                              \
-                    _c = _c->data->nextSiblingClass;                    \
-                }                                                       \
-            }                                                           \
-        } else {                                                        \
-            /* nil means all realized classes */                        \
-            NXHashTable *_classes = realizedClasses();                  \
-            NXHashTable *_metaclasses = realizedMetaclasses();          \
-            NXHashState _state;                                         \
-            _state = NXInitHashState(_classes);                         \
-            while (NXNextHashState(_classes, &_state, (void**)&_c))    \
-            {                                                           \
-                code                                                    \
-            }                                                           \
-            _state = NXInitHashState(_metaclasses);                     \
-            while (NXNextHashState(_metaclasses, &_state, (void**)&_c)) \
-            {                                                           \
-                code                                                    \
-            }                                                           \
-        }                                                               \
-    } while (0)
-
-
 /***********************************************************************
 * flushVtables
 * Rebuilds vtables for cls and its realized subclasses. 
@@ -2362,7 +2602,7 @@ static void flushVtables(class_t *cls)
         _objc_inform("VTABLES: ### EXPENSIVE ### global vtable flush!");
     }
 
-    FOREACH_REALIZED_SUBCLASS(c, cls, {
+    FOREACH_REALIZED_CLASS_AND_SUBCLASS(c, cls, {
         updateVtable(c, NO);
     });
 }
@@ -2379,7 +2619,7 @@ static void flushCaches(class_t *cls)
 {
     rwlock_assert_writing(&runtimeLock);
 
-    FOREACH_REALIZED_SUBCLASS(c, cls, {
+    FOREACH_REALIZED_CLASS_AND_SUBCLASS(c, cls, {
         flush_cache((Class)c);
     });
 }
@@ -2391,7 +2631,7 @@ static void flushCaches(class_t *cls)
 * and optionally its metaclass.
 * Locking: acquires runtimeLock
 **********************************************************************/
-__private_extern__ void flush_caches(Class cls_gen, BOOL flush_meta)
+PRIVATE_EXTERN void flush_caches(Class cls_gen, BOOL flush_meta)
 {
     class_t *cls = newcls(cls_gen);
     rwlock_write(&runtimeLock);
@@ -2406,7 +2646,6 @@ __private_extern__ void flush_caches(Class cls_gen, BOOL flush_meta)
     rwlock_unlock_write(&runtimeLock);
 }
 
-#if !TARGET_OS_WIN32
 
 /***********************************************************************
 * map_images
@@ -2415,7 +2654,7 @@ __private_extern__ void flush_caches(Class cls_gen, BOOL flush_meta)
 *
 * Locking: write-locks runtimeLock
 **********************************************************************/
-__private_extern__ const char *
+PRIVATE_EXTERN const char *
 map_images(enum dyld_image_states state, uint32_t infoCount,
            const struct dyld_image_info infoList[])
 {
@@ -2435,7 +2674,7 @@ map_images(enum dyld_image_states state, uint32_t infoCount,
 *
 * Locking: write-locks runtimeLock and loadMethodLock
 **********************************************************************/
-__private_extern__ const char *
+PRIVATE_EXTERN const char *
 load_images(enum dyld_image_states state, uint32_t infoCount,
             const struct dyld_image_info infoList[])
 {
@@ -2467,19 +2706,19 @@ load_images(enum dyld_image_states state, uint32_t infoCount,
 *
 * Locking: write-locks runtimeLock and loadMethodLock
 **********************************************************************/
-__private_extern__ void 
+PRIVATE_EXTERN void 
 unmap_image(const struct mach_header *mh, intptr_t vmaddr_slide)
 {
     recursive_mutex_lock(&loadMethodLock);
     rwlock_write(&runtimeLock);
 
-    unmap_image_nolock(mh, vmaddr_slide);
+    unmap_image_nolock(mh);
 
     rwlock_unlock_write(&runtimeLock);
     recursive_mutex_unlock(&loadMethodLock);
 }
 
-#endif
+
 
 /***********************************************************************
 * _read_images
@@ -2490,7 +2729,7 @@ unmap_image(const struct mach_header *mh, intptr_t vmaddr_slide)
 *
 * Locking: runtimeLock acquired by map_images
 **********************************************************************/
-__private_extern__ void _read_images(header_info **hList, uint32_t hCount)
+PRIVATE_EXTERN void _read_images(header_info **hList, uint32_t hCount)
 {
     header_info *hi;
     uint32_t hIndex;
@@ -2502,40 +2741,48 @@ __private_extern__ void _read_images(header_info **hList, uint32_t hCount)
 
     rwlock_assert_writing(&runtimeLock);
 
-    if (!doneOnce) {
-        initVtables();
-        doneOnce = YES;
-    }
-
 #define EACH_HEADER \
-    hIndex = 0; \
-    hIndex < hCount && (hi = hList[hIndex]);    \
+    hIndex = 0;         \
+    crashlog_header_name(NULL) && hIndex < hCount && (hi = hList[hIndex]) && crashlog_header_name(hi); \
     hIndex++
 
-    // Complain about images that contain old-ABI data
-    // fixme new-ABI compiler still emits some bits into __OBJC segment
-    for (EACH_HEADER) {
-        size_t count;
-        if (_getObjcSelectorRefs(hi, &count) || _getObjcModules(hi, &count)) {
-            _objc_inform("found old-ABI metadata in image %s !", 
-                         hi->os.dl_info.dli_fname);
+    if (!doneOnce) {
+        doneOnce = YES;
+        initVtables();
+        
+        // Count classes. Size various table based on the total.
+        unsigned int total = 0;
+        for (EACH_HEADER) {
+            if (_getObjc2ClassList(hi, &count)) {
+                total += (unsigned int)count;
+            }
         }
+        
+        if (PrintConnecting) {
+            _objc_inform("CLASS: found %u classes during launch", total);
+        }
+
+        // namedClasses (NOT realizedClasses)
+        // 4/3 is NXMapTable's load factor
+        gdb_objc_realized_classes =
+            NXCreateMapTableFromZone(NXStrValueMapPrototype, total*4/3, 
+                                     _objc_internal_zone());
+        
+        // uninitializedClasses
+        // 4/3 is NXMapTable's load factor
+        uninitialized_class_map = 
+            NXCreateMapTableFromZone(NXPtrValueMapPrototype, total*4/3, 
+                                     _objc_internal_zone());
+        
+        // realizedClasses and realizedMetaclasses - less than the full total
+        realized_class_hash = 
+            NXCreateHashTableFromZone(NXPtrPrototype, total / 8, NULL, 
+                                      _objc_internal_zone());
+        realized_metaclass_hash = 
+            NXCreateHashTableFromZone(NXPtrPrototype, total / 8, NULL, 
+                                      _objc_internal_zone());
     }
 
-    // fixme hack
-    static BOOL hackedNSCFString = NO;
-    if (!hackedNSCFString) {
-        // Insert future class __CFConstantStringClassReference == NSCFString
-        void *dlh = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY | RTLD_NOLOAD | RTLD_FIRST);
-        if (dlh) {
-            void *addr = dlsym(dlh, "__CFConstantStringClassReference");
-            if (addr) {
-                addFutureClass("NSCFString", (class_t *)addr);
-                hackedNSCFString = YES;
-            }
-            dlclose(dlh);
-        }
-    }
 
     // Discover classes. Fix up unresolved future classes. Mark bundle classes.
     NXMapTable *future_class_map = futureClasses();
@@ -2543,15 +2790,29 @@ __private_extern__ void _read_images(header_info **hList, uint32_t hCount)
         class_t **classlist = _getObjc2ClassList(hi, &count);
         for (i = 0; i < count; i++) {
             const char *name = getName(classlist[i]);
+            
+            if (missingWeakSuperclass(classlist[i])) {
+                // No superclass (probably weak-linked). 
+                // Disavow any knowledge of this subclass.
+                if (PrintConnecting) {
+                    _objc_inform("CLASS: IGNORING class '%s' with "
+                                 "missing weak-linked superclass", name);
+                }
+                addRemappedClass(classlist[i], NULL);
+                classlist[i]->superclass = NULL;
+                classlist[i] = NULL;
+                continue;
+            }
+
             if (NXCountMapTable(future_class_map) > 0) {
-                class_t *newCls = NXMapGet(future_class_map, name);
+                class_t *newCls = (class_t *)NXMapGet(future_class_map, name);
                 if (newCls) {
                     // Copy class_t to future class's struct.
                     // Preserve future's rw data block.
-                    class_rw_t *rw = newCls->data;
+                    class_rw_t *rw = newCls->data();
                     memcpy(newCls, classlist[i], sizeof(class_t));
-                    rw->ro = (class_ro_t *)newCls->data;
-                    newCls->data = rw;
+                    rw->ro = (class_ro_t *)newCls->data();
+                    newCls->setData(rw);
 
                     removeFutureClass(name);
                     addRemappedClass(classlist[i], newCls);
@@ -2567,8 +2828,8 @@ __private_extern__ void _read_images(header_info **hList, uint32_t hCount)
             addNamedClass(classlist[i], name);
             addUninitializedClass(classlist[i], classlist[i]->isa);
             if (hi->mhdr->filetype == MH_BUNDLE) {
-                classlist[i]->data->flags |= RO_FROM_BUNDLE;
-                classlist[i]->isa->data->flags |= RO_FROM_BUNDLE;
+                classlist[i]->data()->flags |= RO_FROM_BUNDLE;
+                classlist[i]->isa->data()->flags |= RO_FROM_BUNDLE;
             }
         }
     }
@@ -2618,7 +2879,7 @@ __private_extern__ void _read_images(header_info **hList, uint32_t hCount)
     // Discover protocols. Fix up protocol refs.
     NXMapTable *protocol_map = protocols();
     for (EACH_HEADER) {
-        extern struct class_t OBJC_CLASS_$_Protocol;
+        extern class_t OBJC_CLASS_$_Protocol;
         Class cls = (Class)&OBJC_CLASS_$_Protocol;
         assert(cls);
         protocol_t **protocols = _getObjc2ProtocolList(hi, &count);
@@ -2674,6 +2935,18 @@ __private_extern__ void _read_images(header_info **hList, uint32_t hCount)
             // Do NOT use cat->cls! It may have been remapped.
             class_t *cls = remapClass(cat->cls);
 
+            if (!cls) {
+                // Category's target class is missing (probably weak-linked).
+                // Disavow any knowledge of this category.
+                catlist[i] = NULL;
+                if (PrintConnecting) {
+                    _objc_inform("CLASS: IGNORING category \?\?\?(%s) %p with "
+                                 "missing weak-linked target class", 
+                                 cat->name, cat);
+                }
+                continue;
+            }
+
             // Process this category. 
             // First, register the category with its target class. 
             // Then, rebuild the class's method lists (etc) if 
@@ -2715,6 +2988,10 @@ __private_extern__ void _read_images(header_info **hList, uint32_t hCount)
 
     // +load handled by prepare_load_methods()
 
+    if (DebugNonFragileIvars) {
+        realizeAllClasses();
+    }
+
 #undef EACH_HEADER
 }
 
@@ -2728,18 +3005,19 @@ __private_extern__ void _read_images(header_info **hList, uint32_t hCount)
 // cls must already be connected.
 static void schedule_class_load(class_t *cls)
 {
+    if (!cls) return;
     assert(isRealized(cls));  // _read_images should realize
 
-    if (cls->data->flags & RW_LOADED) return;
+    if (cls->data()->flags & RW_LOADED) return;
 
-    class_t *supercls = getSuperclass(cls);
-    if (supercls) schedule_class_load(supercls);
+    // Ensure superclass-first ordering
+    schedule_class_load(getSuperclass(cls));
 
     add_class_to_loadable_list((Class)cls);
     changeInfo(cls, RW_LOADED, 0); 
 }
 
-__private_extern__ void prepare_load_methods(header_info *hi)
+PRIVATE_EXTERN void prepare_load_methods(header_info *hi)
 {
     size_t count, i;
 
@@ -2748,8 +3026,7 @@ __private_extern__ void prepare_load_methods(header_info *hi)
     class_t **classlist = 
         _getObjc2NonlazyClassList(hi, &count);
     for (i = 0; i < count; i++) {
-        class_t *cls = remapClass(classlist[i]);
-        schedule_class_load(cls);
+        schedule_class_load(remapClass(classlist[i]));
     }
 
     category_t **categorylist = _getObjc2NonlazyCategoryList(hi, &count);
@@ -2757,6 +3034,7 @@ __private_extern__ void prepare_load_methods(header_info *hi)
         category_t *cat = categorylist[i];
         // Do NOT use cat->cls! It may have been remapped.
         class_t *cls = remapClass(cat->cls);
+        if (!cls) continue;  // category for ignored weak-linked class
         realizeClass(cls);
         assert(isRealized(cls->isa));
         add_category_to_loadable_list((Category)cat);
@@ -2769,7 +3047,7 @@ __private_extern__ void prepare_load_methods(header_info *hi)
 * Only handles MH_BUNDLE for now.
 * Locking: write-lock and loadMethodLock acquired by unmap_image
 **********************************************************************/
-__private_extern__ void _unload_image(header_info *hi)
+PRIVATE_EXTERN void _unload_image(header_info *hi)
 {
     size_t count, i;
 
@@ -2781,7 +3059,10 @@ __private_extern__ void _unload_image(header_info *hi)
     category_t **catlist = _getObjc2CategoryList(hi, &count);
     for (i = 0; i < count; i++) {
         category_t *cat = catlist[i];
+        if (!cat) continue;  // category for ignored weak-linked class
         class_t *cls = remapClass(cat->cls);
+        assert(cls);  // shouldn't have live category for dead class
+
         // fixme for MH_DYLIB cat's class may have been unloaded already
 
         // unattached list
@@ -2797,13 +3078,16 @@ __private_extern__ void _unload_image(header_info *hi)
     for (i = 0; i < count; i++) {
         class_t *cls = classlist[i];
         // fixme remapped classes?
-        remove_class_from_loadable_list((Class)cls);
-        unload_class(cls->isa, YES);
-        unload_class(cls, NO);
+        // fixme ignored weak-linked classes
+        if (cls) {
+            remove_class_from_loadable_list((Class)cls);
+            unload_class(cls->isa, YES);
+            unload_class(cls, NO);
+        }
     }
     
-    // Clean up protocols.
-#warning fixme protocol unload
+    // XXX FIXME -- Clean up protocols:
+    // <rdar://problem/9033191> Support unloading protocols at dylib/image unload time
 
     // fixme DebugUnload
 }
@@ -2851,7 +3135,7 @@ method_getImplementation(Method m)
 SEL 
 method_getName(Method m_gen)
 {
-    struct method_t *m = newmethod(m_gen);
+    method_t *m = newmethod(m_gen);
     if (!m) return NULL;
 
     assert((SEL)m->name == sel_registerName((char *)m->name));
@@ -2886,7 +3170,7 @@ _method_setImplementation(class_t *cls, method_t *m, IMP imp)
     if (!m) return NULL;
     if (!imp) return NULL;
 
-    if (m->name == (SEL)kIgnore) {
+    if (ignoreSelector(m->name)) {
         // Ignored methods stay ignored
         return m->imp;
     }
@@ -2901,6 +3185,9 @@ _method_setImplementation(class_t *cls, method_t *m, IMP imp)
         // fixme build list of classes whose Methods are known externally?
         flushVtables(cls);
     }
+
+    // fixme catch NSObject changing to custom RR
+    // cls->setCustomRR();
 
     // fixme update monomorphism if necessary
 
@@ -2928,7 +3215,7 @@ void method_exchangeImplementations(Method m1_gen, Method m2_gen)
 
     rwlock_write(&runtimeLock);
 
-    if (m1->name == (SEL)kIgnore  ||  m2->name == (SEL)kIgnore) {
+    if (ignoreSelector(m1->name)  ||  ignoreSelector(m2->name)) {
         // Ignored methods stay ignored. Now they're both ignored.
         m1->imp = (IMP)&_objc_ignored_method;
         m2->imp = (IMP)&_objc_ignored_method;
@@ -2947,6 +3234,9 @@ void method_exchangeImplementations(Method m1_gen, Method m2_gen)
         // fixme build list of classes whose Methods are known externally?
         flushVtables(NULL);
     }
+
+    // fixme catch NSObject changing to custom RR
+    // cls->setCustomRR();
 
     // fixme update monomorphism if necessary
 
@@ -2993,6 +3283,44 @@ ivar_getTypeEncoding(Ivar ivar)
 }
 
 
+
+const char *property_getName(objc_property_t prop)
+{
+    return newproperty(prop)->name;
+}
+
+const char *property_getAttributes(objc_property_t prop)
+{
+    return newproperty(prop)->attributes;
+}
+
+objc_property_attribute_t *property_copyAttributeList(objc_property_t prop, 
+                                                      unsigned int *outCount)
+{
+    if (!prop) {
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
+
+    objc_property_attribute_t *result;
+    rwlock_read(&runtimeLock);
+    result = copyPropertyAttributeList(newproperty(prop)->attributes,outCount);
+    rwlock_unlock_read(&runtimeLock);
+    return result;
+}
+
+char * property_copyAttributeValue(objc_property_t prop, const char *name)
+{
+    if (!prop  ||  !name  ||  *name == '\0') return NULL;
+    
+    char *result;
+    rwlock_read(&runtimeLock);
+    result = copyPropertyAttributeValue(newproperty(prop)->attributes, name);
+    rwlock_unlock_read(&runtimeLock);
+    return result;    
+}
+
+
 /***********************************************************************
 * _protocol_getMethod_nolock
 * Locking: runtimeLock must be write-locked by the caller
@@ -3025,8 +3353,7 @@ _protocol_getMethod_nolock(protocol_t *proto, SEL sel,
     if (*mlistp) {
         method_list_t *mlist = *mlistp;
         if (!isMethodListFixedUp(mlist)) {
-            mlist = _memdup_internal(mlist, method_list_size(mlist));
-            fixupMethodList(mlist, YES/*always copy for simplicity*/);
+            mlist = fixupMethodList(mlist, YES/*always copy for simplicity*/);
             *mlistp = mlist;
         }
         for (i = 0; i < mlist->count; i++) {
@@ -3054,7 +3381,7 @@ _protocol_getMethod_nolock(protocol_t *proto, SEL sel,
 * fixme
 * Locking: write-locks runtimeLock
 **********************************************************************/
-__private_extern__ Method 
+PRIVATE_EXTERN Method 
 _protocol_getMethod(Protocol *p, SEL sel, BOOL isRequiredMethod, BOOL isInstanceMethod)
 {
     rwlock_write(&runtimeLock);
@@ -3110,7 +3437,7 @@ static BOOL _protocol_conformsToProtocol_nolock(protocol_t *self, protocol_t *ot
     }
 
     if (self->protocols) {
-        int i;
+        uintptr_t i;
         for (i = 0; i < self->protocols->count; i++) {
             protocol_t *proto = remapProtocol(self->protocols->list[i]);
             if (0 == strcmp(other->name, proto->name)) {
@@ -3169,7 +3496,7 @@ protocol_copyMethodDescriptionList(Protocol *p,
                                    BOOL isRequiredMethod,BOOL isInstanceMethod,
                                    unsigned int *outCount)
 {
-    struct protocol_t *proto = newprotocol(p);
+    protocol_t *proto = newprotocol(p);
     struct objc_method_description *result = NULL;
     unsigned int count = 0;
 
@@ -3199,7 +3526,8 @@ protocol_copyMethodDescriptionList(Protocol *p,
     if (mlist) {
         unsigned int i;
         count = mlist->count;
-        result = calloc(count + 1, sizeof(struct objc_method_description));
+        result = (struct objc_method_description *)
+            calloc(count + 1, sizeof(struct objc_method_description));
         for (i = 0; i < count; i++) {
             method_t *m = method_list_nth(mlist, i);
             result[i].name = sel_registerName((const char *)m->name);
@@ -3219,7 +3547,7 @@ protocol_copyMethodDescriptionList(Protocol *p,
 * fixme
 * Locking: acquires runtimeLock
 **********************************************************************/
-static Property 
+static property_t * 
 _protocol_getProperty_nolock(protocol_t *proto, const char *name, 
                              BOOL isRequiredProperty, BOOL isInstanceProperty)
 {
@@ -3228,11 +3556,11 @@ _protocol_getProperty_nolock(protocol_t *proto, const char *name,
         return NULL;
     }
 
-    struct objc_property_list *plist;
+    property_list_t *plist;
     if ((plist = proto->instanceProperties)) {
         uint32_t i;
         for (i = 0; i < plist->count; i++) {
-            Property prop = property_list_nth(plist, i);
+            property_t *prop = property_list_nth(plist, i);
             if (0 == strcmp(name, prop->name)) {
                 return prop;
             }
@@ -3243,7 +3571,7 @@ _protocol_getProperty_nolock(protocol_t *proto, const char *name,
         uintptr_t i;
         for (i = 0; i < proto->protocols->count; i++) {
             protocol_t *p = remapProtocol(proto->protocols->list[i]);
-            Property prop = 
+            property_t *prop = 
                 _protocol_getProperty_nolock(p, name, 
                                              isRequiredProperty, 
                                              isInstanceProperty);
@@ -3254,10 +3582,10 @@ _protocol_getProperty_nolock(protocol_t *proto, const char *name,
     return NULL;
 }
 
-Property protocol_getProperty(Protocol *p, const char *name, 
+objc_property_t protocol_getProperty(Protocol *p, const char *name, 
                               BOOL isRequiredProperty, BOOL isInstanceProperty)
 {
-    Property result;
+    property_t *result;
 
     if (!p  ||  !name) return NULL;
 
@@ -3267,7 +3595,7 @@ Property protocol_getProperty(Protocol *p, const char *name,
                                           isInstanceProperty);
     rwlock_unlock_read(&runtimeLock);
     
-    return result;
+    return (objc_property_t)result;
 }
 
 
@@ -3276,9 +3604,33 @@ Property protocol_getProperty(Protocol *p, const char *name,
 * fixme
 * Locking: acquires runtimeLock
 **********************************************************************/
-Property *protocol_copyPropertyList(Protocol *proto, unsigned int *outCount)
+static property_t **
+copyPropertyList(property_list_t *plist, unsigned int *outCount)
 {
-    Property *result = NULL;
+    property_t **result = NULL;
+    unsigned int count = 0;
+
+    if (plist) {
+        count = plist->count;
+    }
+
+    if (count > 0) {
+        unsigned int i;
+        result = (property_t **)malloc((count+1) * sizeof(property_t *));
+        
+        for (i = 0; i < count; i++) {
+            result[i] = property_list_nth(plist, i);
+        }
+        result[i] = NULL;
+    }
+
+    if (outCount) *outCount = count;
+    return result;
+}
+
+objc_property_t *protocol_copyPropertyList(Protocol *proto, unsigned int *outCount)
+{
+    property_t **result = NULL;
 
     if (!proto) {
         if (outCount) *outCount = 0;
@@ -3287,12 +3639,12 @@ Property *protocol_copyPropertyList(Protocol *proto, unsigned int *outCount)
 
     rwlock_read(&runtimeLock);
 
-    struct objc_property_list *plist = newprotocol(proto)->instanceProperties;
+    property_list_t *plist = newprotocol(proto)->instanceProperties;
     result = copyPropertyList(plist, outCount);
 
     rwlock_unlock_read(&runtimeLock);
 
-    return result;
+    return (objc_property_t *)result;
 }
 
 
@@ -3302,7 +3654,8 @@ Property *protocol_copyPropertyList(Protocol *proto, unsigned int *outCount)
 * Does not copy those protocol's incorporated protocols in turn.
 * Locking: acquires runtimeLock
 **********************************************************************/
-Protocol **protocol_copyProtocolList(Protocol *p, unsigned int *outCount)
+Protocol * __unsafe_unretained * 
+protocol_copyProtocolList(Protocol *p, unsigned int *outCount)
 {
     unsigned int count = 0;
     Protocol **result = NULL;
@@ -3319,7 +3672,7 @@ Protocol **protocol_copyProtocolList(Protocol *p, unsigned int *outCount)
         count = (unsigned int)proto->protocols->count;
     }
     if (count > 0) {
-        result = malloc((count+1) * sizeof(Protocol *));
+        result = (Protocol **)malloc((count+1) * sizeof(Protocol *));
 
         unsigned int i;
         for (i = 0; i < count; i++) {
@@ -3332,6 +3685,250 @@ Protocol **protocol_copyProtocolList(Protocol *p, unsigned int *outCount)
 
     if (outCount) *outCount = count;
     return result;
+}
+
+
+/***********************************************************************
+* objc_allocateProtocol
+* Creates a new protocol. The protocol may not be used until 
+* objc_registerProtocol() is called.
+* Returns NULL if a protocol with the same name already exists.
+* Locking: acquires runtimeLock
+**********************************************************************/
+Protocol *
+objc_allocateProtocol(const char *name)
+{
+    rwlock_write(&runtimeLock);
+
+    if (NXMapGet(protocols(), name)) {
+        rwlock_unlock_write(&runtimeLock);
+        return NULL;
+    }
+
+    protocol_t *result = (protocol_t *)_calloc_internal(sizeof(protocol_t), 1);
+
+    extern class_t OBJC_CLASS_$___IncompleteProtocol;
+    Class cls = (Class)&OBJC_CLASS_$___IncompleteProtocol;
+    result->isa = cls;
+    result->name = _strdup_internal(name);
+
+    // fixme reserve name without installing
+
+    rwlock_unlock_write(&runtimeLock);
+
+    return (Protocol *)result;
+}
+
+
+/***********************************************************************
+* objc_registerProtocol
+* Registers a newly-constructed protocol. The protocol is now 
+* ready for use and immutable.
+* Locking: acquires runtimeLock
+**********************************************************************/
+void objc_registerProtocol(Protocol *proto_gen) 
+{
+    protocol_t *proto = newprotocol(proto_gen);
+
+    rwlock_write(&runtimeLock);
+
+    extern class_t OBJC_CLASS_$___IncompleteProtocol;
+    Class oldcls = (Class)&OBJC_CLASS_$___IncompleteProtocol;
+    extern class_t OBJC_CLASS_$_Protocol;
+    Class cls = (Class)&OBJC_CLASS_$_Protocol;
+
+    if (proto->isa == cls) {
+        _objc_inform("objc_registerProtocol: protocol '%s' was already "
+                     "registered!", proto->name);
+        rwlock_unlock_write(&runtimeLock);
+        return;
+    }
+    if (proto->isa != oldcls) {
+        _objc_inform("objc_registerProtocol: protocol '%s' was not allocated "
+                     "with objc_allocateProtocol!", proto->name);
+        rwlock_unlock_write(&runtimeLock);
+        return;
+    }
+
+    proto->isa = cls;
+
+    NXMapKeyCopyingInsert(protocols(), proto->name, proto);
+
+    rwlock_unlock_write(&runtimeLock);
+}
+
+
+/***********************************************************************
+* protocol_addProtocol
+* Adds an incorporated protocol to another protocol.
+* No method enforcement is performed.
+* `proto` must be under construction. `addition` must not.
+* Locking: acquires runtimeLock
+**********************************************************************/
+void 
+protocol_addProtocol(Protocol *proto_gen, Protocol *addition_gen) 
+{
+    protocol_t *proto = newprotocol(proto_gen);
+    protocol_t *addition = newprotocol(addition_gen);
+
+    extern class_t OBJC_CLASS_$___IncompleteProtocol;
+    Class cls = (Class)&OBJC_CLASS_$___IncompleteProtocol;
+
+    if (!proto_gen) return;
+    if (!addition_gen) return;
+
+    rwlock_write(&runtimeLock);
+
+    if (proto->isa != cls) {
+        _objc_inform("protocol_addProtocol: modified protocol '%s' is not "
+                     "under construction!", proto->name);
+        rwlock_unlock_write(&runtimeLock);
+        return;
+    }
+    if (addition->isa == cls) {
+        _objc_inform("protocol_addProtocol: added protocol '%s' is still "
+                     "under construction!", addition->name);
+        rwlock_unlock_write(&runtimeLock);
+        return;        
+    }
+    
+    protocol_list_t *protolist = proto->protocols;
+    if (!protolist) {
+        protolist = (protocol_list_t *)
+            _calloc_internal(1, sizeof(protocol_list_t) 
+                             + sizeof(protolist->list[0]));
+    } else {
+        protolist = (protocol_list_t *)
+            _realloc_internal(protolist, protocol_list_size(protolist) 
+                              + sizeof(protolist->list[0]));
+    }
+
+    protolist->list[protolist->count++] = (protocol_ref_t)addition;
+    proto->protocols = protolist;
+
+    rwlock_unlock_write(&runtimeLock);        
+}
+
+
+/***********************************************************************
+* protocol_addMethodDescription
+* Adds a method to a protocol. The protocol must be under construction.
+* Locking: acquires runtimeLock
+**********************************************************************/
+static void
+_protocol_addMethod(method_list_t **list, SEL name, const char *types)
+{
+    if (!*list) {
+        *list = (method_list_t *)
+            _calloc_internal(sizeof(method_list_t), 1);
+        (*list)->entsize_NEVER_USE = sizeof((*list)->first);
+        setMethodListFixedUp(*list);
+    } else {
+        size_t size = method_list_size(*list) + method_list_entsize(*list);
+        *list = (method_list_t *)
+            _realloc_internal(*list, size);
+    }
+
+    method_t *meth = method_list_nth(*list, (*list)->count++);
+    meth->name = name;
+    meth->types = _strdup_internal(types ? types : "");
+    meth->imp = NULL;
+}
+
+void 
+protocol_addMethodDescription(Protocol *proto_gen, SEL name, const char *types,
+                              BOOL isRequiredMethod, BOOL isInstanceMethod) 
+{
+    protocol_t *proto = newprotocol(proto_gen);
+
+    extern class_t OBJC_CLASS_$___IncompleteProtocol;
+    Class cls = (Class)&OBJC_CLASS_$___IncompleteProtocol;
+
+    if (!proto_gen) return;
+
+    rwlock_write(&runtimeLock);
+
+    if (proto->isa != cls) {
+        _objc_inform("protocol_addMethodDescription: protocol '%s' is not "
+                     "under construction!", proto->name);
+        rwlock_unlock_write(&runtimeLock);
+        return;
+    }
+
+    if (isRequiredMethod  &&  isInstanceMethod) {
+        _protocol_addMethod(&proto->instanceMethods, name, types);
+    } else if (isRequiredMethod  &&  !isInstanceMethod) {
+        _protocol_addMethod(&proto->classMethods, name, types);
+    } else if (!isRequiredMethod  &&  isInstanceMethod) {
+        _protocol_addMethod(&proto->optionalInstanceMethods, name, types);
+    } else /*  !isRequiredMethod  &&  !isInstanceMethod) */ {
+        _protocol_addMethod(&proto->optionalClassMethods, name, types);
+    }
+
+    rwlock_unlock_write(&runtimeLock);
+}
+
+
+/***********************************************************************
+* protocol_addProperty
+* Adds a property to a protocol. The protocol must be under construction.
+* Locking: acquires runtimeLock
+**********************************************************************/
+static void 
+_protocol_addProperty(property_list_t **plist, const char *name, 
+                      const objc_property_attribute_t *attrs, 
+                      unsigned int count)
+{
+    if (!*plist) {
+        *plist = (property_list_t *)
+            _calloc_internal(sizeof(property_list_t), 1);
+        (*plist)->entsize = sizeof(property_t);
+    } else {
+        *plist = (property_list_t *)
+            _realloc_internal(*plist, sizeof(property_list_t) 
+                              + (*plist)->count * (*plist)->entsize);
+    }
+
+    property_t *prop = property_list_nth(*plist, (*plist)->count++);
+    prop->name = _strdup_internal(name);
+    prop->attributes = copyPropertyAttributeString(attrs, count);
+}
+
+void 
+protocol_addProperty(Protocol *proto_gen, const char *name, 
+                     const objc_property_attribute_t *attrs, 
+                     unsigned int count,
+                     BOOL isRequiredProperty, BOOL isInstanceProperty)
+{
+    protocol_t *proto = newprotocol(proto_gen);
+
+    extern class_t OBJC_CLASS_$___IncompleteProtocol;
+    Class cls = (Class)&OBJC_CLASS_$___IncompleteProtocol;
+
+    if (!proto) return;
+    if (!name) return;
+
+    rwlock_write(&runtimeLock);
+
+    if (proto->isa != cls) {
+        _objc_inform("protocol_addProperty: protocol '%s' is not "
+                     "under construction!", proto->name);
+        rwlock_unlock_write(&runtimeLock);
+        return;
+    }
+
+    if (isRequiredProperty  &&  isInstanceProperty) {
+        _protocol_addProperty(&proto->instanceProperties, name, attrs, count);
+    }
+    //else if (isRequiredProperty  &&  !isInstanceProperty) {
+    //    _protocol_addProperty(&proto->classProperties, name, attrs, count);
+    //} else if (!isRequiredProperty  &&  isInstanceProperty) {
+    //    _protocol_addProperty(&proto->optionalInstanceProperties, name, attrs, count);
+    //} else /*  !isRequiredProperty  &&  !isInstanceProperty) */ {
+    //    _protocol_addProperty(&proto->optionalClassProperties, name, attrs, count);
+    //}
+
+    rwlock_unlock_write(&runtimeLock);
 }
 
 
@@ -3374,16 +3971,55 @@ objc_getClassList(Class *buffer, int bufferLen)
 
 
 /***********************************************************************
+* objc_copyClassList
+* Returns pointers to all classes.
+* This requires all classes be realized, which is regretfully non-lazy.
+* 
+* outCount may be NULL. *outCount is the number of classes returned. 
+* If the returned array is not NULL, it is NULL-terminated and must be 
+* freed with free().
+* Locking: write-locks runtimeLock
+**********************************************************************/
+Class *
+objc_copyClassList(unsigned int *outCount)
+{
+    rwlock_write(&runtimeLock);
+
+    realizeAllClasses();
+
+    Class *result = NULL;
+    NXHashTable *classes = realizedClasses();
+    unsigned int count = NXCountHashTable(classes);
+
+    if (count > 0) {
+        class_t *cls;
+        NXHashState state = NXInitHashState(classes);
+        result = (Class *)malloc((1+count) * sizeof(Class));
+        count = 0;
+        while (NXNextHashState(classes, &state, (void **)&cls)) {
+            result[count++] = (Class)cls;
+        }
+        result[count] = NULL;
+    }
+
+    rwlock_unlock_write(&runtimeLock);
+        
+    if (outCount) *outCount = count;
+    return result;
+}
+
+
+/***********************************************************************
 * objc_copyProtocolList
 * Returns pointers to all protocols.
 * Locking: read-locks runtimeLock
 **********************************************************************/
-Protocol **
+Protocol * __unsafe_unretained * 
 objc_copyProtocolList(unsigned int *outCount) 
 {
     rwlock_read(&runtimeLock);
 
-    int count, i;
+    unsigned int count, i;
     Protocol *proto;
     const char *name;
     NXMapState state;
@@ -3397,7 +4033,7 @@ objc_copyProtocolList(unsigned int *outCount)
         return NULL;
     }
 
-    result = calloc(1 + count, sizeof(Protocol *));
+    result = (Protocol **)calloc(1 + count, sizeof(Protocol *));
 
     i = 0;
     state = NXInitMapState(protocol_map);
@@ -3439,7 +4075,7 @@ Protocol *objc_getProtocol(const char *name)
 Method *
 class_copyMethodList(Class cls_gen, unsigned int *outCount)
 {
-    struct class_t *cls = newcls(cls_gen);
+    class_t *cls = newcls(cls_gen);
     unsigned int count = 0;
     Method *result = NULL;
 
@@ -3458,14 +4094,14 @@ class_copyMethodList(Class cls_gen, unsigned int *outCount)
 
     if (count > 0) {
         unsigned int m;
-        result = malloc((count + 1) * sizeof(Method));
+        result = (Method *)malloc((count + 1) * sizeof(Method));
         
         m = 0;
         FOREACH_METHOD_LIST(mlist, cls, {
             unsigned int i;
             for (i = 0; i < mlist->count; i++) {
                 Method aMethod = (Method)method_list_nth(mlist, i);
-                if (method_getName(aMethod) == (SEL)kIgnore) {
+                if (ignoreSelector(method_getName(aMethod))) {
                     count--;
                     continue;
                 }
@@ -3490,7 +4126,7 @@ class_copyMethodList(Class cls_gen, unsigned int *outCount)
 Ivar *
 class_copyIvarList(Class cls_gen, unsigned int *outCount)
 {
-    struct class_t *cls = newcls(cls_gen);
+    class_t *cls = newcls(cls_gen);
     const ivar_list_t *ivars;
     Ivar *result = NULL;
     unsigned int count = 0;
@@ -3505,8 +4141,8 @@ class_copyIvarList(Class cls_gen, unsigned int *outCount)
 
     assert(isRealized(cls));
     
-    if ((ivars = cls->data->ro->ivars)  &&  ivars->count) {
-        result = malloc((ivars->count+1) * sizeof(Ivar));
+    if ((ivars = cls->data()->ro->ivars)  &&  ivars->count) {
+        result = (Ivar *)malloc((ivars->count+1) * sizeof(Ivar));
         
         for (i = 0; i < ivars->count; i++) {
             ivar_t *ivar = ivar_list_nth(ivars, i);
@@ -3530,13 +4166,13 @@ class_copyIvarList(Class cls_gen, unsigned int *outCount)
 * Does not copy any superclass's properties.
 * Locking: read-locks runtimeLock
 **********************************************************************/
-Property *
+objc_property_t *
 class_copyPropertyList(Class cls_gen, unsigned int *outCount)
 {
-    struct class_t *cls = newcls(cls_gen);
+    class_t *cls = newcls(cls_gen);
     chained_property_list *plist;
     unsigned int count = 0;
-    Property *result = NULL;
+    property_t **result = NULL;
 
     if (!cls) {
         if (outCount) *outCount = 0;
@@ -3547,19 +4183,19 @@ class_copyPropertyList(Class cls_gen, unsigned int *outCount)
 
     assert(isRealized(cls));
 
-    for (plist = cls->data->properties; plist; plist = plist->next) {
+    for (plist = cls->data()->properties; plist; plist = plist->next) {
         count += plist->count;
     }
 
     if (count > 0) {
         unsigned int p;
-        result = malloc((count + 1) * sizeof(Property));
+        result = (property_t **)malloc((count + 1) * sizeof(property_t *));
         
         p = 0;
-        for (plist = cls->data->properties; plist; plist = plist->next) {
+        for (plist = cls->data()->properties; plist; plist = plist->next) {
             unsigned int i;
             for (i = 0; i < plist->count; i++) {
-                result[p++] = (Property)&plist->list[i];
+                result[p++] = &plist->list[i];
             }
         }
         result[p] = NULL;
@@ -3568,7 +4204,7 @@ class_copyPropertyList(Class cls_gen, unsigned int *outCount)
     rwlock_unlock_read(&runtimeLock);
 
     if (outCount) *outCount = count;
-    return result;
+    return (objc_property_t *)result;
 }
 
 
@@ -3578,21 +4214,21 @@ class_copyPropertyList(Class cls_gen, unsigned int *outCount)
 * Called only from add_class_to_loadable_list.
 * Locking: runtimeLock must be read- or write-locked by the caller.
 **********************************************************************/
-__private_extern__ IMP 
+PRIVATE_EXTERN IMP 
 _class_getLoadMethod(Class cls_gen)
 {
     rwlock_assert_locked(&runtimeLock);
 
-    struct class_t *cls = newcls(cls_gen);
+    class_t *cls = newcls(cls_gen);
     const method_list_t *mlist;
-    int i;
+    uint32_t i;
 
     assert(isRealized(cls));
     assert(isRealized(cls->isa));
     assert(!isMetaClass(cls));
     assert(isMetaClass(cls->isa));
 
-    mlist = cls->isa->data->ro->baseMethods;
+    mlist = cls->isa->data()->ro->baseMethods;
     if (mlist) for (i = 0; i < mlist->count; i++) {
         method_t *m = method_list_nth(mlist, i);
         if (0 == strcmp((const char *)m->name, "load")) {
@@ -3609,7 +4245,7 @@ _class_getLoadMethod(Class cls_gen)
 * Returns a category's name.
 * Locking: none
 **********************************************************************/
-__private_extern__ const char *
+PRIVATE_EXTERN const char *
 _category_getName(Category cat)
 {
     return newcategory(cat)->name;
@@ -3623,7 +4259,7 @@ _category_getName(Category cat)
 * remove_category_from_loadable_list.
 * Locking: runtimeLock must be read- or write-locked by the caller
 **********************************************************************/
-__private_extern__ const char *
+PRIVATE_EXTERN const char *
 _category_getClassName(Category cat)
 {
     rwlock_assert_locked(&runtimeLock);
@@ -3638,12 +4274,12 @@ _category_getClassName(Category cat)
 * Called only by call_category_loads.
 * Locking: read-locks runtimeLock
 **********************************************************************/
-__private_extern__ Class 
+PRIVATE_EXTERN Class 
 _category_getClass(Category cat)
 {
     rwlock_read(&runtimeLock);
     // cat->cls may have been remapped
-    struct class_t *result = remapClass(newcategory(cat)->cls);
+    class_t *result = remapClass(newcategory(cat)->cls);
     assert(isRealized(result));  // ok for call_category_loads' usage
     rwlock_unlock_read(&runtimeLock);
     return (Class)result;
@@ -3656,13 +4292,13 @@ _category_getClass(Category cat)
 * Called only from add_category_to_loadable_list
 * Locking: runtimeLock must be read- or write-locked by the caller
 **********************************************************************/
-__private_extern__ IMP 
+PRIVATE_EXTERN IMP 
 _category_getLoadMethod(Category cat)
 {
     rwlock_assert_locked(&runtimeLock);
 
     const method_list_t *mlist;
-    int i;
+    uint32_t i;
 
     mlist = newcategory(cat)->classMethods;
     if (mlist) for (i = 0; i < mlist->count; i++) {
@@ -3681,12 +4317,12 @@ _category_getLoadMethod(Category cat)
 * fixme
 * Locking: read-locks runtimeLock
 **********************************************************************/
-Protocol **
+Protocol * __unsafe_unretained * 
 class_copyProtocolList(Class cls_gen, unsigned int *outCount)
 {
-    struct class_t *cls = newcls(cls_gen);
+    class_t *cls = newcls(cls_gen);
     Protocol **r;
-    struct protocol_list_t **p;
+    const protocol_list_t **p;
     unsigned int count = 0;
     unsigned int i;
     Protocol **result = NULL;
@@ -3700,14 +4336,14 @@ class_copyProtocolList(Class cls_gen, unsigned int *outCount)
 
     assert(isRealized(cls));
     
-    for (p = cls->data->protocols; p  &&  *p; p++) {
+    for (p = cls->data()->protocols; p  &&  *p; p++) {
         count += (uint32_t)(*p)->count;
     }
 
     if (count) {
-        result = malloc((count+1) * sizeof(Protocol *));
+        result = (Protocol **)malloc((count+1) * sizeof(Protocol *));
         r = result;
-        for (p = cls->data->protocols; p  &&  *p; p++) {
+        for (p = cls->data()->protocols; p  &&  *p; p++) {
             for (i = 0; i < (*p)->count; i++) {
                 *r++ = (Protocol *)remapProtocol((*p)->list[i]);
             }
@@ -3727,21 +4363,28 @@ class_copyProtocolList(Class cls_gen, unsigned int *outCount)
 * fixme
 * Locking: read-locks runtimeLock
 **********************************************************************/
-__private_extern__ const char **
+PRIVATE_EXTERN const char **
 _objc_copyClassNamesForImage(header_info *hi, unsigned int *outCount)
 {
-    size_t count, i;
+    size_t count, i, shift;
     class_t **classlist;
     const char **names;
     
     rwlock_read(&runtimeLock);
     
     classlist = _getObjc2ClassList(hi, &count);
-    names = malloc((count+1) * sizeof(const char *));
+    names = (const char **)malloc((count+1) * sizeof(const char *));
     
+    shift = 0;
     for (i = 0; i < count; i++) {
-        names[i] = getName(classlist[i]);
+        class_t *cls = remapClass(classlist[i]);
+        if (cls) {
+            names[i-shift] = getName(classlist[i]);
+        } else {
+            shift++;  // ignored weak-linked class
+        }
     }
+    count -= shift;
     names[count] = NULL;
 
     rwlock_unlock_read(&runtimeLock);
@@ -3756,7 +4399,7 @@ _objc_copyClassNamesForImage(header_info *hi, unsigned int *outCount)
 * fixme
 * Locking: none
 **********************************************************************/
-__private_extern__ Cache 
+PRIVATE_EXTERN Cache 
 _class_getCache(Class cls)
 {
     return newcls(cls)->cache;
@@ -3765,23 +4408,53 @@ _class_getCache(Class cls)
 
 /***********************************************************************
 * _class_getInstanceSize
-* fixme
+* Uses alignedInstanceSize() to ensure that 
+*   obj + class_getInstanceSize(obj->isa) == object_getIndexedIvars(obj)
 * Locking: none
 **********************************************************************/
-__private_extern__ size_t 
+PRIVATE_EXTERN size_t 
 _class_getInstanceSize(Class cls)
 {
     if (!cls) return 0;
-    return instanceSize(newcls(cls));
+    return alignedInstanceSize(newcls(cls));
 }
 
 static uint32_t
-instanceSize(struct class_t *cls)
+unalignedInstanceSize(class_t *cls)
 {
     assert(cls);
     assert(isRealized(cls));
-    // fixme rdar://5244378
-    return (uint32_t)((cls->data->ro->instanceSize + WORD_MASK) & ~WORD_MASK);
+    return (uint32_t)cls->data()->ro->instanceSize;
+}
+
+static uint32_t
+alignedInstanceSize(class_t *cls)
+{
+    assert(cls);
+    assert(isRealized(cls));
+    // fixme rdar://5278267
+    return (uint32_t)((unalignedInstanceSize(cls) + WORD_MASK) & ~WORD_MASK);
+}
+
+/***********************************************************************
+ * _class_getInstanceStart
+ * Uses alignedInstanceStart() to ensure that ARR layout strings are
+ * interpreted relative to the first word aligned ivar of an object.
+ * Locking: none
+ **********************************************************************/
+
+static uint32_t
+alignedInstanceStart(class_t *cls)
+{
+    assert(cls);
+    assert(isRealized(cls));
+    return (uint32_t)((cls->data()->ro->instanceStart + WORD_MASK) & ~WORD_MASK);
+}
+
+PRIVATE_EXTERN
+uint32_t _class_getInstanceStart(Class cls_gen) {
+    class_t *cls = newcls(cls_gen);
+    return alignedInstanceStart(cls);
 }
 
 
@@ -3795,7 +4468,7 @@ class_getVersion(Class cls)
 {
     if (!cls) return 0;
     assert(isRealized(newcls(cls)));
-    return newcls(cls)->data->version;
+    return newcls(cls)->data()->version;
 }
 
 
@@ -3804,7 +4477,7 @@ class_getVersion(Class cls)
 * fixme
 * Locking: none
 **********************************************************************/
-__private_extern__ void 
+PRIVATE_EXTERN void 
 _class_setCache(Class cls, Cache cache)
 {
     newcls(cls)->cache = cache;
@@ -3821,7 +4494,7 @@ class_setVersion(Class cls, int version)
 {
     if (!cls) return;
     assert(isRealized(newcls(cls)));
-    newcls(cls)->data->version = version;
+    newcls(cls)->data()->version = version;
 }
 
 
@@ -3830,7 +4503,7 @@ class_setVersion(Class cls, int version)
 * fixme
 * Locking: acquires runtimeLock
 **********************************************************************/
-__private_extern__ const char *_class_getName(Class cls)
+PRIVATE_EXTERN const char *_class_getName(Class cls)
 {
     if (!cls) return "nil";
     // fixme hack rwlock_write(&runtimeLock);
@@ -3846,40 +4519,99 @@ __private_extern__ const char *_class_getName(Class cls)
 * Locking: runtimeLock must be held by the caller
 **********************************************************************/
 static const char *
-getName(struct class_t *cls)
+getName(class_t *cls)
 {
     // fixme hack rwlock_assert_writing(&runtimeLock);
     assert(cls);
 
     if (isRealized(cls)) {
-        return cls->data->ro->name;
+        return cls->data()->ro->name;
     } else {
-        return ((const struct class_ro_t *)cls->data)->name;
+        return ((const class_ro_t *)cls->data())->name;
     }
 }
 
+static method_t *findMethodInSortedMethodList(SEL key, const method_list_t *list)
+{
+    const method_t * const first = &list->first;
+    const method_t *base = first;
+    const method_t *probe;
+    uintptr_t keyValue = (uintptr_t)key;
+    uint32_t count;
+    
+    for (count = list->count; count != 0; count >>= 1) {
+        probe = base + (count >> 1);
+        
+        uintptr_t probeValue = (uintptr_t)probe->name;
+        
+        if (keyValue == probeValue) {
+            // `probe` is a match.
+            // Rewind looking for the *first* occurrence of this value.
+            // This is required for correct category overrides.
+            while (probe > first && keyValue == (uintptr_t)probe[-1].name) {
+                probe--;
+            }
+            return (method_t *)probe;
+        }
+        
+        if (keyValue > probeValue) {
+            base = probe + 1;
+            count--;
+        }
+    }
+    
+    return NULL;
+}
 
 /***********************************************************************
 * getMethodNoSuper_nolock
 * fixme
 * Locking: runtimeLock must be read- or write-locked by the caller
 **********************************************************************/
+static method_t *search_method_list(const method_list_t *mlist, SEL sel)
+{
+    int methodListIsFixedUp = isMethodListFixedUp(mlist);
+    int methodListHasExpectedSize = mlist->getEntsize() == sizeof(method_t);
+    
+    if (__builtin_expect(methodListIsFixedUp && methodListHasExpectedSize, 1)) {
+        return findMethodInSortedMethodList(sel, mlist);
+    } else {
+        // Linear search of unsorted method list
+        method_list_t::method_iterator iter = mlist->begin();
+        method_list_t::method_iterator end = mlist->end();
+        for ( ; iter != end; ++iter) {
+            if (iter->name == sel) return &*iter;
+        }
+    }
+
+#ifndef NDEBUG
+    // sanity-check negative results
+    if (isMethodListFixedUp(mlist)) {
+        method_list_t::method_iterator iter = mlist->begin();
+        method_list_t::method_iterator end = mlist->end();
+        for ( ; iter != end; ++iter) {
+            if (iter->name == sel) {
+                _objc_fatal("linear search worked when binary search did not");
+            }
+        }
+    }
+#endif
+
+    return NULL;
+}
+
 static method_t *
-getMethodNoSuper_nolock(struct class_t *cls, SEL sel)
+getMethodNoSuper_nolock(class_t *cls, SEL sel)
 {
     rwlock_assert_locked(&runtimeLock);
-
-    uint32_t i;
 
     assert(isRealized(cls));
     // fixme nil cls? 
     // fixme NULL sel?
 
     FOREACH_METHOD_LIST(mlist, cls, {
-        for (i = 0; i < mlist->count; i++) {
-            method_t *m = method_list_nth(mlist, i);
-            if (m->name == sel) return m;
-        }
+        method_t *m = search_method_list(mlist, sel);
+        if (m) return m;
     });
 
     return NULL;
@@ -3891,7 +4623,7 @@ getMethodNoSuper_nolock(struct class_t *cls, SEL sel)
 * fixme
 * Locking: read-locks runtimeLock
 **********************************************************************/
-__private_extern__ Method 
+PRIVATE_EXTERN Method 
 _class_getMethodNoSuper(Class cls, SEL sel)
 {
     rwlock_read(&runtimeLock);
@@ -3905,7 +4637,7 @@ _class_getMethodNoSuper(Class cls, SEL sel)
 * For use inside lockForMethodLookup() only.
 * Locking: read-locks runtimeLock
 **********************************************************************/
-__private_extern__ Method 
+PRIVATE_EXTERN Method 
 _class_getMethodNoSuper_nolock(Class cls, SEL sel)
 {
     return (Method)getMethodNoSuper_nolock(newcls(cls), sel);
@@ -3942,7 +4674,7 @@ getMethod_nolock(class_t *cls, SEL sel)
 * fixme
 * Locking: read-locks runtimeLock
 **********************************************************************/
-__private_extern__ Method _class_getMethod(Class cls, SEL sel)
+PRIVATE_EXTERN Method _class_getMethod(Class cls, SEL sel)
 {
     Method m;
     rwlock_read(&runtimeLock);
@@ -3956,16 +4688,16 @@ __private_extern__ Method _class_getMethod(Class cls, SEL sel)
 * ABI-specific lookUpMethod helpers.
 * Locking: read- and write-locks runtimeLock.
 **********************************************************************/
-__private_extern__ void lockForMethodLookup(void)
+PRIVATE_EXTERN void lockForMethodLookup(void)
 {
     rwlock_read(&runtimeLock);
 }
-__private_extern__ void unlockForMethodLookup(void)
+PRIVATE_EXTERN void unlockForMethodLookup(void)
 {
     rwlock_unlock_read(&runtimeLock);
 }
 
-__private_extern__ IMP prepareForMethodLookup(Class cls, SEL sel, BOOL init)
+PRIVATE_EXTERN IMP prepareForMethodLookup(Class cls, SEL sel, BOOL init)
 {
     rwlock_assert_unlocked(&runtimeLock);
 
@@ -3992,11 +4724,11 @@ __private_extern__ IMP prepareForMethodLookup(Class cls, SEL sel, BOOL init)
 * fixme
 * Locking: read-locks runtimeLock
 **********************************************************************/
-Property class_getProperty(Class cls_gen, const char *name)
+objc_property_t class_getProperty(Class cls_gen, const char *name)
 {
-    Property result = NULL;
+    property_t *result = NULL;
     chained_property_list *plist;
-    struct class_t *cls = newcls(cls_gen);
+    class_t *cls = newcls(cls_gen);
 
     if (!cls  ||  !name) return NULL;
 
@@ -4005,7 +4737,7 @@ Property class_getProperty(Class cls_gen, const char *name)
     assert(isRealized(cls));
 
     for ( ; cls; cls = getSuperclass(cls)) {
-        for (plist = cls->data->properties; plist; plist = plist->next) {
+        for (plist = cls->data()->properties; plist; plist = plist->next) {
             uint32_t i;
             for (i = 0; i < plist->count; i++) {
                 if (0 == strcmp(name, plist->list[i].name)) {
@@ -4019,29 +4751,29 @@ Property class_getProperty(Class cls_gen, const char *name)
  done:
     rwlock_unlock_read(&runtimeLock);
 
-    return result;
+    return (objc_property_t)result;
 }
 
 
 /***********************************************************************
 * Locking: fixme
 **********************************************************************/
-__private_extern__ BOOL _class_isMetaClass(Class cls)
+PRIVATE_EXTERN BOOL _class_isMetaClass(Class cls)
 {
     if (!cls) return NO;
     return isMetaClass(newcls(cls));
 }
 
 static BOOL 
-isMetaClass(struct class_t *cls)
+isMetaClass(class_t *cls)
 {
     assert(cls);
     assert(isRealized(cls));
-    return (cls->data->ro->flags & RO_META) ? YES : NO;
+    return (cls->data()->ro->flags & RO_META) ? YES : NO;
 }
 
 
-__private_extern__ Class _class_getMeta(Class cls)
+PRIVATE_EXTERN Class _class_getMeta(Class cls)
 {
     assert(cls);
     if (isMetaClass(newcls(cls))) return cls;
@@ -4050,11 +4782,16 @@ __private_extern__ Class _class_getMeta(Class cls)
 
 Class gdb_class_getClass(Class cls)
 {
-    const char *className = strdup(getName(newcls(cls)));
-    if(!className) return Nil;
+    const char *className = getName(newcls(cls));
+    if(!className || !strlen(className)) return Nil;
     Class rCls = look_up_class(className, NO, NO);
-    free((char*)className);
     return rCls;
+}
+
+Class gdb_object_getClass(id obj)
+{
+    Class cls = _object_getClass(obj);
+    return gdb_class_getClass(cls);
 }
 
 BOOL gdb_objc_isRuntimeLocked()
@@ -4075,32 +4812,32 @@ BOOL gdb_objc_isRuntimeLocked()
 /***********************************************************************
 * Locking: fixme
 **********************************************************************/
-__private_extern__ BOOL 
+PRIVATE_EXTERN BOOL 
 _class_isInitializing(Class cls_gen)
 {
-    struct class_t *cls = newcls(_class_getMeta(cls_gen));
-    return (cls->data->flags & RW_INITIALIZING) ? YES : NO;
+    class_t *cls = newcls(_class_getMeta(cls_gen));
+    return (cls->data()->flags & RW_INITIALIZING) ? YES : NO;
 }
 
 
 /***********************************************************************
 * Locking: fixme
 **********************************************************************/
-__private_extern__ BOOL 
+PRIVATE_EXTERN BOOL 
 _class_isInitialized(Class cls_gen)
 {
-    struct class_t *cls = newcls(_class_getMeta(cls_gen));
-    return (cls->data->flags & RW_INITIALIZED) ? YES : NO;
+    class_t *cls = newcls(_class_getMeta(cls_gen));
+    return (cls->data()->flags & RW_INITIALIZED) ? YES : NO;
 }
 
 
 /***********************************************************************
 * Locking: fixme
 **********************************************************************/
-__private_extern__ void 
+PRIVATE_EXTERN void 
 _class_setInitializing(Class cls_gen)
 {
-    struct class_t *cls = newcls(_class_getMeta(cls_gen));
+    class_t *cls = newcls(_class_getMeta(cls_gen));
     changeInfo(cls, RW_INITIALIZING, 0);
 }
 
@@ -4108,12 +4845,12 @@ _class_setInitializing(Class cls_gen)
 /***********************************************************************
 * Locking: write-locks runtimeLock
 **********************************************************************/
-__private_extern__ void 
+PRIVATE_EXTERN void 
 _class_setInitialized(Class cls_gen)
 {
 
-    struct class_t *metacls;
-    struct class_t *cls;
+    class_t *metacls;
+    class_t *cls;
 
     rwlock_write(&runtimeLock);
     metacls = newcls(_class_getMeta(cls_gen));
@@ -4133,7 +4870,7 @@ _class_setInitialized(Class cls_gen)
 /***********************************************************************
 * Locking: fixme
 **********************************************************************/
-__private_extern__ BOOL 
+PRIVATE_EXTERN BOOL 
 _class_shouldGrowCache(Class cls)
 {
     return YES; // fixme good or bad for memory use?
@@ -4143,7 +4880,7 @@ _class_shouldGrowCache(Class cls)
 /***********************************************************************
 * Locking: fixme
 **********************************************************************/
-__private_extern__ void 
+PRIVATE_EXTERN void 
 _class_setGrowCache(Class cls, BOOL grow)
 {
     // fixme good or bad for memory use?
@@ -4155,7 +4892,7 @@ _class_setGrowCache(Class cls, BOOL grow)
 * fixme
 * Locking: none
 **********************************************************************/
-__private_extern__ BOOL 
+PRIVATE_EXTERN BOOL 
 _class_isLoadable(Class cls)
 {
     assert(isRealized(newcls(cls)));
@@ -4166,29 +4903,37 @@ _class_isLoadable(Class cls)
 /***********************************************************************
 * Locking: fixme
 **********************************************************************/
-__private_extern__ BOOL 
-_class_hasCxxStructorsNoSuper(Class cls)
+static BOOL 
+hasCxxStructors(class_t *cls)
 {
-    assert(isRealized(newcls(cls)));
-    return (newcls(cls)->data->ro->flags & RO_HAS_CXX_STRUCTORS) ? YES : NO;
+    // this DOES check superclasses too, because addSubclass()
+    // propagates the flag from the superclass.
+    assert(isRealized(cls));
+    return (cls->data()->flags & RW_HAS_CXX_STRUCTORS) ? YES : NO;
+}
+
+PRIVATE_EXTERN BOOL 
+_class_hasCxxStructors(Class cls)
+{
+    return hasCxxStructors(newcls(cls));
 }
 
 
 /***********************************************************************
 * Locking: fixme
 **********************************************************************/
-__private_extern__ BOOL
+PRIVATE_EXTERN BOOL
 _class_shouldFinalizeOnMainThread(Class cls)
 {
     assert(isRealized(newcls(cls)));
-    return (newcls(cls)->data->flags & RW_FINALIZE_ON_MAIN_THREAD) ? YES : NO;
+    return (newcls(cls)->data()->flags & RW_FINALIZE_ON_MAIN_THREAD) ? YES : NO;
 }
 
 
 /***********************************************************************
 * Locking: fixme
 **********************************************************************/
-__private_extern__ void
+PRIVATE_EXTERN void
 _class_setFinalizeOnMainThread(Class cls)
 {
     assert(isRealized(newcls(cls)));
@@ -4200,21 +4945,21 @@ _class_setFinalizeOnMainThread(Class cls)
 * _class_instancesHaveAssociatedObjects
 * May manipulate unrealized future classes in the CF-bridged case.
 **********************************************************************/
-__private_extern__ BOOL
+PRIVATE_EXTERN BOOL
 _class_instancesHaveAssociatedObjects(Class cls_gen)
 {
     class_t *cls = newcls(cls_gen);
     assert(isFuture(cls)  ||  isRealized(cls));
-    return (cls->data->flags & RW_INSTANCES_HAVE_ASSOCIATED_OBJECTS) ? YES : NO;
+    return (cls->data()->flags & RW_INSTANCES_HAVE_ASSOCIATED_OBJECTS) ? YES : NO;
 }
 
 
 /***********************************************************************
-* _class_assertInstancesHaveAssociatedObjects
+* _class_setInstancesHaveAssociatedObjects
 * May manipulate unrealized future classes in the CF-bridged case.
 **********************************************************************/
-__private_extern__ void
-_class_assertInstancesHaveAssociatedObjects(Class cls_gen)
+PRIVATE_EXTERN void
+_class_setInstancesHaveAssociatedObjects(Class cls_gen)
 {
     class_t *cls = newcls(cls_gen);
     assert(isFuture(cls)  ||  isRealized(cls));
@@ -4223,17 +4968,66 @@ _class_assertInstancesHaveAssociatedObjects(Class cls_gen)
 
 
 /***********************************************************************
+ * _class_usesAutomaticRetainRelease
+ * Returns YES if class was compiled with -fobjc-arr
+ **********************************************************************/
+BOOL _class_usesAutomaticRetainRelease(Class cls_gen)
+{
+    class_t *cls = newcls(cls_gen);
+    return (cls->data()->ro->flags & RO_IS_ARR) ? YES : NO;
+}
+
+
+/***********************************************************************
+* Return YES if sel is used by retain/release implementors
+**********************************************************************/
+static BOOL isRRSelector(SEL sel)
+{
+    return (sel == SEL_retain  ||  sel == SEL_release  ||  
+            sel == SEL_autorelease || sel == SEL_retainCount) ? YES : NO;
+}
+
+
+/***********************************************************************
+* Mark this class and all of its subclasses as implementors or 
+* inheritors of custom RR (retain/release/autorelease/retainCount)
+**********************************************************************/
+void class_t::setHasCustomRR() 
+{
+    rwlock_assert_writing(&runtimeLock);
+
+    if (hasCustomRR()) return;
+    
+    FOREACH_REALIZED_CLASS_AND_SUBCLASS(c, this, {
+        // rdar://8955342  c->data_NEVER_USE |= 1UL;
+        c->data()->flags |= RW_HAS_CUSTOM_RR;
+    });
+}
+
+
+/***********************************************************************
+* Unmark custom RR. Not recursive. Almost never used.
+**********************************************************************/
+void class_t::unsetHasCustomRR()
+{
+    rwlock_assert_writing(&runtimeLock);
+
+    this->data_NEVER_USE &= ~1UL;
+}
+
+
+/***********************************************************************
 * Locking: none
 * fixme assert realized to get superclass remapping?
 **********************************************************************/
-__private_extern__ Class 
+PRIVATE_EXTERN Class 
 _class_getSuperclass(Class cls)
 {
     return (Class)getSuperclass(newcls(cls));
 }
 
-static struct class_t *
-getSuperclass(struct class_t *cls)
+static class_t *
+getSuperclass(class_t *cls)
 {
     if (!cls) return NULL;
     return cls->superclass;
@@ -4246,11 +5040,11 @@ getSuperclass(struct class_t *cls)
 * The class must be NULL or already realized. 
 * Locking: none
 **********************************************************************/
-const char *
+const uint8_t *
 class_getIvarLayout(Class cls_gen)
 {
     class_t *cls = newcls(cls_gen);
-    if (cls) return (const char *)cls->data->ro->ivarLayout;
+    if (cls) return cls->data()->ro->ivarLayout;
     else return NULL;
 }
 
@@ -4261,11 +5055,11 @@ class_getIvarLayout(Class cls_gen)
 * The class must be NULL or already realized. 
 * Locking: none
 **********************************************************************/
-const char *
+const uint8_t *
 class_getWeakIvarLayout(Class cls_gen)
 {
     class_t *cls = newcls(cls_gen);
-    if (cls) return (const char *)cls->data->ro->weakIvarLayout;
+    if (cls) return cls->data()->ro->weakIvarLayout;
     else return NULL;
 }
 
@@ -4280,7 +5074,7 @@ class_getWeakIvarLayout(Class cls_gen)
 * Locking: acquires runtimeLock
 **********************************************************************/
 void
-class_setIvarLayout(Class cls_gen, const char *layout)
+class_setIvarLayout(Class cls_gen, const uint8_t *layout)
 {
     class_t *cls = newcls(cls_gen);
     if (!cls) return;
@@ -4290,21 +5084,53 @@ class_setIvarLayout(Class cls_gen, const char *layout)
     // Can only change layout of in-construction classes.
     // note: if modifications to post-construction classes were 
     //   allowed, there would be a race below (us vs. concurrent GC scan)
-    if (!(cls->data->flags & RW_CONSTRUCTING)) {
+    if (!(cls->data()->flags & RW_CONSTRUCTING)) {
         _objc_inform("*** Can't set ivar layout for already-registered "
                      "class '%s'", getName(cls));
         rwlock_unlock_write(&runtimeLock);
         return;
     }
 
-    class_ro_t *ro_w = make_ro_writeable(cls->data);
+    class_ro_t *ro_w = make_ro_writeable(cls->data());
 
     try_free(ro_w->ivarLayout);
-    ro_w->ivarLayout = (unsigned char *)_strdup_internal(layout);
+    ro_w->ivarLayout = _ustrdup_internal(layout);
 
     rwlock_unlock_write(&runtimeLock);
 }
 
+// SPI:  Instance-specific object layout.
+
+void
+_class_setIvarLayoutAccessor(Class cls_gen, const uint8_t* (*accessor) (id object)) {
+    class_t *cls = newcls(cls_gen);
+    if (!cls) return;
+
+    rwlock_write(&runtimeLock);
+
+    class_ro_t *ro_w = make_ro_writeable(cls->data());
+
+    // FIXME:  this really isn't safe to free if there are instances of this class already.
+    if (!(cls->data()->flags & RW_HAS_INSTANCE_SPECIFIC_LAYOUT)) try_free(ro_w->ivarLayout);
+    ro_w->ivarLayout = (uint8_t *)accessor;
+    changeInfo(cls, RW_HAS_INSTANCE_SPECIFIC_LAYOUT, 0);
+
+    rwlock_unlock_write(&runtimeLock);
+}
+
+const uint8_t *
+_object_getIvarLayout(Class cls_gen, id object) {
+    class_t *cls = newcls(cls_gen);
+    if (cls) {
+        const uint8_t* layout = cls->data()->ro->ivarLayout;
+        if (cls->data()->flags & RW_HAS_INSTANCE_SPECIFIC_LAYOUT) {
+            const uint8_t* (*accessor) (id object) = (const uint8_t* (*)(id))layout;
+            layout = accessor(object);
+        }
+        return layout;
+    }
+    return NULL;
+}
 
 /***********************************************************************
 * class_setWeakIvarLayout
@@ -4316,7 +5142,7 @@ class_setIvarLayout(Class cls_gen, const char *layout)
 * Locking: acquires runtimeLock
 **********************************************************************/
 void
-class_setWeakIvarLayout(Class cls_gen, const char *layout)
+class_setWeakIvarLayout(Class cls_gen, const uint8_t *layout)
 {
     class_t *cls = newcls(cls_gen);
     if (!cls) return;
@@ -4326,17 +5152,17 @@ class_setWeakIvarLayout(Class cls_gen, const char *layout)
     // Can only change layout of in-construction classes.
     // note: if modifications to post-construction classes were 
     //   allowed, there would be a race below (us vs. concurrent GC scan)
-    if (!(cls->data->flags & RW_CONSTRUCTING)) {
+    if (!(cls->data()->flags & RW_CONSTRUCTING)) {
         _objc_inform("*** Can't set weak ivar layout for already-registered "
                      "class '%s'", getName(cls));
         rwlock_unlock_write(&runtimeLock);
         return;
     }
 
-    class_ro_t *ro_w = make_ro_writeable(cls->data);
+    class_ro_t *ro_w = make_ro_writeable(cls->data());
 
     try_free(ro_w->weakIvarLayout);
-    ro_w->weakIvarLayout = (unsigned char *)_strdup_internal(layout);
+    ro_w->weakIvarLayout = _ustrdup_internal(layout);
 
     rwlock_unlock_write(&runtimeLock);
 }
@@ -4347,15 +5173,16 @@ class_setWeakIvarLayout(Class cls_gen, const char *layout)
 * fixme
 * Locking: read-locks runtimeLock
 **********************************************************************/
-__private_extern__ Ivar 
-_class_getVariable(Class cls, const char *name)
+PRIVATE_EXTERN Ivar 
+_class_getVariable(Class cls, const char *name, Class *memberOf)
 {
     rwlock_read(&runtimeLock);
 
     for ( ; cls != Nil; cls = class_getSuperclass(cls)) {
-        struct ivar_t *ivar = getIvar(newcls(cls), name);
+        ivar_t *ivar = getIvar(newcls(cls), name);
         if (ivar) {
             rwlock_unlock_read(&runtimeLock);
+            if (memberOf) *memberOf = cls;
             return (Ivar)ivar;
         }
     }
@@ -4371,50 +5198,51 @@ _class_getVariable(Class cls, const char *name)
 * fixme
 * Locking: read-locks runtimeLock
 **********************************************************************/
-BOOL class_conformsToProtocol(Class cls_gen, Protocol *proto)
+BOOL class_conformsToProtocol(Class cls_gen, Protocol *proto_gen)
 {
-    Protocol **protocols;
-    unsigned int count, i;
+    class_t *cls = newcls(cls_gen);
+    protocol_t *proto = newprotocol(proto_gen);
+    const protocol_list_t **plist;
+    unsigned int i;
     BOOL result = NO;
     
     if (!cls_gen) return NO;
-    if (!proto) return NO;
+    if (!proto_gen) return NO;
 
-    // fixme null cls?
+    rwlock_read(&runtimeLock);
 
-    protocols = class_copyProtocolList(cls_gen, &count);
+    assert(isRealized(cls));
 
-    for (i = 0; i < count; i++) {
-        if (protocols[i] == proto  ||  
-            protocol_conformsToProtocol(protocols[i], proto)) 
-        {
-            result = YES;
-            break;
+    for (plist = cls->data()->protocols; plist  &&  *plist; plist++) {
+        for (i = 0; i < (*plist)->count; i++) {
+            protocol_t *p = remapProtocol((*plist)->list[i]);
+            if (p == proto || _protocol_conformsToProtocol_nolock(p, proto)) {
+                result = YES;
+                goto done;
+            }
         }
     }
 
-    if (protocols) free(protocols);
+ done:
+    rwlock_unlock_read(&runtimeLock);
 
     return result;
 }
 
 
 /***********************************************************************
-* class_addMethod
+* addMethod
 * fixme
-* Locking: write-locks runtimeLock
+* Locking: runtimeLock must be held by the caller
 **********************************************************************/
 static IMP 
-_class_addMethod(Class cls_gen, SEL name, IMP imp, 
-                 const char *types, BOOL replace)
+addMethod(class_t *cls, SEL name, IMP imp, const char *types, BOOL replace)
 {
-    struct class_t *cls = newcls(cls_gen);
     IMP result = NULL;
 
-    if (!types) types = "";
+    rwlock_assert_writing(&runtimeLock);
 
-    rwlock_write(&runtimeLock);
-
+    assert(types);
     assert(isRealized(cls));
 
     method_t *m;
@@ -4428,26 +5256,24 @@ _class_addMethod(Class cls_gen, SEL name, IMP imp,
     } else {
         // fixme optimize
         method_list_t *newlist;
-        newlist = _calloc_internal(sizeof(*newlist), 1);
+        newlist = (method_list_t *)_calloc_internal(sizeof(*newlist), 1);
         newlist->entsize_NEVER_USE = (uint32_t)sizeof(method_t) | fixed_up_method_list;
         newlist->count = 1;
         newlist->first.name = name;
         newlist->first.types = strdup(types);
-        if (name != (SEL)kIgnore) {
+        if (!ignoreSelector(name)) {
             newlist->first.imp = imp;
         } else {
             newlist->first.imp = (IMP)&_objc_ignored_method;
         }
 
-        BOOL vtablesAffected;
+        BOOL vtablesAffected = NO;
         attachMethodLists(cls, &newlist, 1, NO, &vtablesAffected);
         flushCaches(cls);
         if (vtablesAffected) flushVtables(cls);
 
         result = NULL;
     }
-
-    rwlock_unlock_write(&runtimeLock);
 
     return result;
 }
@@ -4458,7 +5284,9 @@ class_addMethod(Class cls, SEL name, IMP imp, const char *types)
 {
     if (!cls) return NO;
 
-    IMP old = _class_addMethod(cls, name, imp, types, NO);
+    rwlock_write(&runtimeLock);
+    IMP old = addMethod(newcls(cls), name, imp, types ?: "", NO);
+    rwlock_unlock_write(&runtimeLock);
     return old ? NO : YES;
 }
 
@@ -4468,7 +5296,10 @@ class_replaceMethod(Class cls, SEL name, IMP imp, const char *types)
 {
     if (!cls) return NULL;
 
-    return _class_addMethod(cls, name, imp, types, YES);
+    rwlock_write(&runtimeLock);
+    IMP old = addMethod(newcls(cls), name, imp, types ?: "", YES);
+    rwlock_unlock_write(&runtimeLock);
+    return old;
 }
 
 
@@ -4481,7 +5312,7 @@ BOOL
 class_addIvar(Class cls_gen, const char *name, size_t size, 
               uint8_t alignment, const char *type)
 {
-    struct class_t *cls = newcls(cls_gen);
+    class_t *cls = newcls(cls_gen);
 
     if (!cls) return NO;
 
@@ -4499,7 +5330,7 @@ class_addIvar(Class cls_gen, const char *name, size_t size,
     }
 
     // Can only add ivars to in-construction classes.
-    if (!(cls->data->flags & RW_CONSTRUCTING)) {
+    if (!(cls->data()->flags & RW_CONSTRUCTING)) {
         rwlock_unlock_write(&runtimeLock);
         return NO;
     }
@@ -4512,27 +5343,29 @@ class_addIvar(Class cls_gen, const char *name, size_t size,
         return NO;
     }
 
-    class_ro_t *ro_w = make_ro_writeable(cls->data);
+    class_ro_t *ro_w = make_ro_writeable(cls->data());
 
     // fixme allocate less memory here
     
     ivar_list_t *oldlist, *newlist;
-    if ((oldlist = (ivar_list_t *)cls->data->ro->ivars)) {
+    if ((oldlist = (ivar_list_t *)cls->data()->ro->ivars)) {
         size_t oldsize = ivar_list_size(oldlist);
-        newlist = _calloc_internal(oldsize + oldlist->entsize, 1);
+        newlist = (ivar_list_t *)
+            _calloc_internal(oldsize + oldlist->entsize, 1);
         memcpy(newlist, oldlist, oldsize);
         _free_internal(oldlist);
     } else {
-        newlist = _calloc_internal(sizeof(ivar_list_t), 1);
+        newlist = (ivar_list_t *)
+            _calloc_internal(sizeof(ivar_list_t), 1);
         newlist->entsize = (uint32_t)sizeof(ivar_t);
     }
 
-    uint32_t offset = instanceSize(cls);
+    uint32_t offset = unalignedInstanceSize(cls);
     uint32_t alignMask = (1<<alignment)-1;
     offset = (offset + alignMask) & ~alignMask;
 
     ivar_t *ivar = ivar_list_nth(newlist, newlist->count++);
-    ivar->offset = _malloc_internal(sizeof(*ivar->offset));
+    ivar->offset = (uintptr_t *)_malloc_internal(sizeof(*ivar->offset));
     *ivar->offset = offset;
     ivar->name = name ? _strdup_internal(name) : NULL;
     ivar->type = _strdup_internal(type);
@@ -4560,7 +5393,7 @@ BOOL class_addProtocol(Class cls_gen, Protocol *protocol_gen)
     class_t *cls = newcls(cls_gen);
     protocol_t *protocol = newprotocol(protocol_gen);
     protocol_list_t *plist;
-    protocol_list_t **plistp;
+    const protocol_list_t **plistp;
 
     if (!cls) return NO;
     if (class_conformsToProtocol(cls_gen, protocol_gen)) return NO;
@@ -4570,20 +5403,21 @@ BOOL class_addProtocol(Class cls_gen, Protocol *protocol_gen)
     assert(isRealized(cls));
     
     // fixme optimize
-    plist = _malloc_internal(sizeof(protocol_list_t) + sizeof(protocol_t *));
+    plist = (protocol_list_t *)
+        _malloc_internal(sizeof(protocol_list_t) + sizeof(protocol_t *));
     plist->count = 1;
     plist->list[0] = (protocol_ref_t)protocol;
     
     unsigned int count = 0;
-    for (plistp = cls->data->protocols; plistp && *plistp; plistp++) {
+    for (plistp = cls->data()->protocols; plistp && *plistp; plistp++) {
         count++;
     }
 
-    cls->data->protocols = 
-        _realloc_internal(cls->data->protocols, 
+    cls->data()->protocols = (const protocol_list_t **)
+        _realloc_internal(cls->data()->protocols, 
                           (count+2) * sizeof(protocol_list_t *));
-    cls->data->protocols[count] = plist;
-    cls->data->protocols[count+1] = NULL;
+    cls->data()->protocols[count] = plist;
+    cls->data()->protocols[count+1] = NULL;
 
     // fixme metaclass?
 
@@ -4594,11 +5428,75 @@ BOOL class_addProtocol(Class cls_gen, Protocol *protocol_gen)
 
 
 /***********************************************************************
+* class_addProperty
+* Adds a property to a class.
+* Locking: acquires runtimeLock
+**********************************************************************/
+static BOOL 
+_class_addProperty(Class cls_gen, const char *name, 
+                   const objc_property_attribute_t *attrs, unsigned int count, 
+                   BOOL replace)
+{
+    class_t *cls = newcls(cls_gen);
+    chained_property_list *plist;
+
+    if (!cls) return NO;
+    if (!name) return NO;
+
+    property_t *prop = class_getProperty(cls_gen, name);
+    if (prop  &&  !replace) {
+        // already exists, refuse to replace
+        return NO;
+    } 
+    else if (prop) {
+        // replace existing
+        rwlock_write(&runtimeLock);
+        try_free(prop->attributes);
+        prop->attributes = copyPropertyAttributeString(attrs, count);
+        rwlock_unlock_write(&runtimeLock);
+        return YES;
+    }
+    else {
+        rwlock_write(&runtimeLock);
+        
+        assert(isRealized(cls));
+        
+        plist = (chained_property_list *)
+            _malloc_internal(sizeof(*plist) + sizeof(plist->list[0]));
+        plist->count = 1;
+        plist->list[0].name = _strdup_internal(name);
+        plist->list[0].attributes = copyPropertyAttributeString(attrs, count);
+        
+        plist->next = cls->data()->properties;
+        cls->data()->properties = plist;
+        
+        rwlock_unlock_write(&runtimeLock);
+        
+        return YES;
+    }
+}
+
+BOOL 
+class_addProperty(Class cls_gen, const char *name, 
+                  const objc_property_attribute_t *attrs, unsigned int n)
+{
+    return _class_addProperty(cls_gen, name, attrs, n, NO);
+}
+
+void 
+class_replaceProperty(Class cls_gen, const char *name, 
+                      const objc_property_attribute_t *attrs, unsigned int n)
+{
+    _class_addProperty(cls_gen, name, attrs, n, YES);
+}
+
+
+/***********************************************************************
 * look_up_class
 * Look up a class by name, and realize it.
 * Locking: acquires runtimeLock
 **********************************************************************/
-__private_extern__ id 
+PRIVATE_EXTERN id 
 look_up_class(const char *name, 
               BOOL includeUnconnected __attribute__((unused)), 
               BOOL includeClassHandler __attribute__((unused)))
@@ -4627,49 +5525,50 @@ Class
 objc_duplicateClass(Class original_gen, const char *name, 
                     size_t extraBytes)
 {
-    struct class_t *original = newcls(original_gen);
-    struct class_t *duplicate;
+    class_t *original = newcls(original_gen);
+    class_t *duplicate;
 
     rwlock_write(&runtimeLock);
 
     assert(isRealized(original));
     assert(!isMetaClass(original));
 
-    duplicate = (struct class_t *)
-        _calloc_class(instanceSize(original->isa) + extraBytes);
-    if (instanceSize(original->isa) < sizeof(class_t)) {
-        _objc_inform("busted! %s\n", original->data->ro->name);
+    duplicate = (class_t *)
+        _calloc_class(alignedInstanceSize(original->isa) + extraBytes);
+    if (unalignedInstanceSize(original->isa) < sizeof(class_t)) {
+        _objc_inform("busted! %s\n", original->data()->ro->name);
     }
 
 
     duplicate->isa = original->isa;
     duplicate->superclass = original->superclass;
     duplicate->cache = (Cache)&_objc_empty_cache;
-    duplicate->vtable = _objc_empty_vtable;
+    duplicate->vtable = &_objc_empty_vtable;
 
-    duplicate->data = _calloc_internal(sizeof(*original->data), 1);
-    duplicate->data->flags = (original->data->flags | RW_COPIED_RO) & ~RW_SPECIALIZED_VTABLE;
-    duplicate->data->version = original->data->version;
-    duplicate->data->firstSubclass = NULL;
-    duplicate->data->nextSiblingClass = NULL;
+    duplicate->setData((class_rw_t *)_calloc_internal(sizeof(*original->data()), 1));
+    duplicate->data()->flags = (original->data()->flags | RW_COPIED_RO) & ~RW_SPECIALIZED_VTABLE;
+    duplicate->data()->version = original->data()->version;
+    duplicate->data()->firstSubclass = NULL;
+    duplicate->data()->nextSiblingClass = NULL;
 
-    duplicate->data->ro = 
-        _memdup_internal(original->data->ro, sizeof(*original->data->ro));
-    *(char **)&duplicate->data->ro->name = _strdup_internal(name);
+    duplicate->data()->ro = (class_ro_t *)
+        _memdup_internal(original->data()->ro, sizeof(*original->data()->ro));
+    *(char **)&duplicate->data()->ro->name = _strdup_internal(name);
     
-    if (original->data->methods) {
-        duplicate->data->methods = 
-            _memdup_internal(original->data->methods, 
-                             malloc_size(original->data->methods));
-        method_list_t **mlistp = duplicate->data->methods;
-        for (mlistp = duplicate->data->methods; *mlistp; mlistp++) {
-            *mlistp = _memdup_internal(*mlistp, method_list_size(*mlistp));
+    if (original->data()->methods) {
+        duplicate->data()->methods = (method_list_t **)
+            _memdup_internal(original->data()->methods, 
+                             malloc_size(original->data()->methods));
+        method_list_t **mlistp;
+        for (mlistp = duplicate->data()->methods; *mlistp; mlistp++) {
+            *mlistp = (method_list_t *)
+                _memdup_internal(*mlistp, method_list_size(*mlistp));
         }
     }
 
     // fixme dies when categories are added to the base
-    duplicate->data->properties = original->data->properties;
-    duplicate->data->protocols = original->data->protocols;
+    duplicate->data()->properties = original->data()->properties;
+    duplicate->data()->protocols = original->data()->protocols;
 
     if (duplicate->superclass) {
         addSubclass(duplicate->superclass, duplicate);
@@ -4677,15 +5576,15 @@ objc_duplicateClass(Class original_gen, const char *name,
 
     // Don't methodize class - construction above is correct
 
-    addNamedClass(duplicate, duplicate->data->ro->name);
+    addNamedClass(duplicate, duplicate->data()->ro->name);
     addRealizedClass(duplicate);
     // no: duplicate->isa == original->isa
     // addRealizedMetaclass(duplicate->isa);
 
     if (PrintConnecting) {
         _objc_inform("CLASS: realizing class '%s' (duplicate of %s) %p %p", 
-                     name, original->data->ro->name, 
-                     duplicate, duplicate->data->ro);
+                     name, original->data()->ro->name, 
+                     duplicate, duplicate->data()->ro);
     }
 
     rwlock_unlock_write(&runtimeLock);
@@ -4697,6 +5596,10 @@ objc_duplicateClass(Class original_gen, const char *name,
 * objc_initializeClassPair
 * Locking: runtimeLock must be write-locked by the caller
 **********************************************************************/
+
+// &UnsetLayout is the default ivar layout during class construction
+static const uint8_t UnsetLayout = 0;
+
 static void objc_initializeClassPair_internal(Class superclass_gen, const char *name, Class cls_gen, Class meta_gen)
 {
     rwlock_assert_writing(&runtimeLock);
@@ -4706,23 +5609,23 @@ static void objc_initializeClassPair_internal(Class superclass_gen, const char *
     class_t *meta = newcls(meta_gen);
     class_ro_t *cls_ro_w, *meta_ro_w;
     
-    cls->data = _calloc_internal(sizeof(class_rw_t), 1);
-    meta->data = _calloc_internal(sizeof(class_rw_t), 1);
-    cls_ro_w = _calloc_internal(sizeof(class_ro_t), 1);
-    meta_ro_w = _calloc_internal(sizeof(class_ro_t), 1);
-    cls->data->ro = cls_ro_w;
-    meta->data->ro = meta_ro_w;
+    cls->setData((class_rw_t *)_calloc_internal(sizeof(class_rw_t), 1));
+    meta->setData((class_rw_t *)_calloc_internal(sizeof(class_rw_t), 1));
+    cls_ro_w   = (class_ro_t *)_calloc_internal(sizeof(class_ro_t), 1);
+    meta_ro_w  = (class_ro_t *)_calloc_internal(sizeof(class_ro_t), 1);
+    cls->data()->ro = cls_ro_w;
+    meta->data()->ro = meta_ro_w;
 
     // Set basic info
     cls->cache = (Cache)&_objc_empty_cache;
     meta->cache = (Cache)&_objc_empty_cache;
-    cls->vtable = _objc_empty_vtable;
-    meta->vtable = _objc_empty_vtable;
+    cls->vtable = &_objc_empty_vtable;
+    meta->vtable = &_objc_empty_vtable;
 
-    cls->data->flags = RW_CONSTRUCTING | RW_COPIED_RO | RW_REALIZED;
-    meta->data->flags = RW_CONSTRUCTING | RW_COPIED_RO | RW_REALIZED;
-    cls->data->version = 0;
-    meta->data->version = 7;
+    cls->data()->flags = RW_CONSTRUCTING | RW_COPIED_RO | RW_REALIZED;
+    meta->data()->flags = RW_CONSTRUCTING | RW_COPIED_RO | RW_REALIZED;
+    cls->data()->version = 0;
+    meta->data()->version = 7;
 
     cls_ro_w->flags = 0;
     meta_ro_w->flags = RO_META;
@@ -4731,8 +5634,8 @@ static void objc_initializeClassPair_internal(Class superclass_gen, const char *
         meta_ro_w->flags |= RO_ROOT;
     }
     if (superclass) {
-        cls_ro_w->instanceStart = instanceSize(superclass);
-        meta_ro_w->instanceStart = instanceSize(superclass->isa);
+        cls_ro_w->instanceStart = unalignedInstanceSize(superclass);
+        meta_ro_w->instanceStart = unalignedInstanceSize(superclass->isa);
         cls_ro_w->instanceSize = cls_ro_w->instanceStart;
         meta_ro_w->instanceSize = meta_ro_w->instanceStart;
     } else {
@@ -4744,6 +5647,9 @@ static void objc_initializeClassPair_internal(Class superclass_gen, const char *
 
     cls_ro_w->name = _strdup_internal(name);
     meta_ro_w->name = _strdup_internal(name);
+
+    cls_ro_w->ivarLayout = &UnsetLayout;
+    cls_ro_w->weakIvarLayout = &UnsetLayout;
 
     // Connect to superclasses and metaclasses
     cls->isa = meta;
@@ -4775,16 +5681,16 @@ Class objc_initializeClassPair(Class superclass_gen, const char *name, Class cls
     //
     if (getClass(name)) {
         rwlock_unlock_write(&runtimeLock);
-        return NO;
+        return Nil;
     }
-    // fixme reserve class against simmultaneous allocation
+    // fixme reserve class against simultaneous allocation
 
     if (superclass) assert(isRealized(superclass));
 
-    if (superclass  &&  superclass->data->flags & RW_CONSTRUCTING) {
+    if (superclass  &&  superclass->data()->flags & RW_CONSTRUCTING) {
         // Can't make subclass of an in-construction class
         rwlock_unlock_write(&runtimeLock);
-        return NO;
+        return Nil;
     }
 
 
@@ -4813,29 +5719,29 @@ Class objc_allocateClassPair(Class superclass_gen, const char *name,
     //
     if (getClass(name)) {
         rwlock_unlock_write(&runtimeLock);
-        return NO;
+        return Nil;
     }
     // fixme reserve class against simmultaneous allocation
 
     if (superclass) assert(isRealized(superclass));
 
-    if (superclass  &&  superclass->data->flags & RW_CONSTRUCTING) {
+    if (superclass  &&  superclass->data()->flags & RW_CONSTRUCTING) {
         // Can't make subclass of an in-construction class
         rwlock_unlock_write(&runtimeLock);
-        return NO;
+        return Nil;
     }
 
 
 
     // Allocate new classes.
+    size_t size = sizeof(class_t);
+    size_t metasize = sizeof(class_t);
     if (superclass) {
-        cls = _calloc_class(instanceSize(superclass->isa) + extraBytes);
-        meta = _calloc_class(instanceSize(superclass->isa->isa) + extraBytes);
-    } else {
-        cls = _calloc_class(sizeof(class_t) + extraBytes);
-        meta = _calloc_class(sizeof(class_t) + extraBytes);
+        size = alignedInstanceSize(superclass->isa);
+        metasize = alignedInstanceSize(superclass->isa->isa);
     }
-    
+    cls  = _calloc_class(size + extraBytes);
+    meta = _calloc_class(metasize + extraBytes);
 
     objc_initializeClassPair_internal(superclass_gen, name, cls, meta);
 
@@ -4856,48 +5762,48 @@ void objc_registerClassPair(Class cls_gen)
     
     rwlock_write(&runtimeLock);
 
-    if ((cls->data->flags & RW_CONSTRUCTED)  ||  
-        (cls->isa->data->flags & RW_CONSTRUCTED)) 
+    if ((cls->data()->flags & RW_CONSTRUCTED)  ||  
+        (cls->isa->data()->flags & RW_CONSTRUCTED)) 
     {
         _objc_inform("objc_registerClassPair: class '%s' was already "
-                     "registered!", cls->data->ro->name);
+                     "registered!", cls->data()->ro->name);
         rwlock_unlock_write(&runtimeLock);
         return;
     }
 
-    if (!(cls->data->flags & RW_CONSTRUCTING)  ||  
-        !(cls->isa->data->flags & RW_CONSTRUCTING))
+    if (!(cls->data()->flags & RW_CONSTRUCTING)  ||  
+        !(cls->isa->data()->flags & RW_CONSTRUCTING))
     {
         _objc_inform("objc_registerClassPair: class '%s' was not "
                      "allocated with objc_allocateClassPair!", 
-                     cls->data->ro->name);
+                     cls->data()->ro->name);
         rwlock_unlock_write(&runtimeLock);
         return;
     }
 
     // Build ivar layouts
     if (UseGC) {
-        struct class_t *supercls = getSuperclass(cls);
-        class_ro_t *ro_w = (class_ro_t *)cls->data->ro;
+        class_t *supercls = getSuperclass(cls);
+        class_ro_t *ro_w = (class_ro_t *)cls->data()->ro;
 
-        if (ro_w->ivarLayout) {
+        if (ro_w->ivarLayout != &UnsetLayout) {
             // Class builder already called class_setIvarLayout.
         }
         else if (!supercls) {
             // Root class. Scan conservatively (should be isa ivar only).
-            // ivar_layout is already NULL.
+            ro_w->ivarLayout = NULL;
         }
         else if (ro_w->ivars == NULL) {
             // No local ivars. Use superclass's layouts.
-            ro_w->ivarLayout = (unsigned char *)
-                _strdup_internal((char *)supercls->data->ro->ivarLayout);
+            ro_w->ivarLayout = 
+                _ustrdup_internal(supercls->data()->ro->ivarLayout);
         }
         else {
             // Has local ivars. Build layouts based on superclass.
             layout_bitmap bitmap = 
-                layout_bitmap_create(supercls->data->ro->ivarLayout, 
-                                     instanceSize(supercls), 
-                                     instanceSize(cls), NO);
+                layout_bitmap_create(supercls->data()->ro->ivarLayout, 
+                                     unalignedInstanceSize(supercls), 
+                                     unalignedInstanceSize(cls), NO);
             uint32_t i;
             for (i = 0; i < ro_w->ivars->count; i++) {
                 ivar_t *ivar = ivar_list_nth(ro_w->ivars, i);
@@ -4909,34 +5815,34 @@ void objc_registerClassPair(Class cls_gen)
             layout_bitmap_free(bitmap);
         }
 
-        if (ro_w->weakIvarLayout) {
+        if (ro_w->weakIvarLayout != &UnsetLayout) {
             // Class builder already called class_setWeakIvarLayout.
         }
         else if (!supercls) {
             // Root class. No weak ivars (should be isa ivar only).
-            // weak_ivar_layout is already NULL.
+            ro_w->weakIvarLayout = NULL;
         }
         else if (ro_w->ivars == NULL) {
             // No local ivars. Use superclass's layout.
-            ro_w->weakIvarLayout = (unsigned char *)
-                _strdup_internal((char *)supercls->data->ro->weakIvarLayout);
+            ro_w->weakIvarLayout = 
+                _ustrdup_internal(supercls->data()->ro->weakIvarLayout);
         }
         else {
             // Has local ivars. Build layout based on superclass.
             // No way to add weak ivars yet.
-            ro_w->weakIvarLayout = (unsigned char *)
-                _strdup_internal((char *)supercls->data->ro->weakIvarLayout);
+            ro_w->weakIvarLayout = 
+                _ustrdup_internal(supercls->data()->ro->weakIvarLayout);
         }
     }
 
     // Clear "under construction" bit, set "done constructing" bit
-    cls->data->flags &= ~RW_CONSTRUCTING;
-    cls->isa->data->flags &= ~RW_CONSTRUCTING;
-    cls->data->flags |= RW_CONSTRUCTED;
-    cls->isa->data->flags |= RW_CONSTRUCTED;
+    cls->data()->flags &= ~RW_CONSTRUCTING;
+    cls->isa->data()->flags &= ~RW_CONSTRUCTING;
+    cls->data()->flags |= RW_CONSTRUCTED;
+    cls->isa->data()->flags |= RW_CONSTRUCTED;
 
     // Add to realized and uninitialized classes
-    addNamedClass(cls, cls->data->ro->name);
+    addNamedClass(cls, cls->data()->ro->name);
     addRealizedClass(cls);
     addRealizedMetaclass(cls->isa);
     addUninitializedClass(cls, cls->isa);
@@ -4978,19 +5884,19 @@ static void unload_class(class_t *cls, BOOL isMeta)
         // Dereferences the cache contents; do this before freeing methods
         if (cls->cache != (Cache)&_objc_empty_cache) _cache_free(cls->cache);
         
-        if (cls->data->methods) {
+        if (cls->data()->methods) {
             method_list_t **mlistp;
-            for (mlistp = cls->data->methods; *mlistp; mlistp++) {
+            for (mlistp = cls->data()->methods; *mlistp; mlistp++) {
                 for (i = 0; i < (**mlistp).count; i++) {
                     method_t *m = method_list_nth(*mlistp, i);
                     try_free(m->types);
                 }
                 try_free(*mlistp);
             }
-            try_free(cls->data->methods);
+            try_free(cls->data()->methods);
         }
         
-        const ivar_list_t *ilist = cls->data->ro->ivars;
+        const ivar_list_t *ilist = cls->data()->ro->ivars;
         if (ilist) {
             for (i = 0; i < ilist->count; i++) {
                 const ivar_t *ivar = ivar_list_nth(ilist, i);
@@ -5001,22 +5907,34 @@ static void unload_class(class_t *cls, BOOL isMeta)
             try_free(ilist);
         }
 
-        protocol_list_t **plistp = cls->data->protocols;
-        for (plistp = cls->data->protocols; plistp && *plistp; plistp++) {
+        const protocol_list_t **plistp;
+        for (plistp = cls->data()->protocols; plistp && *plistp; plistp++) {
             try_free(*plistp);
         }
-        try_free(cls->data->protocols);
+        try_free(cls->data()->protocols);
         
-        // fixme:
-        // properties
+        const chained_property_list *proplist = cls->data()->properties;
+        while (proplist) {
+            for (uint32_t i = 0; i < proplist->count; i++) {
+                const property_t *prop = proplist->list+i;
+                try_free(prop->name);
+                try_free(prop->attributes);
+            }
+            {
+                const chained_property_list *temp = proplist;
+                proplist = proplist->next;
+                try_free(temp);
+            }
+        }
+
         
-        if (cls->vtable != _objc_empty_vtable  &&  
-            cls->data->flags & RW_SPECIALIZED_VTABLE) try_free(cls->vtable);
-        try_free(cls->data->ro->ivarLayout);
-        try_free(cls->data->ro->weakIvarLayout);
-        try_free(cls->data->ro->name);
-        try_free(cls->data->ro);
-        try_free(cls->data);
+        if (cls->vtable != &_objc_empty_vtable  &&  
+            cls->data()->flags & RW_SPECIALIZED_VTABLE) try_free(cls->vtable);
+        try_free(cls->data()->ro->ivarLayout);
+        try_free(cls->data()->ro->weakIvarLayout);
+        try_free(cls->data()->ro->name);
+        try_free(cls->data()->ro);
+        try_free(cls->data());
         try_free(cls);
     }
 }
@@ -5027,35 +5945,35 @@ void objc_disposeClassPair(Class cls_gen)
 
     rwlock_write(&runtimeLock);
 
-    if (!(cls->data->flags & (RW_CONSTRUCTED|RW_CONSTRUCTING))  ||  
-        !(cls->isa->data->flags & (RW_CONSTRUCTED|RW_CONSTRUCTING))) 
+    if (!(cls->data()->flags & (RW_CONSTRUCTED|RW_CONSTRUCTING))  ||  
+        !(cls->isa->data()->flags & (RW_CONSTRUCTED|RW_CONSTRUCTING))) 
     {
         // class not allocated with objc_allocateClassPair
         // disposing still-unregistered class is OK!
         _objc_inform("objc_disposeClassPair: class '%s' was not "
                      "allocated with objc_allocateClassPair!", 
-                     cls->data->ro->name);
+                     cls->data()->ro->name);
         rwlock_unlock_write(&runtimeLock);
         return;
     }
 
     if (isMetaClass(cls)) {
         _objc_inform("objc_disposeClassPair: class '%s' is a metaclass, "
-                     "not a class!", cls->data->ro->name);
+                     "not a class!", cls->data()->ro->name);
         rwlock_unlock_write(&runtimeLock);
         return;
     }
 
     // Shouldn't have any live subclasses.
-    if (cls->data->firstSubclass) {
+    if (cls->data()->firstSubclass) {
         _objc_inform("objc_disposeClassPair: class '%s' still has subclasses, "
-                     "including '%s'!", cls->data->ro->name, 
-                     getName(cls->data->firstSubclass));
+                     "including '%s'!", cls->data()->ro->name, 
+                     getName(cls->data()->firstSubclass));
     }
-    if (cls->isa->data->firstSubclass) {
+    if (cls->isa->data()->firstSubclass) {
         _objc_inform("objc_disposeClassPair: class '%s' still has subclasses, "
-                     "including '%s'!", cls->data->ro->name, 
-                     getName(cls->isa->data->firstSubclass));
+                     "including '%s'!", cls->data()->ro->name, 
+                     getName(cls->isa->data()->firstSubclass));
     }
 
     // don't remove_class_from_loadable_list() 
@@ -5067,54 +5985,146 @@ void objc_disposeClassPair(Class cls_gen)
 }
 
 
-
-/***********************************************************************
-* class_createInstanceFromZone
-* fixme
-* Locking: none
-**********************************************************************/
-id
-class_createInstanceFromZone(Class cls, size_t extraBytes, void *zone)
-{
-    if (cls) assert(isRealized(newcls(cls)));
-    return _internal_class_createInstanceFromZone(cls, extraBytes, zone);
-}
-
-
 /***********************************************************************
 * class_createInstance
 * fixme
 * Locking: none
 **********************************************************************/
+static id
+_class_createInstanceFromZone(Class cls, size_t extraBytes, void *zone)
+    __attribute__((always_inline));
+
+static id
+_class_createInstanceFromZone(Class cls, size_t extraBytes, void *zone)
+{
+    if (!cls) return nil;
+
+    assert(isRealized(newcls(cls)));
+
+    size_t size = alignedInstanceSize(newcls(cls)) + extraBytes;
+
+    // CF requires all object be at least 16 bytes.
+    if (size < 16) size = 16;
+
+    id obj;
+#if SUPPORT_GC
+    if (UseGC) {
+        obj = (id)auto_zone_allocate_object(gc_zone, size,
+                                            AUTO_OBJECT_SCANNED, 0, 1);
+    } else 
+#endif
+    if (zone) {
+        obj = (id)malloc_zone_calloc ((malloc_zone_t *)zone, 1, size);
+    } else {
+        obj = (id)calloc(1, size);
+    }
+    if (!obj) return nil;
+
+    obj->isa = cls;  // need not be object_setClass
+
+    if (_class_hasCxxStructors(cls)) {
+        obj = _objc_constructOrFree(cls, obj);
+    }
+
+    return obj;
+}
+
+
 id 
 class_createInstance(Class cls, size_t extraBytes)
 {
-    return class_createInstanceFromZone(cls, extraBytes, NULL);
+    return _class_createInstanceFromZone(cls, extraBytes, NULL);
 }
 
+/***********************************************************************
+* class_createInstances
+* fixme
+* Locking: none
+**********************************************************************/
+unsigned 
+class_createInstances(Class cls, size_t extraBytes, 
+                      id *results, unsigned num_requested)
+{
+    return _class_createInstancesFromZone(cls, extraBytes, NULL, 
+                                          results, num_requested);
+}
+
+static BOOL classOrSuperClassesUseARR(Class cls) {
+    while (cls) {
+        if (_class_usesAutomaticRetainRelease(cls)) return true;
+        cls = class_getSuperclass(cls);
+    }
+    return false;
+}
+
+static void arr_fixup_copied_references(id newObject, id oldObject)
+{
+    // use ARR layouts to correctly copy the references from old object to new, both strong and weak.
+    Class cls = oldObject->isa;
+    while (cls) {
+        if (_class_usesAutomaticRetainRelease(cls)) {
+            // FIXME:  align the instance start to nearest id boundary. This currently handles the case where
+            // the the compiler folds a leading BOOL (char, short, etc.) into the alignment slop of a superclass.
+            size_t instanceStart = _class_getInstanceStart(cls);
+            const uint8_t *strongLayout = class_getIvarLayout(cls);
+            if (strongLayout) {
+                id *newPtr = (id *)((char*)newObject + instanceStart);
+                unsigned char byte;
+                while ((byte = *strongLayout++)) {
+                    unsigned skips = (byte >> 4);
+                    unsigned scans = (byte & 0x0F);
+                    newPtr += skips;
+                    while (scans--) {
+                        // ensure strong references are properly retained.
+                        id value = *newPtr++;
+                        if (value) objc_retain(value);
+                    }
+                }
+            }
+            const uint8_t *weakLayout = class_getWeakIvarLayout(cls);
+            // fix up weak references if any.
+            if (weakLayout) {
+                id *newPtr = (id *)((char*)newObject + instanceStart), *oldPtr = (id *)((char*)oldObject + instanceStart);
+                unsigned char byte;
+                while ((byte = *weakLayout++)) {
+                    unsigned skips = (byte >> 4);
+                    unsigned weaks = (byte & 0x0F);
+                    newPtr += skips, oldPtr += skips;
+                    while (weaks--) {
+                        *newPtr = nil;
+                        //objc_storeWeak(newPtr, objc_loadWeak(oldPtr));
+                        ++newPtr, ++oldPtr;
+                    }
+                }
+            }
+        }
+        cls = class_getSuperclass(cls);
+    }
+}
 
 /***********************************************************************
 * object_copyFromZone
 * fixme
 * Locking: none
 **********************************************************************/
-id 
-object_copyFromZone(id oldObj, size_t extraBytes, void *zone)
+static id 
+_object_copyFromZone(id oldObj, size_t extraBytes, void *zone)
 {
     id obj;
     size_t size;
 
     if (!oldObj) return nil;
+    if (OBJC_IS_TAGGED_PTR(oldObj)) return oldObj;
 
     size = _class_getInstanceSize(oldObj->isa) + extraBytes;
-#if !defined(NO_GC)
+#if SUPPORT_GC
     if (UseGC) {
         obj = (id) auto_zone_allocate_object(gc_zone, size, 
                                              AUTO_OBJECT_SCANNED, 0, 1);
     } else
 #endif
     if (zone) {
-        obj = malloc_zone_calloc(zone, size, 1);
+        obj = (id) malloc_zone_calloc((malloc_zone_t *)zone, size, 1);
     } else {
         obj = (id) calloc(1, size);
     }
@@ -5123,8 +6133,14 @@ object_copyFromZone(id oldObj, size_t extraBytes, void *zone)
     // fixme this doesn't handle C++ ivars correctly (#4619414)
     objc_memmove_collectable(obj, oldObj, size);
 
-#if !defined(NO_GC)
-    if (UseGC) gc_fixup_weakreferences(obj, oldObj);
+#if SUPPORT_GC
+    if (UseGC)
+        gc_fixup_weakreferences(obj, oldObj);
+    else if (classOrSuperClassesUseARR(obj->isa))
+        arr_fixup_copied_references(obj, oldObj);
+#else
+    if (classOrSuperClassesUseARR(obj->isa))
+        arr_fixup_copied_references(obj, oldObj);
 #endif
 
     return obj;
@@ -5139,7 +6155,65 @@ object_copyFromZone(id oldObj, size_t extraBytes, void *zone)
 id 
 object_copy(id oldObj, size_t extraBytes)
 {
-    return object_copyFromZone(oldObj, extraBytes, malloc_default_zone());
+    return _object_copyFromZone(oldObj, extraBytes, malloc_default_zone());
+}
+
+
+#if !(TARGET_OS_EMBEDDED  ||  TARGET_OS_IPHONE)
+
+/***********************************************************************
+* class_createInstanceFromZone
+* fixme
+* Locking: none
+**********************************************************************/
+id
+class_createInstanceFromZone(Class cls, size_t extraBytes, void *zone)
+{
+    return _class_createInstanceFromZone(cls, extraBytes, zone);
+}
+
+/***********************************************************************
+* object_copyFromZone
+* fixme
+* Locking: none
+**********************************************************************/
+id 
+object_copyFromZone(id oldObj, size_t extraBytes, void *zone)
+{
+    return _object_copyFromZone(oldObj, extraBytes, zone);
+}
+
+#endif
+
+
+/***********************************************************************
+* objc_destructInstance
+* Destroys an instance without freeing memory. 
+* Calls C++ destructors.
+* Calls ARR ivar cleanup.
+* Removes associative references.
+* Returns `obj`. Does nothing if `obj` is nil.
+* Be warned that GC DOES NOT CALL THIS. If you edit this, also edit finalize.
+* CoreFoundation and other clients do call this under GC.
+**********************************************************************/
+void *objc_destructInstance(id obj) 
+{
+    if (obj) {
+        Class isa_gen = _object_getClass(obj);
+        class_t *isa = newcls(isa_gen);
+
+        // Read all of the flags at once for performance.
+        bool cxx = hasCxxStructors(isa);
+        bool assoc = !UseGC && _class_instancesHaveAssociatedObjects(isa_gen);
+
+        // This order is important.
+        if (cxx) object_cxxDestruct(obj);
+        if (assoc) _object_remove_assocations(obj);
+        
+        //if (!UseGC) objc_clear_deallocating(obj);
+    }
+
+    return obj;
 }
 
 
@@ -5151,7 +6225,19 @@ object_copy(id oldObj, size_t extraBytes)
 id 
 object_dispose(id obj)
 {
-    return _internal_object_dispose(obj);
+    if (!obj) return nil;
+
+    objc_destructInstance(obj);
+    
+#if SUPPORT_GC
+    if (UseGC) {
+        auto_zone_retain(gc_zone, obj); // gc free expects rc==1
+    }
+#endif
+
+    free(obj);
+
+    return nil;
 }
 
 
@@ -5165,23 +6251,17 @@ Class _objc_getFreedObjectClass (void)
     return nil;
 }
 
-#ifndef NO_FIXUP
+#if SUPPORT_FIXUP
 
-extern id objc_msgSend_fixup(id, SEL, ...);
-extern id objc_msgSend_fixedup(id, SEL, ...);
-extern id objc_msgSendSuper2_fixup(id, SEL, ...);
-extern id objc_msgSendSuper2_fixedup(id, SEL, ...);
-extern id objc_msgSend_stret_fixup(id, SEL, ...);
-extern id objc_msgSend_stret_fixedup(id, SEL, ...);
-extern id objc_msgSendSuper2_stret_fixup(id, SEL, ...);
-extern id objc_msgSendSuper2_stret_fixedup(id, SEL, ...);
+OBJC_EXTERN id objc_msgSend_fixedup(id, SEL, ...);
+OBJC_EXTERN id objc_msgSendSuper2_fixedup(id, SEL, ...);
+OBJC_EXTERN id objc_msgSend_stret_fixedup(id, SEL, ...);
+OBJC_EXTERN id objc_msgSendSuper2_stret_fixedup(id, SEL, ...);
 #if defined(__i386__)  ||  defined(__x86_64__)
-extern id objc_msgSend_fpret_fixup(id, SEL, ...);
-extern id objc_msgSend_fpret_fixedup(id, SEL, ...);
+OBJC_EXTERN id objc_msgSend_fpret_fixedup(id, SEL, ...);
 #endif
 #if defined(__x86_64__)
-extern id objc_msgSend_fp2ret_fixup(id, SEL, ...);
-extern id objc_msgSend_fp2ret_fixedup(id, SEL, ...);
+OBJC_EXTERN id objc_msgSend_fp2ret_fixedup(id, SEL, ...);
 #endif
 
 /***********************************************************************
@@ -5190,17 +6270,20 @@ extern id objc_msgSend_fp2ret_fixedup(id, SEL, ...);
 * obj is the receiver. supr is NULL for non-super messages
 * Locking: acquires runtimeLock
 **********************************************************************/
-__private_extern__ IMP 
-_objc_fixupMessageRef(id obj, struct objc_super2 *supr, message_ref *msg)
+OBJC_EXTERN PRIVATE_EXTERN IMP 
+_objc_fixupMessageRef(id obj, struct objc_super2 *supr, message_ref_t *msg)
 {
     IMP imp;
     class_t *isa;
+#if SUPPORT_VTABLE
+    int vtableIndex;
+#endif
 
     rwlock_assert_unlocked(&runtimeLock);
 
     if (!supr) {
         // normal message - search obj->isa for the method implementation
-        isa = (class_t *)obj->isa;
+        isa = (class_t *) _object_getClass(obj);
         
         if (!isRealized(isa)) {
             // obj is a class object, isa is its metaclass
@@ -5223,19 +6306,22 @@ _objc_fixupMessageRef(id obj, struct objc_super2 *supr, message_ref *msg)
     }
 
     msg->sel = sel_registerName((const char *)msg->sel);
-    
-#ifndef NO_VTABLE
-    int vtableIndex;
-    if (msg->imp == (IMP)&objc_msgSend_fixup  &&  
+
+    if (ignoreSelector(msg->sel)) {
+        // ignored selector - bypass dispatcher
+        msg->imp = (IMP)&vtable_ignored;
+        imp = (IMP)&_objc_ignored_method;
+    }
+#if SUPPORT_VTABLE
+    else if (msg->imp == (IMP)&objc_msgSend_fixup  &&  
         (vtableIndex = vtable_getIndex(msg->sel)) >= 0) 
     {
         // vtable dispatch
         msg->imp = vtableTrampolines[vtableIndex];
         imp = isa->vtable[vtableIndex];
     }
-    else 
 #endif
-    {
+    else {
         // ordinary dispatch
         imp = lookUpMethod((Class)isa, msg->sel, YES/*initialize*/, YES/*cache*/);
         
@@ -5270,15 +6356,8 @@ _objc_fixupMessageRef(id obj, struct objc_super2 *supr, message_ref *msg)
     return imp;
 }
 
-// ! NO_FIXUP
+// SUPPORT_FIXUP
 #endif
-
-
-#warning fixme delete after #4586306
-Class class_poseAs(Class imposter, Class original)
-{
-    _objc_fatal("Don't call class_poseAs.");
-}
 
 
 // ProKit SPI

@@ -5,7 +5,6 @@
 	Name="objcrt"
 	ProjectGUID="{E38C1996-8B3D-4050-A4B2-DC85957B047D}"
 	RootNamespace="objcrt"
-	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform

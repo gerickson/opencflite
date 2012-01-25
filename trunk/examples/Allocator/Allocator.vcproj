@@ -21,6 +21,7 @@
 			OutputDirectory="$(SolutionDir)\dist\bin\$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
+			InheritedPropertySheets="..\..\props\common.vsprops;..\..\props\debug.vsprops"
 			CharacterSet="1"
 			>
 			<Tool
@@ -42,7 +43,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)\dist\include&quot;"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;DEPLOYMENT_TARGET_WIN32;_WIN32_WINNT=0x0501;WINVER=0x0501;WINDOWS_LEAN_AND_MEAN=1"
+				PreprocessorDefinitions="_CONSOLE;DEPLOYMENT_TARGET_WIN32;WINDOWS_LEAN_AND_MEAN=1"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -98,9 +99,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="$(SolutionDir)\dist\bin\$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
+			InheritedPropertySheets="..\..\props\common.vsprops;..\..\props\release.vsprops"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
 			>
@@ -121,13 +121,8 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="&quot;$(SolutionDir)\dist\include&quot;"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;DEPLOYMENT_TARGET_WIN32;_WIN32_WINNT=0x0501;WINVER=0x0501"
-				RuntimeLibrary="2"
-				UsePrecompiledHeader="0"
-				WarningLevel="3"
-				Detect64BitPortabilityProblems="true"
-				DebugInformationFormat="3"
+				AdditionalIncludeDirectories=""
+				PreprocessorDefinitions="_CONSOLE;DEPLOYMENT_TARGET_WIN32"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -141,16 +136,8 @@
 			<Tool
 				Name="VCLinkerTool"
 				OutputFile="$(SolutionDir)\dist\bin\$(ProjectName)_$(ConfigurationName).exe"
-				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;$(SolutionDir)\dist\lib&quot;"
-				IgnoreAllDefaultLibraries="false"
-				GenerateDebugInformation="true"
+				AdditionalLibraryDirectories=""
 				SubSystem="1"
-				OptimizeReferences="2"
-				EnableCOMDATFolding="2"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
-				TargetMachine="1"
 			/>
 			<Tool
 				Name="VCALinkTool"

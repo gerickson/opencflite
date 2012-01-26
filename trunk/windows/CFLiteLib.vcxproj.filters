@@ -6,7 +6,7 @@
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
     <Filter Include="Source Files\compat">
-      <UniqueIdentifier>{15a9a23d-0b8f-4412-afa0-045e45ff06e3}</UniqueIdentifier>
+      <UniqueIdentifier>{f7efb2b8-037a-4983-9c0c-48f80671d5d1}</UniqueIdentifier>
     </Filter>
     <Filter Include="Header Files">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
@@ -125,6 +125,9 @@
     <ClCompile Include="..\CFPropertyList.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\CFRunLoop.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\CFRuntime.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -203,6 +206,9 @@
     <ClCompile Include="..\CFWindowsMessageQueue.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\CFWindowsUtilities.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\CFXMLInputStream.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -233,10 +239,7 @@
     <ClCompile Include="..\CFBasicHash.m">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\CFRunLoop.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\CFWindowsUtilities.c">
+    <ClCompile Include="..\CFBasicHashFindBucket.m">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -1,61 +1,31 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual Studio 2008
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{60C062B2-DAC0-4361-9D92-9654183AFD72}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WritePListExample", "examples\WritePListExample\WritePListExample.vcproj", "{AD525151-D756-44E6-AEA7-12052F4F43E2}"
-	ProjectSection(ProjectDependencies) = postProject
-		{EC99198F-4CDD-4D85-AE6F-F837FF6CC372} = {EC99198F-4CDD-4D85-AE6F-F837FF6CC372}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WritePListExample", "examples\WritePListExample\WritePListExample.vcxproj", "{AD525151-D756-44E6-AEA7-12052F4F43E2}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReadPListExample", "examples\ReadPListExample\ReadPListExample.vcproj", "{CDF7218C-AE33-4367-B6F9-5728AE3C7F6E}"
-	ProjectSection(ProjectDependencies) = postProject
-		{EC99198F-4CDD-4D85-AE6F-F837FF6CC372} = {EC99198F-4CDD-4D85-AE6F-F837FF6CC372}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReadPListExample", "examples\ReadPListExample\ReadPListExample.vcxproj", "{CDF7218C-AE33-4367-B6F9-5728AE3C7F6E}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StringExample", "examples\StringExample\StringExample.vcproj", "{4E98FDA7-54AE-4A8E-847A-8665DEF6BBE1}"
-	ProjectSection(ProjectDependencies) = postProject
-		{EC99198F-4CDD-4D85-AE6F-F837FF6CC372} = {EC99198F-4CDD-4D85-AE6F-F837FF6CC372}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StringExample", "examples\StringExample\StringExample.vcxproj", "{4E98FDA7-54AE-4A8E-847A-8665DEF6BBE1}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AllocatorExample", "examples\Allocator\Allocator.vcproj", "{2A4D3906-539D-4D1E-9C97-47ABD83FD999}"
-	ProjectSection(ProjectDependencies) = postProject
-		{EC99198F-4CDD-4D85-AE6F-F837FF6CC372} = {EC99198F-4CDD-4D85-AE6F-F837FF6CC372}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AllocatorExample", "examples\Allocator\Allocator.vcxproj", "{2A4D3906-539D-4D1E-9C97-47ABD83FD999}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CFLite", "windows\CFLiteLib.vcproj", "{EC99198F-4CDD-4D85-AE6F-F837FF6CC372}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CFLite", "windows\CFLiteLib.vcxproj", "{EC99198F-4CDD-4D85-AE6F-F837FF6CC372}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DisplayURL", "examples\DisplayURL\DisplayURL.vcproj", "{6816B34F-DE8C-48EC-8F31-11176DA5FE11}"
-	ProjectSection(ProjectDependencies) = postProject
-		{EC99198F-4CDD-4D85-AE6F-F837FF6CC372} = {EC99198F-4CDD-4D85-AE6F-F837FF6CC372}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DisplayURL", "examples\DisplayURL\DisplayURL.vcxproj", "{6816B34F-DE8C-48EC-8F31-11176DA5FE11}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DNSServiceMetaQuery", "examples\DNSServiceMetaQuery\DNSServiceMetaQuery.vcproj", "{B5F7F4D9-DCA9-4CCD-8776-D2EAF45E4BE9}"
-	ProjectSection(ProjectDependencies) = postProject
-		{EC99198F-4CDD-4D85-AE6F-F837FF6CC372} = {EC99198F-4CDD-4D85-AE6F-F837FF6CC372}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DNSServiceMetaQuery", "examples\DNSServiceMetaQuery\DNSServiceMetaQuery.vcxproj", "{B5F7F4D9-DCA9-4CCD-8776-D2EAF45E4BE9}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CFRunLoopTimerExample", "examples\CFRunLoopTimerExample\CFRunLoopTimerExample.vcproj", "{6EC2C74D-B79D-4B8D-B14B-94ED3F08EB28}"
-	ProjectSection(ProjectDependencies) = postProject
-		{EC99198F-4CDD-4D85-AE6F-F837FF6CC372} = {EC99198F-4CDD-4D85-AE6F-F837FF6CC372}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CFRunLoopTimerExample", "examples\CFRunLoopTimerExample\CFRunLoopTimerExample.vcxproj", "{6EC2C74D-B79D-4B8D-B14B-94ED3F08EB28}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "objc", "objc4\objc.vcproj", "{B3408263-0CF1-47BE-83CC-56070EFC9BC1}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "objc", "objc4\objc.vcxproj", "{B3408263-0CF1-47BE-83CC-56070EFC9BC1}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "objcrt", "objc4\objcrt\objcrt.vcproj", "{E38C1996-8B3D-4050-A4B2-DC85957B047D}"
-	ProjectSection(ProjectDependencies) = postProject
-		{B3408263-0CF1-47BE-83CC-56070EFC9BC1} = {B3408263-0CF1-47BE-83CC-56070EFC9BC1}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "objcrt", "objc4\objcrt\objcrt.vcxproj", "{E38C1996-8B3D-4050-A4B2-DC85957B047D}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BundleExample", "examples\BundleExample\BundleExample.vcproj", "{4E98FDA7-54AE-4A8E-847A-86651EF6BBE1}"
-	ProjectSection(ProjectDependencies) = postProject
-		{EC99198F-4CDD-4D85-AE6F-F837FF6CC372} = {EC99198F-4CDD-4D85-AE6F-F837FF6CC372}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BundleExample", "examples\BundleExample\BundleExample.vcxproj", "{4E98FDA7-54AE-4A8E-847A-86651EF6BBE1}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PLConvertExample", "examples\PLConvertExample\PLConvertExample.vcproj", "{9DF7218C-AE33-4387-B6F9-5728AE3C7F6E}"
-	ProjectSection(ProjectDependencies) = postProject
-		{EC99198F-4CDD-4D85-AE6F-F837FF6CC372} = {EC99198F-4CDD-4D85-AE6F-F837FF6CC372}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PLConvertExample", "examples\PLConvertExample\PLConvertExample.vcxproj", "{9DF7218C-AE33-4387-B6F9-5728AE3C7F6E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

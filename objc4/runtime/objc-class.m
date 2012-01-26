@@ -1420,11 +1420,15 @@ iteratePropertyAttributes(const char *attrs,
                                      const char *value, size_t vlen), 
                           void *ctx1, void *ctx2)
 {
+#ifndef NDEBUG
+    const char *attrsend = 0;
+#endif
+
     unsigned int attrcount = 0;
     if (!attrs) return 0;
 
 #ifndef NDEBUG
-    const char *attrsend = attrs + strlen(attrs);
+    attrsend = attrs + strlen(attrs);
 #endif
 
     while (*attrs) {

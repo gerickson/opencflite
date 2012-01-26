@@ -8,6 +8,7 @@
       <PreprocessorDefinitions>_DLL;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
       <ModuleDefinitionFile>"$(ProjectDir)$(ProjectName).def"</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>

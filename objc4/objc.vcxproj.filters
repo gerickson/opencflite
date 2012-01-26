@@ -45,6 +45,12 @@
     <ClInclude Include="runtime\objc-exception.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="runtime\objc-file-old.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="runtime\objc-file.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="runtime\objc-initialize.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -90,12 +96,11 @@
     <ClInclude Include="runtime\runtime.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="runtime\objc-file-old.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="runtime\objc-file.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="version.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="runtime\hashtable2.m">
@@ -117,6 +122,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="runtime\objc-exception.m">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="runtime\objc-file-old.m">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="runtime\objc-file.mm">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="runtime\objc-initialize.m">
@@ -143,6 +154,9 @@
     <ClCompile Include="runtime\objc-references.mm">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="runtime\objc-runtime-new.mm">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="runtime\objc-runtime-old.m">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -161,19 +175,5 @@
     <ClCompile Include="runtime\objc-typeencoding.m">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="runtime\objc-file-old.m">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="runtime\objc-runtime-new.mm">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="runtime\objc-file.mm">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="version.rc">
-      <Filter>Resource Files</Filter>
-    </ResourceCompile>
   </ItemGroup>
 </Project>

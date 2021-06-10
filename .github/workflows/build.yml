@@ -48,7 +48,7 @@ jobs:
         sudo apt-get update
         sudo apt-get -y install autoconf automake libtool
         sudo apt-get -y install gobjc gobjc++ uuid-dev libicu-dev
-    - name Install Distribution Archive Dependencies
+    - name: Install Distribution Archive Dependencies
       run: |
         cd /tmp
         curl https://data.iana.org/time-zones/releases/tzcode2021a.tar.gz -o tzcode2021a.tar.gz || wget https://data.iana.org/time-zones/releases/tzcode2021a.tar.gz

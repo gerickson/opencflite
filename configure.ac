@@ -556,7 +556,7 @@ AC_DEFINE_UNQUOTED([TZDIR],["${tz_data_dir}"],[Define this to the location of th
 # Check for tzcode header support.
 #
 # Most systems based on the GNU C library do not have the header from
-# tzcode (see ftp://elsie.nci.nih.gov/pub/), "tzfile.h" installed which is
+# tzcode (see https://www.iana.org/time-zones), "tzfile.h" installed which is
 # needed. Check if it exists. If it doesn't let the user point us at it.
 #
 
@@ -575,7 +575,7 @@ AC_ARG_WITH(tz-includes,
 
 CPPFLAGS="${TZ_CPPFLAGS} ${CPPFLAGS}"
 
-AC_CHECK_HEADER([tzfile.h],[true],AC_MSG_ERROR([${PACKAGE_NAME} requires 'tzfile.h'. Download the latest tzcode package from 'ftp://elsie.nci.nih.gov/pub/' and/or use the '--with-tz-includes=DIR' configuration option.]))
+AC_CHECK_HEADER([tzfile.h],[true],AC_MSG_ERROR([${PACKAGE_NAME} requires 'tzfile.h'. Download the latest tzcode package from 'https://www.iana.org/time-zones' and/or use the '--with-tz-includes=DIR' configuration option.]))
 
 #
 # Check for headers

@@ -62,4 +62,4 @@ jobs:
         make -j
     - name: Test
       run: |
-        make -j distcheck
+        make -j check

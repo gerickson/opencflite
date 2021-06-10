@@ -139,11 +139,14 @@ AC_C_VOLATILE
 # If using GCC specify some additional parameters
 
 test_gcc_flag() {
-    AC_LANG_CONFTEST([int main() {}])
-    $CC -c conftest.c $CFLAGS $@ > /dev/null 2> /dev/null
-    ret=$?
+    AC_LANG(C)
+    AC_LANG_CONFTEST(
+        [AC_LANG_SOURCE([int main() {}])]
+    )
+    ${CC} -c conftest.c ${CFLAGS} ${@} > /dev/null 2> /dev/null
+    ret=${?}
     rm -f conftest.o
-    return $ret
+    return ${ret}
 }
 
 if test "x$GCC" = "xyes" ; then

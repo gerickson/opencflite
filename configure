@@ -19787,7 +19787,7 @@ _ACEOF
 # Check for tzcode header support.
 #
 # Most systems based on the GNU C library do not have the header from
-# tzcode (see ftp://elsie.nci.nih.gov/pub/), "tzfile.h" installed which is
+# tzcode (see https://www.iana.org/time-zones), "tzfile.h" installed which is
 # needed. Check if it exists. If it doesn't let the user point us at it.
 #
 
@@ -19959,8 +19959,8 @@ fi
 if test $ac_cv_header_tzfile_h = yes; then
   true
 else
-  { { echo "$as_me:$LINENO: error: ${PACKAGE_NAME} requires 'tzfile.h'. Download the latest tzcode package from 'ftp://elsie.nci.nih.gov/pub/' and/or use the '--with-tz-includes=DIR' configuration option." >&5
-echo "$as_me: error: ${PACKAGE_NAME} requires 'tzfile.h'. Download the latest tzcode package from 'ftp://elsie.nci.nih.gov/pub/' and/or use the '--with-tz-includes=DIR' configuration option." >&2;}
+  { { echo "$as_me:$LINENO: error: ${PACKAGE_NAME} requires 'tzfile.h'. Download the latest tzcode package from 'https://www.iana.org/time-zones' and/or use the '--with-tz-includes=DIR' configuration option." >&5
+echo "$as_me: error: ${PACKAGE_NAME} requires 'tzfile.h'. Download the latest tzcode package from 'https://www.iana.org/time-zones' and/or use the '--with-tz-includes=DIR' configuration option." >&2;}
    { (exit 1); exit 1; }; }
 fi
 

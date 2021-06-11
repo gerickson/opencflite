@@ -837,7 +837,9 @@ AC_MSG_NOTICE([
   Build debug library         : ${build_debug}
   Build profile library       : ${build_profile}
   Build examples and tests    : ${build_tests}
-  Prefix		      : ${prefix}
+  Prefix                      : ${prefix}
+  Pkg-config                  : ${PKG_CONFIG:--}
+  ICU-config                  : ${ICU_CONFIG:--}
   ICU compile options         : ${ICU_CPPFLAGS}
   ICU link options            : ${ICU_LDFLAGS}
   ICU link libraries          : ${ICU_LIBS}

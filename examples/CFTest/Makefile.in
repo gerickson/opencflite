@@ -103,8 +103,11 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/config/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/include/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-am_CFTest_OBJECTS = CFTest-main.$(OBJEXT) CFTest-CFTest.$(OBJEXT) \
-	CFTest-SuperString.$(OBJEXT) CFTest-CFUtils.$(OBJEXT)
+am__dirstamp = $(am__leading_dot)dirstamp
+am_CFTest_OBJECTS = source/main/CFTest-main.$(OBJEXT) \
+	source/main/CFTest-CFTest.$(OBJEXT) \
+	source/shared/CFTest-SuperString.$(OBJEXT) \
+	source/shared/CFTest-CFUtils.$(OBJEXT)
 CFTest_OBJECTS = $(am_CFTest_OBJECTS)
 CFTest_DEPENDENCIES = ${top_builddir}/libCoreFoundation.la
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -371,6 +374,27 @@ $(top_srcdir)/configure: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
 $(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
+source/main/$(am__dirstamp):
+	@$(MKDIR_P) source/main
+	@: > source/main/$(am__dirstamp)
+source/main/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) source/main/$(DEPDIR)
+	@: > source/main/$(DEPDIR)/$(am__dirstamp)
+source/main/CFTest-main.$(OBJEXT): source/main/$(am__dirstamp) \
+	source/main/$(DEPDIR)/$(am__dirstamp)
+source/main/CFTest-CFTest.$(OBJEXT): source/main/$(am__dirstamp) \
+	source/main/$(DEPDIR)/$(am__dirstamp)
+source/shared/$(am__dirstamp):
+	@$(MKDIR_P) source/shared
+	@: > source/shared/$(am__dirstamp)
+source/shared/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) source/shared/$(DEPDIR)
+	@: > source/shared/$(DEPDIR)/$(am__dirstamp)
+source/shared/CFTest-SuperString.$(OBJEXT):  \
+	source/shared/$(am__dirstamp) \
+	source/shared/$(DEPDIR)/$(am__dirstamp)
+source/shared/CFTest-CFUtils.$(OBJEXT): source/shared/$(am__dirstamp) \
+	source/shared/$(DEPDIR)/$(am__dirstamp)
 
 CFTest$(EXEEXT): $(CFTest_OBJECTS) $(CFTest_DEPENDENCIES) $(EXTRA_CFTest_DEPENDENCIES) 
 	@rm -f CFTest$(EXEEXT)
@@ -378,91 +402,96 @@ CFTest$(EXEEXT): $(CFTest_OBJECTS) $(CFTest_DEPENDENCIES) $(EXTRA_CFTest_DEPENDE
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
+	-rm -f source/main/*.$(OBJEXT)
+	-rm -f source/shared/*.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CFTest-CFTest.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CFTest-CFUtils.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CFTest-SuperString.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CFTest-main.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@source/main/$(DEPDIR)/CFTest-CFTest.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@source/main/$(DEPDIR)/CFTest-main.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@source/shared/$(DEPDIR)/CFTest-CFUtils.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@source/shared/$(DEPDIR)/CFTest-SuperString.Po@am__quote@
 
 .cpp.o:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
+@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXXCOMPILE) -c -o $@ $<
 
 .cpp.obj:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`;\
+@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ `$(CYGPATH_W) '$<'` &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
 .cpp.lo:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LTCXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.lo$$||'`;\
+@am__fastdepCXX_TRUE@	$(LTCXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LTCXXCOMPILE) -c -o $@ $<
 
-CFTest-main.o: source/main/main.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT CFTest-main.o -MD -MP -MF $(DEPDIR)/CFTest-main.Tpo -c -o CFTest-main.o `test -f 'source/main/main.cpp' || echo '$(srcdir)/'`source/main/main.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/CFTest-main.Tpo $(DEPDIR)/CFTest-main.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='source/main/main.cpp' object='CFTest-main.o' libtool=no @AMDEPBACKSLASH@
+source/main/CFTest-main.o: source/main/main.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT source/main/CFTest-main.o -MD -MP -MF source/main/$(DEPDIR)/CFTest-main.Tpo -c -o source/main/CFTest-main.o `test -f 'source/main/main.cpp' || echo '$(srcdir)/'`source/main/main.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) source/main/$(DEPDIR)/CFTest-main.Tpo source/main/$(DEPDIR)/CFTest-main.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='source/main/main.cpp' object='source/main/CFTest-main.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o CFTest-main.o `test -f 'source/main/main.cpp' || echo '$(srcdir)/'`source/main/main.cpp
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o source/main/CFTest-main.o `test -f 'source/main/main.cpp' || echo '$(srcdir)/'`source/main/main.cpp
 
-CFTest-main.obj: source/main/main.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT CFTest-main.obj -MD -MP -MF $(DEPDIR)/CFTest-main.Tpo -c -o CFTest-main.obj `if test -f 'source/main/main.cpp'; then $(CYGPATH_W) 'source/main/main.cpp'; else $(CYGPATH_W) '$(srcdir)/source/main/main.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/CFTest-main.Tpo $(DEPDIR)/CFTest-main.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='source/main/main.cpp' object='CFTest-main.obj' libtool=no @AMDEPBACKSLASH@
+source/main/CFTest-main.obj: source/main/main.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT source/main/CFTest-main.obj -MD -MP -MF source/main/$(DEPDIR)/CFTest-main.Tpo -c -o source/main/CFTest-main.obj `if test -f 'source/main/main.cpp'; then $(CYGPATH_W) 'source/main/main.cpp'; else $(CYGPATH_W) '$(srcdir)/source/main/main.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) source/main/$(DEPDIR)/CFTest-main.Tpo source/main/$(DEPDIR)/CFTest-main.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='source/main/main.cpp' object='source/main/CFTest-main.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o CFTest-main.obj `if test -f 'source/main/main.cpp'; then $(CYGPATH_W) 'source/main/main.cpp'; else $(CYGPATH_W) '$(srcdir)/source/main/main.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o source/main/CFTest-main.obj `if test -f 'source/main/main.cpp'; then $(CYGPATH_W) 'source/main/main.cpp'; else $(CYGPATH_W) '$(srcdir)/source/main/main.cpp'; fi`
 
-CFTest-CFTest.o: source/main/CFTest.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT CFTest-CFTest.o -MD -MP -MF $(DEPDIR)/CFTest-CFTest.Tpo -c -o CFTest-CFTest.o `test -f 'source/main/CFTest.cpp' || echo '$(srcdir)/'`source/main/CFTest.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/CFTest-CFTest.Tpo $(DEPDIR)/CFTest-CFTest.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='source/main/CFTest.cpp' object='CFTest-CFTest.o' libtool=no @AMDEPBACKSLASH@
+source/main/CFTest-CFTest.o: source/main/CFTest.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT source/main/CFTest-CFTest.o -MD -MP -MF source/main/$(DEPDIR)/CFTest-CFTest.Tpo -c -o source/main/CFTest-CFTest.o `test -f 'source/main/CFTest.cpp' || echo '$(srcdir)/'`source/main/CFTest.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) source/main/$(DEPDIR)/CFTest-CFTest.Tpo source/main/$(DEPDIR)/CFTest-CFTest.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='source/main/CFTest.cpp' object='source/main/CFTest-CFTest.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o CFTest-CFTest.o `test -f 'source/main/CFTest.cpp' || echo '$(srcdir)/'`source/main/CFTest.cpp
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o source/main/CFTest-CFTest.o `test -f 'source/main/CFTest.cpp' || echo '$(srcdir)/'`source/main/CFTest.cpp
 
-CFTest-CFTest.obj: source/main/CFTest.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT CFTest-CFTest.obj -MD -MP -MF $(DEPDIR)/CFTest-CFTest.Tpo -c -o CFTest-CFTest.obj `if test -f 'source/main/CFTest.cpp'; then $(CYGPATH_W) 'source/main/CFTest.cpp'; else $(CYGPATH_W) '$(srcdir)/source/main/CFTest.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/CFTest-CFTest.Tpo $(DEPDIR)/CFTest-CFTest.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='source/main/CFTest.cpp' object='CFTest-CFTest.obj' libtool=no @AMDEPBACKSLASH@
+source/main/CFTest-CFTest.obj: source/main/CFTest.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT source/main/CFTest-CFTest.obj -MD -MP -MF source/main/$(DEPDIR)/CFTest-CFTest.Tpo -c -o source/main/CFTest-CFTest.obj `if test -f 'source/main/CFTest.cpp'; then $(CYGPATH_W) 'source/main/CFTest.cpp'; else $(CYGPATH_W) '$(srcdir)/source/main/CFTest.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) source/main/$(DEPDIR)/CFTest-CFTest.Tpo source/main/$(DEPDIR)/CFTest-CFTest.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='source/main/CFTest.cpp' object='source/main/CFTest-CFTest.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o CFTest-CFTest.obj `if test -f 'source/main/CFTest.cpp'; then $(CYGPATH_W) 'source/main/CFTest.cpp'; else $(CYGPATH_W) '$(srcdir)/source/main/CFTest.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o source/main/CFTest-CFTest.obj `if test -f 'source/main/CFTest.cpp'; then $(CYGPATH_W) 'source/main/CFTest.cpp'; else $(CYGPATH_W) '$(srcdir)/source/main/CFTest.cpp'; fi`
 
-CFTest-SuperString.o: source/shared/SuperString.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT CFTest-SuperString.o -MD -MP -MF $(DEPDIR)/CFTest-SuperString.Tpo -c -o CFTest-SuperString.o `test -f 'source/shared/SuperString.cpp' || echo '$(srcdir)/'`source/shared/SuperString.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/CFTest-SuperString.Tpo $(DEPDIR)/CFTest-SuperString.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='source/shared/SuperString.cpp' object='CFTest-SuperString.o' libtool=no @AMDEPBACKSLASH@
+source/shared/CFTest-SuperString.o: source/shared/SuperString.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT source/shared/CFTest-SuperString.o -MD -MP -MF source/shared/$(DEPDIR)/CFTest-SuperString.Tpo -c -o source/shared/CFTest-SuperString.o `test -f 'source/shared/SuperString.cpp' || echo '$(srcdir)/'`source/shared/SuperString.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) source/shared/$(DEPDIR)/CFTest-SuperString.Tpo source/shared/$(DEPDIR)/CFTest-SuperString.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='source/shared/SuperString.cpp' object='source/shared/CFTest-SuperString.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o CFTest-SuperString.o `test -f 'source/shared/SuperString.cpp' || echo '$(srcdir)/'`source/shared/SuperString.cpp
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o source/shared/CFTest-SuperString.o `test -f 'source/shared/SuperString.cpp' || echo '$(srcdir)/'`source/shared/SuperString.cpp
 
-CFTest-SuperString.obj: source/shared/SuperString.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT CFTest-SuperString.obj -MD -MP -MF $(DEPDIR)/CFTest-SuperString.Tpo -c -o CFTest-SuperString.obj `if test -f 'source/shared/SuperString.cpp'; then $(CYGPATH_W) 'source/shared/SuperString.cpp'; else $(CYGPATH_W) '$(srcdir)/source/shared/SuperString.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/CFTest-SuperString.Tpo $(DEPDIR)/CFTest-SuperString.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='source/shared/SuperString.cpp' object='CFTest-SuperString.obj' libtool=no @AMDEPBACKSLASH@
+source/shared/CFTest-SuperString.obj: source/shared/SuperString.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT source/shared/CFTest-SuperString.obj -MD -MP -MF source/shared/$(DEPDIR)/CFTest-SuperString.Tpo -c -o source/shared/CFTest-SuperString.obj `if test -f 'source/shared/SuperString.cpp'; then $(CYGPATH_W) 'source/shared/SuperString.cpp'; else $(CYGPATH_W) '$(srcdir)/source/shared/SuperString.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) source/shared/$(DEPDIR)/CFTest-SuperString.Tpo source/shared/$(DEPDIR)/CFTest-SuperString.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='source/shared/SuperString.cpp' object='source/shared/CFTest-SuperString.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o CFTest-SuperString.obj `if test -f 'source/shared/SuperString.cpp'; then $(CYGPATH_W) 'source/shared/SuperString.cpp'; else $(CYGPATH_W) '$(srcdir)/source/shared/SuperString.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o source/shared/CFTest-SuperString.obj `if test -f 'source/shared/SuperString.cpp'; then $(CYGPATH_W) 'source/shared/SuperString.cpp'; else $(CYGPATH_W) '$(srcdir)/source/shared/SuperString.cpp'; fi`
 
-CFTest-CFUtils.o: source/shared/CFUtils.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT CFTest-CFUtils.o -MD -MP -MF $(DEPDIR)/CFTest-CFUtils.Tpo -c -o CFTest-CFUtils.o `test -f 'source/shared/CFUtils.cpp' || echo '$(srcdir)/'`source/shared/CFUtils.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/CFTest-CFUtils.Tpo $(DEPDIR)/CFTest-CFUtils.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='source/shared/CFUtils.cpp' object='CFTest-CFUtils.o' libtool=no @AMDEPBACKSLASH@
+source/shared/CFTest-CFUtils.o: source/shared/CFUtils.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT source/shared/CFTest-CFUtils.o -MD -MP -MF source/shared/$(DEPDIR)/CFTest-CFUtils.Tpo -c -o source/shared/CFTest-CFUtils.o `test -f 'source/shared/CFUtils.cpp' || echo '$(srcdir)/'`source/shared/CFUtils.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) source/shared/$(DEPDIR)/CFTest-CFUtils.Tpo source/shared/$(DEPDIR)/CFTest-CFUtils.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='source/shared/CFUtils.cpp' object='source/shared/CFTest-CFUtils.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o CFTest-CFUtils.o `test -f 'source/shared/CFUtils.cpp' || echo '$(srcdir)/'`source/shared/CFUtils.cpp
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o source/shared/CFTest-CFUtils.o `test -f 'source/shared/CFUtils.cpp' || echo '$(srcdir)/'`source/shared/CFUtils.cpp
 
-CFTest-CFUtils.obj: source/shared/CFUtils.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT CFTest-CFUtils.obj -MD -MP -MF $(DEPDIR)/CFTest-CFUtils.Tpo -c -o CFTest-CFUtils.obj `if test -f 'source/shared/CFUtils.cpp'; then $(CYGPATH_W) 'source/shared/CFUtils.cpp'; else $(CYGPATH_W) '$(srcdir)/source/shared/CFUtils.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/CFTest-CFUtils.Tpo $(DEPDIR)/CFTest-CFUtils.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='source/shared/CFUtils.cpp' object='CFTest-CFUtils.obj' libtool=no @AMDEPBACKSLASH@
+source/shared/CFTest-CFUtils.obj: source/shared/CFUtils.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT source/shared/CFTest-CFUtils.obj -MD -MP -MF source/shared/$(DEPDIR)/CFTest-CFUtils.Tpo -c -o source/shared/CFTest-CFUtils.obj `if test -f 'source/shared/CFUtils.cpp'; then $(CYGPATH_W) 'source/shared/CFUtils.cpp'; else $(CYGPATH_W) '$(srcdir)/source/shared/CFUtils.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) source/shared/$(DEPDIR)/CFTest-CFUtils.Tpo source/shared/$(DEPDIR)/CFTest-CFUtils.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='source/shared/CFUtils.cpp' object='source/shared/CFTest-CFUtils.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o CFTest-CFUtils.obj `if test -f 'source/shared/CFUtils.cpp'; then $(CYGPATH_W) 'source/shared/CFUtils.cpp'; else $(CYGPATH_W) '$(srcdir)/source/shared/CFUtils.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CFTest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o source/shared/CFTest-CFUtils.obj `if test -f 'source/shared/CFUtils.cpp'; then $(CYGPATH_W) 'source/shared/CFUtils.cpp'; else $(CYGPATH_W) '$(srcdir)/source/shared/CFUtils.cpp'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -582,6 +611,10 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f source/main/$(DEPDIR)/$(am__dirstamp)
+	-rm -f source/main/$(am__dirstamp)
+	-rm -f source/shared/$(DEPDIR)/$(am__dirstamp)
+	-rm -f source/shared/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -591,7 +624,7 @@ clean: clean-am
 clean-am: clean-generic clean-libtool mostlyclean-am
 
 distclean: distclean-am
-	-rm -rf ./$(DEPDIR)
+	-rm -rf source/main/$(DEPDIR) source/shared/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -637,7 +670,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-	-rm -rf ./$(DEPDIR)
+	-rm -rf source/main/$(DEPDIR) source/shared/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

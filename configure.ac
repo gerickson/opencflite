@@ -4,7 +4,7 @@
 #
 # Declare autoconf version requirements
 #
-AC_PREREQ(2.61)
+AC_PREREQ([2.61])
 
 #
 # Initialize autoconf for the package
@@ -51,11 +51,22 @@ AC_CONFIG_HEADERS([include/config.h])
 AC_CONFIG_LIBOBJ_DIR([compat])
 
 #
-# Initialize automake for the package, specifying the minimum automake
-# version allowed and that we are not an official GNU package, but
-# rather a non-GNU package leveraging automake.
+# Configure automake with the desired options, indicating that this is not
+# a native GNU package, that we want "silent" build rules, and that we want
+# objects built in the same subdirectory as their source rather than collapsed
+# together at the top-level directory.
 #
-AM_INIT_AUTOMAKE([1.9 foreign])
+# Disable silent build rules by either passing --disable-silent-rules to
+# configure or passing V=1 to make
+#
+AM_INIT_AUTOMAKE([1.14 foreign silent-rules subdir-objects tar-pax])
+
+#
+# Silent build rules requires at least automake-1.11. Employ
+# techniques for not breaking earlier versions of automake.
+#
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+AM_SILENT_RULES([yes])
 
 #
 # Enable maintainer mode to prevent the package from constantly trying

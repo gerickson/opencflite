@@ -140,7 +140,7 @@ There are numerous avenues for Open CF-lite support:
 
 # Versioning
 
-Open CF-lite follows the Apple's upstream CoreFoundation versioning.
+Open CF-lite follows Apple's upstream CoreFoundation versioning.
 
 # License
 

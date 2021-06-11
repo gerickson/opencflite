@@ -506,10 +506,10 @@ am__DIST_COMMON = $(srcdir)/CoreFoundation.pc.in $(srcdir)/Makefile.in \
 	$(top_srcdir)/config/config.sub $(top_srcdir)/config/depcomp \
 	$(top_srcdir)/config/install-sh $(top_srcdir)/config/ltmain.sh \
 	$(top_srcdir)/config/missing \
-	$(top_srcdir)/config/mkinstalldirs INSTALL README TODO \
-	config/compile config/config.guess config/config.sub \
-	config/depcomp config/install-sh config/ltmain.sh \
-	config/missing config/mkinstalldirs
+	$(top_srcdir)/config/mkinstalldirs INSTALL TODO config/compile \
+	config/config.guess config/config.sub config/depcomp \
+	config/install-sh config/ltmain.sh config/missing \
+	config/mkinstalldirs
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -894,7 +894,7 @@ EXTRA_DIST = APPLE_LICENSE	\
 				  CONTRIBUTORS \
 				  INSTALL \
 				  LICENSE \
-				  README \
+				  README.md \
 				  TODO \
 				  BuildCFLite \
 				  BuildCFLite.windows \
@@ -3150,8 +3150,9 @@ ps-am:
 uninstall-am: uninstall-CF_includeHEADERS \
 	uninstall-libCoreFoundation_la_dataDATA \
 	uninstall-libLTLIBRARIES uninstall-pkgconfigDATA
-
-.MAKE: $(am__recursive_targets) install-am install-strip
+	@$(NORMAL_INSTALL)
+	$(MAKE) $(AM_MAKEFLAGS) uninstall-hook
+.MAKE: $(am__recursive_targets) install-am install-strip uninstall-am
 
 .PHONY: $(am__recursive_targets) CTAGS GTAGS TAGS all all-am \
 	am--refresh check check-am clean clean-cscope clean-generic \
@@ -3171,12 +3172,22 @@ uninstall-am: uninstall-CF_includeHEADERS \
 	maintainer-clean maintainer-clean-generic mostlyclean \
 	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
 	pdf pdf-am ps ps-am tags tags-am uninstall \
-	uninstall-CF_includeHEADERS uninstall-am \
+	uninstall-CF_includeHEADERS uninstall-am uninstall-hook \
 	uninstall-libCoreFoundation_la_dataDATA \
 	uninstall-libLTLIBRARIES uninstall-pkgconfigDATA
 
 .PRECIOUS: Makefile
 
+
+# A hook for the 'uninstall' target to ensure that directories this
+# package creates or that this package populates during the 'install'
+# target are removed, if empty (that is, this package is the "last one
+# out").
+
+uninstall-hook:
+	-rmdir ${DESTDIR}${pkgconfigdir}
+	-rmdir ${DESTDIR}${libCoreFoundation_la_datadir}
+	-rmdir ${DESTDIR}${CF_includedir}
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

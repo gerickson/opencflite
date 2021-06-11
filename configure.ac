@@ -2,6 +2,31 @@
 # Process this file with autoconf to produce a configure script.
 
 #
+#    Copyright (c) 2021 OpenCFLite Authors. All Rights Reserved.
+#
+#    This file contains Original Code and/or Modifications of Original Code
+#    as defined in and that are subject to the Apple Public Source License
+#    Version 2.0 (the 'License'). You may not use this file except in
+#    compliance with the License. Please obtain a copy of the License at
+#    http://www.opensource.apple.com/apsl/ and read it before using this
+#    file.
+#
+#    The Original Code and all software distributed under the License are
+#    distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+#    EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+#    INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+#    FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+#    Please see the License for the specific language governing rights and
+#    limitations under the License.
+#
+
+#
+#    Description:
+#      This file is the GNU autoconf input source file for
+#      OpenCFLite.
+#
+
+#
 # Declare autoconf version requirements
 #
 AC_PREREQ([2.61])
@@ -13,13 +38,17 @@ AC_PREREQ([2.61])
 # the Apple CoreFoundation release version and z tracks the OpenCFLite
 # release thereof.
 #
-AC_INIT([CoreFoundation],[635.1.0],[bfulgham@users.sourceforge.net],[opencflite])
+AC_INIT([CoreFoundation],
+        [635.15.0],
+        [bfulgham@users.sourceforge.net],
+        [opencflite],
+        [https://github.com/gerickson/opencflite/])
 
 #
 # Interface number, revision and age of the library interface passed to
 # libtool when the library is linked.
 #
-AC_SUBST(CF_VERSION_INFO, [635:1:0])
+AC_SUBST(CF_VERSION_INFO, [635:15:0])
 
 #
 # Check the sanity of thes source directory by checking for the
@@ -43,6 +72,13 @@ AC_CONFIG_MACRO_DIR([m4])
 # defines.
 #
 AC_CONFIG_HEADERS([include/config.h])
+
+#
+# Figure out what the canonical build, host and target tuples are.
+#
+AC_CANONICAL_BUILD
+AC_CANONICAL_HOST
+AC_CANONICAL_TARGET
 
 #
 # Tell autoconf where to find source files for interfaces that are missing
@@ -74,11 +110,6 @@ AM_SILENT_RULES([yes])
 # if ever, needs to be done "in the field".
 #
 AM_MAINTAINER_MODE
-
-#
-# Figure out what the canonical build, host and target tuples are.
-#
-AC_CANONICAL_HOST
 
 AC_MSG_CHECKING([for supported deployment target])
 
@@ -112,8 +143,15 @@ esac
 AC_MSG_RESULT(${deployment_target})
 
 #
-# Checks for programs
+# Checks for build host programs
 #
+
+# Check for compilers.
+#
+# These should be checked BEFORE we check for and, implicitly,
+# initialize libtool such that libtool knows what languages it has to
+# work with.
+
 AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_OBJC
@@ -121,18 +159,27 @@ CF_BSD_SOURCE
 AC_GNU_SOURCE
 AM_PROG_CC_C_O
 AC_PROG_CPP
+
+# Check for other compiler toolchain tools.
+
+AC_CHECK_TOOL(AR, ar)
+AC_CHECK_TOOL(OBJCOPY, objcopy)
+AC_CHECK_TOOL(RANLIB, ranlib)
+AC_CHECK_TOOL(STRIP, strip)
+
+# Check for other host tools.
+
 AC_PROG_INSTALL
 AC_PROG_LN_S
-AC_PROG_RANLIB
+
 AC_PATH_PROG(CMP, cmp)
-
-LT_PREREQ([2.2])
-LT_INIT
-AC_SUBST([LIBTOOL_DEPS])
-
 
 # Support building DLLs on Windows
 AC_LIBTOOL_WIN32_DLL
+
+# Check for and initialize libtool
+
+LT_INIT
 
 #
 # Checks for language qualifiers and semantics
@@ -161,7 +208,6 @@ test_gcc_flag() {
 }
 
 if test "x$GCC" = "xyes" ; then
-#    DESIRED_CFLAGS="-Wall -Wmost -pipe -Wno-trigraphs -Wno-parentheses -fexceptions -std=gnu99 -xc -mmacosx-version-min=10.5 -fconstant-cfstrings"
     DESIRED_CFLAGS="-Wall -Wmost -pipe -Wno-trigraphs -Wno-parentheses -fexceptions -std=gnu99 -mmacosx-version-min=10.5 -fconstant-cfstrings"
 
     for flag in $DESIRED_CFLAGS ; do
@@ -752,6 +798,12 @@ AC_MSG_NOTICE([
   ---------------------
   Package                     : ${PACKAGE_NAME}
   Version                     : ${PACKAGE_VERSION}
+  Build system                : ${build}
+  Host system                 : ${host}
+  Target system               : ${target}
+  Target architecture         : ${target_cpu}
+  Target OS                   : ${target_os}
+  Cross compiling             : ${cross_compiling}
   Deployment target           : ${deployment_target}
   Build shared library        : ${enable_shared}
   Build static library        : ${enable_static}
@@ -770,10 +822,15 @@ AC_MSG_NOTICE([
   Time Zone compile options   : ${TZ_CPPFLAGS}
   Time Zone default file      : ${tz_default_file}
   Time Zone data directory    : ${tz_data_dir}
-  Compiler                    : ${CC}
-  Preprocessor flags          : ${CPPFLAGS}
-  Compile flags               : ${CFLAGS}
-  Link flags                  : ${LDFLAGS}
+  C Preprocessor              : ${CPP}
+  C Compiler                  : ${CC}
+  Archiver                    : ${AR}
+  Archive Indexer             : ${RANLIB}
+  Symbol Stripper             : ${STRIP}
+  Object Copier               : ${OBJCOPY}
+  C Preprocessor flags        : ${CPPFLAGS:--}
+  C Compile flags             : ${CFLAGS:--}
+  Link flags                  : ${LDFLAGS:--}
   Link libraries              : ${LIBS}
 
 ])

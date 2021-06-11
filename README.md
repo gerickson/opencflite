@@ -149,5 +149,5 @@ See the `LICENSE` file for more information.
 
 Enjoy!
 
-Brent Fulgham <bfulgham@gmail.com>
-Grant Erickson <gerickson@nuovations.com>
+* Brent Fulgham <bfulgham@gmail.com>
+* Grant Erickson <gerickson@nuovations.com>

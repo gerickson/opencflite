@@ -40,27 +40,36 @@ jobs:
     env:
       CC: ${{matrix.compiler['c']}}
       CXX: ${{matrix.compiler['cxx']}}
+
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+
     - name: Install Package Dependencies
       run: |
         sudo apt-get update
         sudo apt-get -y install autoconf automake libtool pkg-config
         sudo apt-get -y install gobjc gobjc++ uuid-dev libicu-dev
+
     - name: Install Distribution Archive Dependencies
       run: |
         cd /tmp
         curl https://data.iana.org/time-zones/releases/tzcode2021a.tar.gz -o tzcode2021a.tar.gz || wget https://data.iana.org/time-zones/releases/tzcode2021a.tar.gz
         mkdir tzcode2021a
         tar --directory tzcode2021a -zxf tzcode2021a.tar.gz
+
+    # Note that in Ubuntu 20 and later, with ICU 60 and later, neither
+    # 'pkg-config icu' nor 'icu-config' are supported. Consequently,
+    # we have to explicitly specify '--with-icu=/usr'.
+
     - name: Configure
       run: |
-        ./configure -C --with-tz-includes=/tmp/tzcode2021a
+        ./configure -C --with-icu=/usr --with-tz-includes=/tmp/tzcode2021a
+
     - name: Build
       run: |
         make -j
-        ldd .libs/libCoreFoundation.so
+
     - name: Test
       run: |
-        make V=1 check
+        make -j check

@@ -231,7 +231,7 @@ EXTRA_DIST			= APPLE_LICENSE	\
 				  CONTRIBUTORS \
 				  INSTALL \
 				  LICENSE \
-				  README \
+				  README.md \
 				  TODO \
 				  BuildCFLite \
 				  BuildCFLite.windows \

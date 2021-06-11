@@ -395,3 +395,12 @@ EXTRA_DIST			= APPLE_LICENSE	\
 				  XCode_Configs/ConfigRelease.xcconfig \
 				  ${libCoreFoundation_la_data_DATA}
 
+# A hook for the 'uninstall' target to ensure that directories this
+# package creates or that this package populates during the 'install'
+# target are removed, if empty (that is, this package is the "last one
+# out").
+
+uninstall-hook:
+	-rmdir ${DESTDIR}${pkgconfigdir}
+	-rmdir ${DESTDIR}${libCoreFoundation_la_datadir}
+	-rmdir ${DESTDIR}${CF_includedir}

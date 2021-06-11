@@ -1,6 +1,20 @@
                       Changes and What's New in OpenCFLite
                       ------------------------------------
 
+2021-06-10 v476.19.0
+
+  * Forked and migrated the package to GitHub.
+
+  * Enabled continuous integration (CI) with GitHub actions against
+    Linux with both GCC and clang/LLVM.
+
+  * Migrated the README content to Markdown and added a GitHub CI
+    build badge.
+
+  * Modernized configure.ac, including by utilizing 'subdir-objects'
+    and by making the build less chatty by default by leveraging
+    'silent-rules'.
+
 2011-09-07 v476.19.0
 
   * Address a bug in CFSetApplyFunction that can result in it

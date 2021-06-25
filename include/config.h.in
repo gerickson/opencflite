@@ -492,6 +492,11 @@
 # undef _BSD_SOURCE
 #endif
 
+/* Enable BSD or SVID extensions on systems that have them.  */
+#ifndef _DEFAULT_SOURCE
+# undef _DEFAULT_SOURCE
+#endif
+
 /* Define to 1 if on MINIX. */
 #undef _MINIX
 

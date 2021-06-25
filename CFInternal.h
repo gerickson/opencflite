@@ -65,6 +65,7 @@
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #include <sys/time.h>
 #include <pthread.h>
+#include <signal.h>
 #endif
 #include <limits.h>
 #include "auto_stubs.h"

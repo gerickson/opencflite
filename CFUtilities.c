@@ -55,6 +55,7 @@
 #define getpid _getpid
 
 #endif
+#include <inttypes.h>
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
@@ -623,8 +624,8 @@ static void __CFLogCString(int32_t lev, const char *message, size_t length, char
 	bannerLen = asprintf(&banner, "%04d-%02d-%02d %02d:%02d:%02d.%03d %s[%d:%x] ", year, month, day, hour, minute, second, ms, *_CFGetProgname(), getpid(), GetCurrentThreadId());
 	asprintf(&thread, "%x", GetCurrentThreadId());
 #else
-	bannerLen = asprintf(&banner, "%04d-%02d-%02d %02d:%02d:%02d.%03d %s[%d:%x] ", year, month, day, hour, minute, second, ms, *_CFGetProgname(), getpid(), (unsigned int)pthread_self());
-	asprintf(&thread, "%x", pthread_self());
+	bannerLen = asprintf(&banner, "%04d-%02d-%02d %02d:%02d:%02d.%03d %s[%d:%" PRIxPTR "] ", year, month, day, hour, minute, second, ms, *_CFGetProgname(), getpid(), (uintptr_t)pthread_self());
+	asprintf(&thread, "%" PRIxPTR "", (uintptr_t)pthread_self());
 #endif
 	asprintf(&time, "%04d-%02d-%02d %02d:%02d:%02d.%03d", year, month, day, hour, minute, second, ms);
 

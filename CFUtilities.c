@@ -48,6 +48,7 @@
 #include <asl.h>
 #include <sys/uio.h>
 #endif
+#include <inttypes.h>
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
@@ -575,7 +576,7 @@ void CFLog(int32_t lev, CFStringRef format, ...) {
 #if DEPLOYMENT_TARGET_WINDOWS
     printf("%04d-%02d-%02d %02d:%02d:%06.3f %s[%d] CFLog (%d): ", (int)gdate.year, gdate.month, gdate.day, gdate.hour, gdate.minute, gdate.second, *_CFGetProgname(), getpid(), lev);
 #elif DEPLOYMENT_TARGET_LINUX
-	fprintf(stderr, "%04d-%02d-%02d %02d:%02d:%06.3f %s[%d:%x] CFLog: ", (int)gdate.year, gdate.month, gdate.day, gdate.hour, gdate.minute, gdate.second, *_CFGetProgname(), getpid(), (uintptr_t)pthread_self());
+	fprintf(stderr, "%04d-%02d-%02d %02d:%02d:%06.3f %s[%d:%" PRIxPTR "] CFLog: ", (int)gdate.year, gdate.month, gdate.day, gdate.hour, gdate.minute, gdate.second, *_CFGetProgname(), getpid(), (uintptr_t)pthread_self());
 #else
     fprintf_l(stderr, NULL, "%04d-%02d-%02d %02d:%02d:%06.3f %s[%d:%x] CFLog: ", (int)gdate.year, gdate.month, gdate.day, gdate.hour, gdate.minute, gdate.second, *_CFGetProgname(), getpid(), pthread_mach_thread_np(pthread_self()));
 #endif

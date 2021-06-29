@@ -141,6 +141,7 @@ CF_COMMON_SOURCES		= CFApplicationPreferences.c		\
 				  CFDate.c				\
 				  CFDictionary.c			\
 				  CFError.c				\
+				  CFFileDescriptor.c                    \
 				  CFFileUtilities.c			\
 				  CFLocaleIdentifier.c			\
 				  CFLocale.c				\

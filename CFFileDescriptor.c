@@ -25,6 +25,7 @@
  *
  */
 
+#include <fcntl.h>
 #include <inttypes.h>
 
 #include <AssertMacros.h>
@@ -34,13 +35,24 @@
 
 #if DEPLOYMENT_TARGET_MACOS || DEPLOYMENT_TARGET_LINUX
 #include <dlfcn.h>
+#include <sys/param.h>
 #endif
 
 /* Preprocessor Definitions */
 
 #define LOG_CFFILEDESCRIPTOR 1
 
-#define __CFFILEDESCRIPTOR_INVALID_DESCRIPTOR (CFFileDescriptorNativeDescriptor)(-1)
+#if LOG_CFFILEDESCRIPTOR
+#define __CFFileDescriptorMaybeLog(format, ...)  do { fprintf(stderr, format, ##__VA_ARGS__); fflush(stderr); } while (0)
+#else
+#define __CFFileDescriptorMaybeLog(format, ...)
+#endif
+
+#define __CFFileDescriptorMaybeTrace(dir, name)  __CFFileDescriptorMaybeLog(dir " %s\n", name);
+#define __CFFileDescriptorEnter()                __CFFileDescriptorMaybeTrace("-->", __func__);
+#define __CFFileDescriptorExit()                 __CFFileDescriptorMaybeTrace("<--", __func__);
+
+#define __CFFILEDESCRIPTOR_INVALID_DESCRIPTOR    (CFFileDescriptorNativeDescriptor)(-1)
 
 // In the CFRuntimeBase info reserved bits:
 //
@@ -63,14 +75,52 @@
 
 /* Type Declarations */
 
-struct __CFFileDescriptor {
-    CFRuntimeBase                    _base;
-	CFSpinLock_t                     _lock;
-	CFFileDescriptorNativeDescriptor _descriptor;
-	CFFileDescriptorCallBack         _callout;
-	CFFileDescriptorContext          _context;
-    CFRunLoopSourceRef               _source;
+/*
+ * Locks are to be acquired in the following order:
+ *
+ * 1. Manager:    mAllFileDescriptorsLock
+ * 2. Descriptor: _lock (via __CFFileDescriptorLock)
+ * 3. Manager:    mActiveFileDescriptorsLock
+ *
+ */
+
+struct __CFFileDescriptorManager {
+	// Covers:
+	//   - mAllFileDescriptorsMap
+	CFSpinLock_t                      mAllFileDescriptorsLock;
+
+	CFMutableDictionaryRef            mAllFileDescriptorsMap;
+
+	// Covers:
+	//   - mRead/WriteFileDescriptors
+	//   - mRead/WriteFileDescriptorsNativeDescriptors
+	//   - mGeneration
+	//   - mThread
+	CFSpinLock_t                      mActiveFileDescriptorsLock;
+
+	CFMutableArrayRef                 mReadFileDescriptors;
+	CFMutableArrayRef                 mWriteFileDescriptors;
+	CFMutableDataRef                  mReadFileDescriptorsNativeDescriptors;
+	CFMutableDataRef                  mWriteFileDescriptorsNativeDescriptors;
+	volatile UInt32                   mGeneration;
+	void *                            mThread;
+	Boolean                           mReadFileDescriptorsTimeoutInvalid;
+	CFFileDescriptorNativeDescriptor  mWakeupNativeDescriptorPair[2];
 };
+
+struct __CFFileDescriptor {
+    CFRuntimeBase                     _base;
+	CFSpinLock_t                      _lock;
+	CFFileDescriptorNativeDescriptor  _descriptor;
+	CFFileDescriptorCallBack          _callout;
+	CFFileDescriptorContext           _context;
+    CFRunLoopSourceRef                _source;
+    CFMutableArrayRef                 _loops;
+};
+
+typedef void *	    (__CFFileDescriptorContextRetainCallBack)(void *info);
+typedef void	    (__CFFileDescriptorContextReleaseCallBack)(void *info);
+typedef CFStringRef	(__CFFileDescriptorContextCopyDescriptionCallBack)(void *info);
 
 /* Function Prototypes */
 
@@ -81,7 +131,15 @@ static CFStringRef __CFFileDescriptorCopyDescription(CFTypeRef cf);
 
 // Other Functions
 
-static void __CFFileDescriptorInvalidate_Retained(CFFileDescriptorRef f);
+static CFFileDescriptorRef __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
+															  CFFileDescriptorNativeDescriptor fd,
+															  Boolean                          closeOnInvalidate,
+															  CFFileDescriptorCallBack         callout,
+															  const CFFileDescriptorContext *  context,
+															  Boolean                          reuseExistingInstance);
+static SInt32              __CFFileDescriptorManagerCreateWakeupPipe(void);
+static void                __CFFileDescriptorManagerInitialize_Locked(void);
+static void                __CFFileDescriptorInvalidate_Retained(CFFileDescriptorRef f);
 
 /* Global Variables */
 
@@ -98,6 +156,22 @@ static const CFRuntimeClass __CFFileDescriptorClass = {
     NULL,                             // copyFormattingDescription
     __CFFileDescriptorCopyDescription
 };
+
+static struct __CFFileDescriptorManager __sCFFileDescriptorManager = {
+	CFSpinLockInit,
+	NULL,
+	CFSpinLockInit,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	0,
+	NULL,
+	TRUE,
+	{ __CFFILEDESCRIPTOR_INVALID_DESCRIPTOR, __CFFILEDESCRIPTOR_INVALID_DESCRIPTOR }
+};
+
+// MARK: Inline Functions
 
 CF_INLINE Boolean __CFFileDescriptorIsReadSignaled(CFFileDescriptorRef f) {
     return (Boolean)__CFBitfieldGetValue(((const CFRuntimeBase *)f)->_cfinfo[CF_INFO_BITS],
@@ -187,15 +261,277 @@ CF_INLINE void __CFFileDescriptorUnlock(CFFileDescriptorRef f) {
     __CFSpinUnlock(&(f->_lock));
 }
 
+CF_INLINE CFIndex __CFFileDescriptorFdGetSize(CFDataRef fdSet) {
+#if DEPLOYMENT_TARGET_WINDOWS
+    fd_set* set = (fd_set*)CFDataGetBytePtr(fdSet);
+    return set ? set->fd_count : 0;
+#else
+    return NBBY * CFDataGetLength(fdSet);
+#endif
+}
+
+CF_INLINE Boolean __CFFileDescriptorFdSet(CFFileDescriptorNativeDescriptor fd, CFMutableDataRef fdSet) {
+    /* returns true if a change occurred, false otherwise */
+    Boolean retval = false;
+
+	__Require(fd != __CFFILEDESCRIPTOR_INVALID_DESCRIPTOR, done);
+	__Require(fd >= 0, done);
+
+#if DEPLOYMENT_TARGET_WINDOWS
+	fd_set* set = (fd_set*)CFDataGetMutableBytePtr(fdSet);
+	if ((set->fd_count * sizeof(HANDLE) + sizeof(u_int)) >= CFDataGetLength(fdSet)) {
+		CFDataIncreaseLength(fdSet, sizeof(HANDLE));
+		set = (fd_set*)CFDataGetMutableBytePtr(fdSet);
+	}
+	if (!FD_ISSET(fd, set)) {
+		retval = true;
+		FD_SET(fd, set);
+	}
+#else
+	CFIndex numFds = NBBY * CFDataGetLength(fdSet);
+	fd_mask *fds_bits;
+	if (fd >= numFds) {
+		CFIndex oldSize = numFds / NFDBITS, newSize = (fd + NFDBITS) / NFDBITS, changeInBytes = (newSize - oldSize) * sizeof(fd_mask);
+		CFDataIncreaseLength(fdSet, changeInBytes);
+		fds_bits = (fd_mask *)CFDataGetMutableBytePtr(fdSet);
+		memset(fds_bits + oldSize, 0, changeInBytes);
+	} else {
+		fds_bits = (fd_mask *)CFDataGetMutableBytePtr(fdSet);
+	}
+	if (!FD_ISSET(fd, (fd_set *)fds_bits)) {
+		retval = true;
+		FD_SET(fd, (fd_set *)fds_bits);
+	}
+#endif /* DEPLOYMENT_TARGET_WINDOWS */
+
+ done:
+    return retval;
+}
+
+CF_INLINE Boolean __CFFileDescriptorFdClr(CFFileDescriptorNativeDescriptor fd, CFMutableDataRef fdSet) {
+    /* returns true if a change occurred, false otherwise */
+    Boolean retval = false;
+
+	__Require(fd != __CFFILEDESCRIPTOR_INVALID_DESCRIPTOR, done);
+	__Require(fd >= 0, done);
+
+#if DEPLOYMENT_TARGET_WINDOWS
+	fd_set* set = (fd_set*)CFDataGetMutableBytePtr(fdSet);
+	if (FD_ISSET(fd, set)) {
+		retval = true;
+		FD_CLR(fd, set);
+	}
+#else
+	CFIndex numFds = NBBY * CFDataGetLength(fdSet);
+	fd_mask *fds_bits;
+	if (fd < numFds) {
+		fds_bits = (fd_mask *)CFDataGetMutableBytePtr(fdSet);
+		if (FD_ISSET(fd, (fd_set *)fds_bits)) {
+			retval = true;
+			FD_CLR(fd, (fd_set *)fds_bits);
+		}
+	}
+#endif /* DEPLOYMENT_TARGET_WINDOWS */
+
+ done:
+    return retval;
+}
+
 // MARK: Other Functions
+
+/* static */ CFFileDescriptorRef
+__CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
+								   CFFileDescriptorNativeDescriptor fd,
+								   Boolean                          closeOnInvalidate,
+								   CFFileDescriptorCallBack         callout,
+								   const CFFileDescriptorContext *  context,
+								   Boolean                          reuseExistingInstance) {
+    CHECK_FOR_FORK();
+	Boolean                          cached;
+	CFFileDescriptorRef              result = NULL;
+
+	__CFFileDescriptorEnter();
+
+	// Ensure the native descriptor is valid.
+
+	__Require(fd > __CFFILEDESCRIPTOR_INVALID_DESCRIPTOR, done);
+
+	// Check and, if necessary, perform lazy initialization and
+	// start-up of the file descriptor manager.
+
+    __CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+    if (__sCFFileDescriptorManager.mReadFileDescriptors == NULL) {
+		__CFFileDescriptorManagerInitialize_Locked();
+	}
+    __CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+	// Check and, if necessary, perform lazy creation of a map for all
+	// file descriptor objects under management.
+
+    __CFSpinLock(&__sCFFileDescriptorManager.mAllFileDescriptorsLock);
+
+    if (__sCFFileDescriptorManager.mAllFileDescriptorsMap == NULL) {
+        __sCFFileDescriptorManager.mAllFileDescriptorsMap =
+			CFDictionaryCreateMutable(kCFAllocatorSystemDefault,
+									  0,
+									  NULL,
+									  &kCFTypeDictionaryValueCallBacks);
+    }
+
+	__CFFileDescriptorMaybeLog("Manager initialized.\n");
+
+	// The file descriptor manager is running and we have a map for
+	// all file descriptor objects under management; start the work of
+	// creating this file descriptor.
+
+	// First, check the management map and see if we already have an
+	// object under management for the specified native file
+	// descriptor.
+
+	__CFFileDescriptorMaybeLog("Checking cache %p for descriptor %d...\n",
+							   __sCFFileDescriptorManager.mAllFileDescriptorsMap,
+							   fd);
+
+	cached = CFDictionaryGetValueIfPresent(__sCFFileDescriptorManager.mAllFileDescriptorsMap, (void *)(uintptr_t)fd, (const void **)&result);
+
+	__CFFileDescriptorMaybeLog("Descriptor %d cached? %u\n", fd, cached);
+
+	// If we had an object in the management map, we can either reuse
+	// or recycle it, depending on what the caller specified.
+
+	if (cached) {
+		// Reuse it
+
+        if (reuseExistingInstance) {
+			__CFSpinUnlock(&__sCFFileDescriptorManager.mAllFileDescriptorsLock);
+			CFRetain(result);
+
+		// Recycle it
+
+		} else {
+			__CFFileDescriptorMaybeLog("reuseExistingInstance is %u, "
+									   "removing existing instance %p\n",
+									   reuseExistingInstance, result);
+
+			__CFSpinUnlock(&__sCFFileDescriptorManager.mAllFileDescriptorsLock);
+
+			CFFileDescriptorInvalidate(result);
+			result = NULL;
+
+			__CFSpinLock(&__sCFFileDescriptorManager.mAllFileDescriptorsLock);
+		}
+	}
+
+	// Either there was nothing in the cache or there was something in
+	// the cache and the caller wants it recycled. Regardless, we are
+	// creating a file descriptor object as if anew.
+
+	if (!cached || !reuseExistingInstance) {
+		result = (CFFileDescriptorRef)_CFRuntimeCreateInstance(allocator,
+															   __kCFFileDescriptorTypeID,
+															   sizeof(struct __CFFileDescriptor) - sizeof(CFRuntimeBase),
+															   NULL);
+		__Require_Action(result != NULL,
+						 done,
+						 __CFSpinUnlock(&__sCFFileDescriptorManager.mAllFileDescriptorsLock));
+
+		__CFFileDescriptorClearWriteSignaled(result);
+		__CFFileDescriptorClearReadSignaled(result);
+
+		CF_SPINLOCK_INIT_FOR_STRUCTS(result->_lock);
+
+		result->_descriptor              = fd;
+		result->_loops                   = CFArrayCreateMutable(allocator, 0, NULL);
+		result->_callout                 = callout;
+
+		result->_context.info            = NULL;
+		result->_context.retain          = NULL;
+		result->_context.release         = NULL;
+		result->_context.copyDescription = NULL;
+
+		// Error-wise, we should have clear sailing from here. Add the
+		// newly-created descriptor object to the management map.
+
+		CFDictionaryAddValue(__sCFFileDescriptorManager.mAllFileDescriptorsMap,
+							 (void *)(uintptr_t)fd,
+							 result);
+
+		__CFSpinUnlock(&__sCFFileDescriptorManager.mAllFileDescriptorsLock);
+
+		// If the caller provided context, establish it, retaining the
+		// user-supplied info pointer if a retain function pointer was
+		// supplied.
+
+		if (context != NULL) {
+			void *contextInfo = ((context->retain != NULL) ? (void *)context->retain(context->info) : context->info);
+
+			__CFFileDescriptorLock(result);
+
+			result->_context.retain          = context->retain;
+			result->_context.release         = context->release;
+			result->_context.copyDescription = context->copyDescription;
+			result->_context.info            = contextInfo;
+
+			__CFFileDescriptorUnlock(result);
+		}
+	}
+
+ done:
+	__CFFileDescriptorExit();
+
+	return result;
+}
+
+/* static */ SInt32
+__CFFileDescriptorManagerCreateWakeupPipe(void)
+{
+	return pipe(__sCFFileDescriptorManager.mWakeupNativeDescriptorPair);
+}
+
+/* static */ void
+__CFFileDescriptorManagerInitialize_Locked(void) {
+	SInt32 status;
+
+	__CFFileDescriptorEnter();
+
+    __sCFFileDescriptorManager.mReadFileDescriptors  = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, NULL);
+    __sCFFileDescriptorManager.mWriteFileDescriptors = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, NULL);
+
+    __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors  = CFDataCreateMutable(kCFAllocatorSystemDefault, 0);
+    __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors = CFDataCreateMutable(kCFAllocatorSystemDefault, 0);
+
+#if DEPLOYMENT_TARGET_WINDOWS
+#warning "CFFileDescriptor Windows portability issue!"
+#endif
+
+	status = __CFFileDescriptorManagerCreateWakeupPipe();
+
+	if (status < 0) {
+        CFLog(kCFLogLevelWarning, CFSTR("*** Could not create wakeup pipe for CFFileDescriptor!!!"));
+    } else {
+		status = fcntl(__sCFFileDescriptorManager.mWakeupNativeDescriptorPair[0], F_SETFL, O_NONBLOCK);
+		__Require(status == 0, done);
+
+		status = fcntl(__sCFFileDescriptorManager.mWakeupNativeDescriptorPair[1], F_SETFL, O_NONBLOCK);
+		__Require(status == 0, done);
+
+        __CFFileDescriptorFdSet(__sCFFileDescriptorManager.mWakeupNativeDescriptorPair[1],
+								__sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors);
+    }
+
+ done:
+	__CFFileDescriptorExit();
+
+	return;
+}
 
 /* static */ void
 __CFFileDescriptorInvalidate_Retained(CFFileDescriptorRef f) {
     __CFFileDescriptorLock(f);
 
     if (__CFFileDescriptorIsValid(f)) {
-        void *contextInfo = NULL;
-        void (*contextRelease)(const void *info) = NULL;
+		__CFFileDescriptorContextReleaseCallBack *contextReleaseCallBack = NULL;
+        void *                                    contextInfo            = NULL;
 
         __CFFileDescriptorClearValid(f);
         __CFFileDescriptorClearWriteSignaled(f);
@@ -213,8 +549,8 @@ __CFFileDescriptorInvalidate_Retained(CFFileDescriptorRef f) {
 		// the object since neither has anything to do with the object
 		// itself.
 
-        contextInfo = f->_context.info;
-        contextRelease = f->_context.release;
+        contextInfo            = f->_context.info;
+        contextReleaseCallBack = f->_context.release;
 
         f->_context.info = NULL;
         f->_context.retain = NULL;
@@ -226,8 +562,8 @@ __CFFileDescriptorInvalidate_Retained(CFFileDescriptorRef f) {
 		// OK, we are done with the object. Release the context, if
 		// a function has been provided to do so.
 
-        if (NULL != contextRelease) {
-            contextRelease(contextInfo);
+        if (contextReleaseCallBack != NULL) {
+            contextReleaseCallBack(contextInfo);
         }
     } else {
         __CFFileDescriptorUnlock(f);
@@ -237,7 +573,11 @@ __CFFileDescriptorInvalidate_Retained(CFFileDescriptorRef f) {
 // MARK: CFRuntimeClass Functions
 
 __private_extern__ void __CFFileDescriptorInitialize(void) {
+	__CFFileDescriptorEnter();
+
     __kCFFileDescriptorTypeID = _CFRuntimeRegisterClass(&__CFFileDescriptorClass);
+
+	__CFFileDescriptorExit();
 }
 
 /* static */ void
@@ -245,35 +585,16 @@ __CFFileDescriptorDeallocate(CFTypeRef cf) {
     __CFGenericValidateType(cf, CFFileDescriptorGetTypeID());
 }
 
-/* static */ Boolean
-__CFFileDescriptorEqual(CFTypeRef left, CFTypeRef right) {
-	Boolean result = FALSE;
-
-    __CFGenericValidateType(left, CFFileDescriptorGetTypeID());
-    __CFGenericValidateType(right, CFFileDescriptorGetTypeID());
-
-	return result;
-}
-
-/* static */ CFHashCode
-__CFFileDescriptorHash(CFTypeRef cf) {
-	CFHashCode result = 0;
-
-    __CFGenericValidateType(cf, CFFileDescriptorGetTypeID());
-
-	return result;
-}
-
 /* static */ CFStringRef
 __CFFileDescriptorCopyDescription(CFTypeRef cf) {
-	static const char * const kUnknownName = "???";
-    CFFileDescriptorRef f = (CFFileDescriptorRef)cf;
-	void *              addr;
-	const char *        name;
-    void *              contextInfo = NULL;
-    CFStringRef (*contextCopyDescription)(const void *info) = NULL;
-    CFStringRef         contextDesc = NULL;
-    CFMutableStringRef  result      = NULL;
+	static const char * const                          kUnknownName = "???";
+    CFFileDescriptorRef                                f = (CFFileDescriptorRef)cf;
+	void *                                             addr;
+	const char *                                       name;
+    void *                                             contextInfo                    = NULL;
+	__CFFileDescriptorContextCopyDescriptionCallBack * contextCopyDescriptionCallBack = NULL;
+    CFStringRef                                        contextDesc                    = NULL;
+    CFMutableStringRef                                 result                         = NULL;
 
     __CFGenericValidateType(cf, CFFileDescriptorGetTypeID());
 
@@ -303,12 +624,12 @@ __CFFileDescriptorCopyDescription(CFTypeRef cf) {
 						 addr);
 
     contextInfo = f->_context.info;
-    contextCopyDescription = f->_context.copyDescription;
+    contextCopyDescriptionCallBack = f->_context.copyDescription;
 
     __CFFileDescriptorUnlock(f);
 
-    if (NULL != contextInfo && NULL != contextCopyDescription) {
-        contextDesc = (CFStringRef)contextCopyDescription(contextInfo);
+    if (contextInfo != NULL && contextCopyDescriptionCallBack != NULL) {
+        contextDesc = contextCopyDescriptionCallBack(contextInfo);
     }
     if (NULL == contextDesc) {
         contextDesc = CFStringCreateWithFormat(CFGetAllocator(f), NULL, CFSTR("<CFFileDescriptor context %p>"), contextInfo);
@@ -331,8 +652,24 @@ CFFileDescriptorGetTypeID(void) {
 }
 
 CFFileDescriptorRef
-CFFileDescriptorCreate(CFAllocatorRef allocator, CFFileDescriptorNativeDescriptor fd, Boolean closeOnInvalidate, CFFileDescriptorCallBack callout, const CFFileDescriptorContext *context) {
-	CFFileDescriptorRef result = NULL;
+CFFileDescriptorCreate(CFAllocatorRef                   allocator,
+					   CFFileDescriptorNativeDescriptor fd,
+					   Boolean                          closeOnInvalidate,
+					   CFFileDescriptorCallBack         callout,
+					   const CFFileDescriptorContext *  context) {
+	static const Boolean kReuseExistingInstance = TRUE;
+	CFFileDescriptorRef  result                 = NULL;
+
+	__CFFileDescriptorEnter();
+
+	result = __CFFileDescriptorCreateWithNative(allocator,
+												fd,
+												closeOnInvalidate,
+												callout,
+												context,
+												kReuseExistingInstance);
+
+	__CFFileDescriptorExit();
 
 	return result;
 }
@@ -364,11 +701,15 @@ void
 CFFileDescriptorEnableCallBacks(CFFileDescriptorRef f, CFOptionFlags callBackTypes) {
     CHECK_FOR_FORK();
 
+	__CFFileDescriptorEnter();
+
     __CFGenericValidateType(f, CFFileDescriptorGetTypeID());
 
 	__Require(callBackTypes != 0, done);
 
  done:
+	__CFFileDescriptorExit();
+
 	return;
 }
 
@@ -376,13 +717,23 @@ void
 CFFileDescriptorDisableCallBacks(CFFileDescriptorRef f, CFOptionFlags callBackTypes) {
     CHECK_FOR_FORK();
 
+	__CFFileDescriptorEnter();
+
     __CFGenericValidateType(f, CFFileDescriptorGetTypeID());
 
+	__Require(callBackTypes != 0, done);
+
+ done:
+	__CFFileDescriptorExit();
+
+	return;
 }
 
 void
 CFFileDescriptorInvalidate(CFFileDescriptorRef f) {
     CHECK_FOR_FORK();
+
+	__CFFileDescriptorEnter();
 
     __CFGenericValidateType(f, CFFileDescriptorGetTypeID());
 
@@ -395,6 +746,8 @@ CFFileDescriptorInvalidate(CFFileDescriptorRef f) {
 	__CFFileDescriptorInvalidate_Retained(f);
 
     CFRelease(f);
+
+	__CFFileDescriptorExit();
 }
 
 Boolean
@@ -402,9 +755,13 @@ CFFileDescriptorIsValid(CFFileDescriptorRef f) {
     CHECK_FOR_FORK();
 	Boolean result;
 
+	__CFFileDescriptorEnter();
+
     __CFGenericValidateType(f, CFFileDescriptorGetTypeID());
 
     result = __CFFileDescriptorIsValid(f);
+
+	__CFFileDescriptorEnter();
 
 	return result;
 }
@@ -414,11 +771,15 @@ CFFileDescriptorCreateRunLoopSource(CFAllocatorRef allocator, CFFileDescriptorRe
     CHECK_FOR_FORK();
     CFRunLoopSourceRef result = NULL;
 
+	__CFFileDescriptorEnter();
+
     __CFGenericValidateType(f, CFFileDescriptorGetTypeID());
 
     __CFFileDescriptorLock(f);
 
     __CFFileDescriptorUnlock(f);
+
+	__CFFileDescriptorExit();
 
 	return result;
 }

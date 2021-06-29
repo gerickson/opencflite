@@ -38,6 +38,8 @@
 
 /* Preprocessor Definitions */
 
+#define LOG_CFFILEDESCRIPTOR 1
+
 #define __CFFILEDESCRIPTOR_INVALID_DESCRIPTOR (CFFileDescriptorNativeDescriptor)(-1)
 
 // In the CFRuntimeBase info reserved bits:
@@ -45,10 +47,20 @@
 //   Bit    6 is used for write-signaled state (mutable)
 //   Bit    5 is used for read-signaled state (mutable)
 //   Bit    4 is used for valid state (mutable)
-//   Bits 0-3 are used for callback types (immutable)
+//   Bit    3 is used for close-on-invalidate state (mutable)
+//   Bits 0-2 are used for callback types (immutable)
 
-#define __kCFInfoCFFileDescriptorValidFirstBit         4
-#define __kCFInfoCFFileDescriptorValidLastBit          4
+#define __kCFInfoCFFileDescriptorWriteSignaledFirstBit             6
+#define __kCFInfoCFFileDescriptorWriteSignaledLastBit              6
+#define __kCFInfoCFFileDescriptorReadSignaledFirstBit              5
+#define __kCFInfoCFFileDescriptorReadSignaledLastBit               5
+#define __kCFInfoCFFileDescriptorValidFirstBit                     4
+#define __kCFInfoCFFileDescriptorValidLastBit                      4
+#define __kCFInfoCFFileDescriptorCloseOnInvalidateFirstBit         3
+#define __kCFInfoCFFileDescriptorCloseOnInvalidateLastBit          3
+#define __kCFInfoCFFileDescriptorCallBackTypesFirstBit             3
+#define __kCFInfoCFFileDescriptorCallBackTypesLastBit              3
+
 /* Type Declarations */
 
 struct __CFFileDescriptor {
@@ -65,9 +77,11 @@ struct __CFFileDescriptor {
 // CFRuntimeClass Functions
 
 static void        __CFFileDescriptorDeallocate(CFTypeRef cf);
-static Boolean     __CFFileDescriptorEqual(CFTypeRef left, CFTypeRef right);
-static CFHashCode  __CFFileDescriptorHash(CFTypeRef cf);
 static CFStringRef __CFFileDescriptorCopyDescription(CFTypeRef cf);
+
+// Other Functions
+
+static void __CFFileDescriptorInvalidate_Retained(CFFileDescriptorRef f);
 
 /* Global Variables */
 
@@ -79,16 +93,90 @@ static const CFRuntimeClass __CFFileDescriptorClass = {
     NULL,                             // init
     NULL,                             // copy
     __CFFileDescriptorDeallocate,
-    __CFFileDescriptorEqual,
-    __CFFileDescriptorHash,
+    NULL,                             // equal
+    NULL,                             // hash
     NULL,                             // copyFormattingDescription
     __CFFileDescriptorCopyDescription
 };
+
+CF_INLINE Boolean __CFFileDescriptorIsReadSignaled(CFFileDescriptorRef f) {
+    return (Boolean)__CFBitfieldGetValue(((const CFRuntimeBase *)f)->_cfinfo[CF_INFO_BITS],
+										 __kCFInfoCFFileDescriptorReadSignaledLastBit,
+										 __kCFInfoCFFileDescriptorReadSignaledFirstBit);
+}
+
+CF_INLINE void __CFFileDescriptorSetReadSignaled(CFFileDescriptorRef f) {
+    __CFBitfieldSetValue(((CFRuntimeBase *)f)->_cfinfo[CF_INFO_BITS],
+						 __kCFInfoCFFileDescriptorReadSignaledLastBit,
+						 __kCFInfoCFFileDescriptorReadSignaledFirstBit,
+						 1);
+}
+
+CF_INLINE void __CFFileDescriptorClearReadSignaled(CFFileDescriptorRef f) {
+    __CFBitfieldSetValue(((CFRuntimeBase *)f)->_cfinfo[CF_INFO_BITS],
+						 __kCFInfoCFFileDescriptorReadSignaledLastBit,
+						 __kCFInfoCFFileDescriptorReadSignaledFirstBit,
+						 0);
+}
+
+CF_INLINE Boolean __CFFileDescriptorIsWriteSignaled(CFFileDescriptorRef f) {
+    return (Boolean)__CFBitfieldGetValue(((const CFRuntimeBase *)f)->_cfinfo[CF_INFO_BITS],
+										 __kCFInfoCFFileDescriptorWriteSignaledLastBit,
+										 __kCFInfoCFFileDescriptorWriteSignaledFirstBit);
+}
+
+CF_INLINE void __CFFileDescriptorSetWriteSignaled(CFFileDescriptorRef f) {
+    __CFBitfieldSetValue(((CFRuntimeBase *)f)->_cfinfo[CF_INFO_BITS],
+						 __kCFInfoCFFileDescriptorWriteSignaledLastBit,
+						 __kCFInfoCFFileDescriptorWriteSignaledFirstBit,
+						 1);
+}
+
+CF_INLINE void __CFFileDescriptorClearWriteSignaled(CFFileDescriptorRef f) {
+    __CFBitfieldSetValue(((CFRuntimeBase *)f)->_cfinfo[CF_INFO_BITS],
+						 __kCFInfoCFFileDescriptorWriteSignaledLastBit,
+						 __kCFInfoCFFileDescriptorWriteSignaledFirstBit,
+						 0);
+}
 
 CF_INLINE Boolean __CFFileDescriptorIsValid(CFFileDescriptorRef f) {
     return (Boolean)__CFBitfieldGetValue(((const CFRuntimeBase *)f)->_cfinfo[CF_INFO_BITS],
 										 __kCFInfoCFFileDescriptorValidLastBit,
 										 __kCFInfoCFFileDescriptorValidFirstBit);
+}
+
+CF_INLINE void __CFFileDescriptorSetValid(CFFileDescriptorRef f) {
+    __CFBitfieldSetValue(((CFRuntimeBase *)f)->_cfinfo[CF_INFO_BITS],
+						 __kCFInfoCFFileDescriptorValidLastBit,
+						 __kCFInfoCFFileDescriptorValidFirstBit,
+						 1);
+}
+
+CF_INLINE void __CFFileDescriptorClearValid(CFFileDescriptorRef f) {
+    __CFBitfieldSetValue(((CFRuntimeBase *)f)->_cfinfo[CF_INFO_BITS],
+						 __kCFInfoCFFileDescriptorValidLastBit,
+						 __kCFInfoCFFileDescriptorValidFirstBit,
+						 0);
+}
+
+CF_INLINE Boolean __CFFileDescriptorShouldCloseOnInvalidate(CFFileDescriptorRef f) {
+    return (Boolean)__CFBitfieldGetValue(((const CFRuntimeBase *)f)->_cfinfo[CF_INFO_BITS],
+										 __kCFInfoCFFileDescriptorCloseOnInvalidateLastBit,
+										 __kCFInfoCFFileDescriptorCloseOnInvalidateFirstBit);
+}
+
+CF_INLINE void __CFFileDescriptorSetCloseOnInvalidate(CFFileDescriptorRef f) {
+    __CFBitfieldSetValue(((CFRuntimeBase *)f)->_cfinfo[CF_INFO_BITS],
+						 __kCFInfoCFFileDescriptorCloseOnInvalidateLastBit,
+						 __kCFInfoCFFileDescriptorCloseOnInvalidateFirstBit,
+						 1);
+}
+
+CF_INLINE void __CFFileDescriptorClearCloseOnInvalidate(CFFileDescriptorRef f) {
+    __CFBitfieldSetValue(((CFRuntimeBase *)f)->_cfinfo[CF_INFO_BITS],
+						 __kCFInfoCFFileDescriptorCloseOnInvalidateLastBit,
+						 __kCFInfoCFFileDescriptorCloseOnInvalidateFirstBit,
+						 0);
 }
 
 CF_INLINE void __CFFileDescriptorLock(CFFileDescriptorRef f) {
@@ -99,11 +187,59 @@ CF_INLINE void __CFFileDescriptorUnlock(CFFileDescriptorRef f) {
     __CFSpinUnlock(&(f->_lock));
 }
 
+// MARK: Other Functions
+
+/* static */ void
+__CFFileDescriptorInvalidate_Retained(CFFileDescriptorRef f) {
+    __CFFileDescriptorLock(f);
+
+    if (__CFFileDescriptorIsValid(f)) {
+        void *contextInfo = NULL;
+        void (*contextRelease)(const void *info) = NULL;
+
+        __CFFileDescriptorClearValid(f);
+        __CFFileDescriptorClearWriteSignaled(f);
+        __CFFileDescriptorClearReadSignaled(f);
+
+        if (__CFFileDescriptorShouldCloseOnInvalidate(f)) {
+			close(f->_descriptor);
+		}
+
+        f->_descriptor = __CFFILEDESCRIPTOR_INVALID_DESCRIPTOR;
+
+		// Save the context information and release function pointer
+		// before we zero them out such that we can invoke the release
+		// function on the context after we zero them out and unlock
+		// the object since neither has anything to do with the object
+		// itself.
+
+        contextInfo = f->_context.info;
+        contextRelease = f->_context.release;
+
+        f->_context.info = NULL;
+        f->_context.retain = NULL;
+        f->_context.release = NULL;
+        f->_context.copyDescription = NULL;
+
+        __CFFileDescriptorUnlock(f);
+
+		// OK, we are done with the object. Release the context, if
+		// a function has been provided to do so.
+
+        if (NULL != contextRelease) {
+            contextRelease(contextInfo);
+        }
+    } else {
+        __CFFileDescriptorUnlock(f);
+    }
+}
+
 // MARK: CFRuntimeClass Functions
 
 __private_extern__ void __CFFileDescriptorInitialize(void) {
     __kCFFileDescriptorTypeID = _CFRuntimeRegisterClass(&__CFFileDescriptorClass);
 }
+
 /* static */ void
 __CFFileDescriptorDeallocate(CFTypeRef cf) {
     __CFGenericValidateType(cf, CFFileDescriptorGetTypeID());
@@ -249,6 +385,16 @@ CFFileDescriptorInvalidate(CFFileDescriptorRef f) {
     CHECK_FOR_FORK();
 
     __CFGenericValidateType(f, CFFileDescriptorGetTypeID());
+
+#if defined(LOG_CFFILEDESCRIPTOR)
+    fprintf(stdout, "invalidating file descriptor %d\n", f->_descriptor);
+#endif
+
+    CFRetain(f);
+
+	__CFFileDescriptorInvalidate_Retained(f);
+
+    CFRelease(f);
 }
 
 Boolean

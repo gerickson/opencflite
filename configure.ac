@@ -803,6 +803,7 @@ compat/Makefile
 tests/Makefile
 examples/Makefile
 examples/Allocator/Makefile
+examples/CFFileDescriptorExample/Makefile
 examples/CFLocalServer/Makefile
 examples/CFMessagePort/Makefile
 examples/CFRunLoopTimerExample/Makefile

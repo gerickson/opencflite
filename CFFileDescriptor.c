@@ -129,6 +129,12 @@ typedef CFStringRef	(__CFFileDescriptorContextCopyDescriptionCallBack)(void *inf
 static void        __CFFileDescriptorDeallocate(CFTypeRef cf);
 static CFStringRef __CFFileDescriptorCopyDescription(CFTypeRef cf);
 
+// CFRunLoopSource Functions
+
+static void        __CFFileDescriptorRunLoopSchedule(void *info, CFRunLoopRef rl, CFStringRef mode);
+static void        __CFFileDescriptorRunLoopCancel(void *info, CFRunLoopRef rl, CFStringRef mode);
+static void        __CFFileDescriptorRunLoopPerform(void *info);
+
 // Other Functions
 
 static CFFileDescriptorRef __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
@@ -435,6 +441,8 @@ __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
 						 done,
 						 __CFSpinUnlock(&__sCFFileDescriptorManager.mAllFileDescriptorsLock));
 
+		__CFFileDescriptorSetValid(result);
+
 		__CFFileDescriptorClearWriteSignaled(result);
 		__CFFileDescriptorClearReadSignaled(result);
 
@@ -642,6 +650,29 @@ __CFFileDescriptorCopyDescription(CFTypeRef cf) {
 
  done:
 	return result;
+}
+
+// MARK: CFRunLoopSource Functions
+
+/* static */ void
+__CFFileDescriptorRunLoopSchedule(void *info, CFRunLoopRef rl, CFStringRef mode) {
+	__CFFileDescriptorEnter();
+
+	__CFFileDescriptorExit();
+}
+
+/* static */ void
+__CFFileDescriptorRunLoopCancel(void *info, CFRunLoopRef rl, CFStringRef mode) {
+	__CFFileDescriptorEnter();
+
+	__CFFileDescriptorExit();
+}
+
+/* static */ void
+__CFFileDescriptorRunLoopPerform(void *info) {
+	__CFFileDescriptorEnter();
+
+	__CFFileDescriptorExit();
 }
 
 // MARK: CFFileDescriptor Public API Functions
@@ -866,9 +897,30 @@ CFFileDescriptorIsValid(CFFileDescriptorRef f) {
 	return result;
 }
 
+/**
+ *  @brief
+ *    Creates a new runloop source for a given CFFileDescriptor.
+ *
+ *  The context for the new runloop is the same as the context passed
+ *  in when the CFFileDescriptor was created (see
+ *  #CFFileDescriptorCreate).
+ *
+ *  @param[in]  allocator  The allocator to use to allocate memory for
+ *                         the new runloop. Pass NULL or
+ *                         kCFAllocatorDefault to use the current
+ *                         default allocator.
+ *  @param[in]  f          A CFFileDescriptor.
+ *  @param[in]  order      The order for the new run loop.
+ *
+ *  @returns
+ *    A new runloop source for @ f, or NULL if there was a problem
+ *    creating the object. Ownership follows the "The Create Rule".
+ *
+ */
 CFRunLoopSourceRef
 CFFileDescriptorCreateRunLoopSource(CFAllocatorRef allocator, CFFileDescriptorRef f, CFIndex order) {
     CHECK_FOR_FORK();
+	Boolean            valid;
     CFRunLoopSourceRef result = NULL;
 
 	__CFFileDescriptorEnter();
@@ -877,6 +929,40 @@ CFFileDescriptorCreateRunLoopSource(CFAllocatorRef allocator, CFFileDescriptorRe
 
     __CFFileDescriptorLock(f);
 
+	valid = __CFFileDescriptorIsValid(f);
+	__Require(valid, unlock);
+
+	// If this descriptor does not have a runloop source, create and
+	// attach one. Otherwise, we will just use and return the one
+	// already attached with the retain count concommitantly
+	// increased.
+
+	if (f->_source == NULL) {
+		CFRunLoopSourceContext context;
+
+		context.version         = 0;
+		context.info            = f;
+		context.retain          = CFRetain;
+		context.release         = CFRelease;
+		context.copyDescription = CFCopyDescription;
+		context.equal           = CFEqual;
+		context.hash            = CFHash;
+		context.schedule        = __CFFileDescriptorRunLoopSchedule;
+		context.cancel          = __CFFileDescriptorRunLoopCancel;
+		context.perform         = __CFFileDescriptorRunLoopPerform;
+
+		f->_source = CFRunLoopSourceCreate(allocator, order, &context);
+	}
+
+	// The following retain is for the receiver (caller) which is
+	// bound to observe "The Create Rule" for runloop object
+	// ownership.
+
+	CFRetain(f->_source);
+
+	result = f->_source;
+
+ unlock:
     __CFFileDescriptorUnlock(f);
 
 	__CFFileDescriptorExit();

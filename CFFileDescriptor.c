@@ -646,11 +646,41 @@ __CFFileDescriptorCopyDescription(CFTypeRef cf) {
 
 // MARK: CFFileDescriptor Public API Functions
 
+/**
+ *  Returns the type identifier for the CFFileDescriptor opaque type.
+ *
+ *  @returns
+ *    The type identifier for the CFFileDescriptor opaque type.
+ *
+ */
 CFTypeID
 CFFileDescriptorGetTypeID(void) {
 	return __kCFFileDescriptorTypeID;
 }
 
+/**
+ *  Creates a new CFFileDescriptor.
+ *
+ *  @param[in]  allocator          The allocator to use to allocate
+ *                                 memory for the new file descriptor
+ *                                 object. Pass NULL or
+ *                                 kCFAllocatorDefault to use the
+ *                                 current default allocator.
+ *  @param[in]  fd                 The file descriptor for the new
+ *                                 CFFileDescriptor.
+ *  @param[in]  closeOnInvalidate  true if the new CFFileDescriptor
+ *                                 should close fd when it is
+ *                                 invalidated, otherwise false.
+ *  @param[in]  callout            The CFFileDescriptorCallBack for
+ *                                 the new CFFileDescriptor.
+ *  @param[in]  context            Contextual information for the new
+ *                                 CFFileDescriptor.
+ *
+ *  @returns
+ *    A new CFFileDescriptor or NULL if there was a problem creating
+ *    the object. Ownership follows the "The Create Rule".
+ *
+ */
 CFFileDescriptorRef
 CFFileDescriptorCreate(CFAllocatorRef                   allocator,
 					   CFFileDescriptorNativeDescriptor fd,
@@ -674,6 +704,15 @@ CFFileDescriptorCreate(CFAllocatorRef                   allocator,
 	return result;
 }
 
+/**
+ *  Returns the native file descriptor for a given CFFileDescriptor.
+ *
+ *  @param[in]  f  A CFFileDescriptor.
+ *
+ *  @returns
+ *    The native file descriptor for f.
+ *
+ */
 CFFileDescriptorNativeDescriptor
 CFFileDescriptorGetNativeDescriptor(CFFileDescriptorRef f) {
     CHECK_FOR_FORK();
@@ -686,6 +725,14 @@ CFFileDescriptorGetNativeDescriptor(CFFileDescriptorRef f) {
 	return result;
 }
 
+/**
+ *  Gets the context for a given CFFileDescriptor.
+ *
+ *  @param[in]      f        A CFFileDescriptor.
+ *  @param[in,out]  context  Upon return, contains the context passed
+ *                           to f in CFFileDescriptorCreate.
+ *
+ */
 void
 CFFileDescriptorGetContext(CFFileDescriptorRef f, CFFileDescriptorContext *context) {
     CHECK_FOR_FORK();
@@ -697,6 +744,19 @@ CFFileDescriptorGetContext(CFFileDescriptorRef f, CFFileDescriptorContext *conte
     *context = f->_context;
 }
 
+/**
+ *  Enables callbacks for a given CFFileDescriptor.
+ *
+ *  @note
+ *    Callbacks are one-shot and must be re-enabled, potentially from
+ *    the callback itself, for each desired invocation.
+ *
+ *  @param[in]  f              A CFFileDescriptor.
+ *  @param[in]  callBackTypes  A bitmask that specifies which
+ *                             callbacks to enable.
+ *
+ *  @sa CFFileDescriptorDisableCallBacks
+ */
 void
 CFFileDescriptorEnableCallBacks(CFFileDescriptorRef f, CFOptionFlags callBackTypes) {
     CHECK_FOR_FORK();
@@ -713,6 +773,15 @@ CFFileDescriptorEnableCallBacks(CFFileDescriptorRef f, CFOptionFlags callBackTyp
 	return;
 }
 
+/**
+ *  Disables callbacks for a given CFFileDescriptor.
+ *
+ *  @param[in]  f              A CFFileDescriptor.
+ *  @param[in]  callBackTypes  A bitmask that specifies which
+ *                             callbacks to disable.
+ *
+ *  @sa CFFileDescriptorEnableCallBacks
+ */
 void
 CFFileDescriptorDisableCallBacks(CFFileDescriptorRef f, CFOptionFlags callBackTypes) {
     CHECK_FOR_FORK();
@@ -729,6 +798,26 @@ CFFileDescriptorDisableCallBacks(CFFileDescriptorRef f, CFOptionFlags callBackTy
 	return;
 }
 
+/**
+ *  @brief
+ *    Invalidates a CFFileDescriptor object.
+ *
+ *  Once invalidated, the CFFileDescriptor object will no longer be
+ *  read from or written to at the Core Fundation level.
+ *
+ *  If you passed @a true for the @a closeOnInvalidate parameter when
+ *  you called #CFFileDescriptorCreate, this function also closes the
+ *  underlying file descriptor. If you passed @a false, you must close
+ *  the descriptor yourself @a after invalidating the CFFileDescriptor
+ *  object.
+ *
+ *  @warning
+ *    You must invalidate the CFFileDescriptor before closing the
+ *    underlying file descriptor.
+ *
+ *  @param[in]  f  A CFFileDescriptor.
+ *
+ */
 void
 CFFileDescriptorInvalidate(CFFileDescriptorRef f) {
     CHECK_FOR_FORK();
@@ -750,6 +839,17 @@ CFFileDescriptorInvalidate(CFFileDescriptorRef f) {
 	__CFFileDescriptorExit();
 }
 
+/**
+ *  Returns a Boolean value that indicates whether the native file
+ *  descriptor for a given CFFileDescriptor is valid.
+ *
+ *  @param[in]  f  A CFFileDescriptor.
+ *
+ *  @returns
+ *    true if the native file descriptor for f is valid, otherwise
+ *    false.
+ *
+ */
 Boolean
 CFFileDescriptorIsValid(CFFileDescriptorRef f) {
     CHECK_FOR_FORK();

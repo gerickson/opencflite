@@ -777,6 +777,7 @@ tests/Makefile
 examples/Makefile
 examples/Allocator/Makefile
 examples/BundleExample/Makefile
+examples/CFFileDescriptorExample/Makefile
 examples/CFLocalServer/Makefile
 examples/CFMessagePort/Makefile
 examples/CFRunLoopTimerExample/Makefile

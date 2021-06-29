@@ -814,6 +814,7 @@ extern void __CFStorageInitialize(void);
 extern void __CFErrorInitialize(void);
 extern void __CFTreeInitialize(void);
 extern void __CFURLInitialize(void);
+extern void __CFFileDescriptorInitialize(void);
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 extern void __CFMachPortInitialize(void);
 #endif
@@ -1055,7 +1056,8 @@ void __CFInitialize(void) {
         __CFErrorInitialize();
         __CFTreeInitialize();
         __CFURLInitialize();
-        
+        __CFFileDescriptorInitialize();
+
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
         __CFBundleInitialize();
 #endif

@@ -81,6 +81,7 @@ CF_include_HEADERS		= CFArray.h				\
 				  CFDictionary.h			\
 				  CFError.h				\
 				  CFError_Private.h			\
+				  CFFileDescriptor.h                    \
 				  CFLocale.h				\
 				  CFLogUtilities.h			\
 				  CFMachPort.h				\

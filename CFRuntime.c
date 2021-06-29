@@ -664,6 +664,7 @@ extern void __CFErrorInitialize(void);
 extern void __CFTimeZoneInitialize(void);
 extern void __CFTreeInitialize(void);
 extern void __CFURLInitialize(void);
+extern void __CFFileDescriptorInitialize(void);
 #if DEPLOYMENT_TARGET_MACOSX
 extern void __CFMachPortInitialize(void);
 #endif
@@ -798,6 +799,7 @@ void __CFInitialize(void) {
         __CFErrorInitialize();
         __CFTreeInitialize();
         __CFURLInitialize();
+        __CFFileDescriptorInitialize();
         __CFBundleInitialize();
 #if DEPLOYMENT_TARGET_MACOSX
         __CFPlugInInitialize();

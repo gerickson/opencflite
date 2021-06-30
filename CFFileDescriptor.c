@@ -1699,6 +1699,7 @@ __CFFileDescriptorDeallocate(CFTypeRef cf) {
 
 /* static */ CFStringRef
 __CFFileDescriptorCopyDescription(CFTypeRef cf) {
+	static const char * const                          kClassName = "CFFileDescriptor";
     CFFileDescriptorRef                                f = (CFFileDescriptorRef)cf;
     void *                                             addr;
     const char *                                       name;
@@ -1719,7 +1720,8 @@ __CFFileDescriptorCopyDescription(CFTypeRef cf) {
 
     CFStringAppendFormat(result,
                          NULL,
-                         CFSTR("<CFFileDescriptor %p [%p]>{valid = %s, fd = %d source = %p, callout = %s (%p) context = "),
+                         CFSTR("<%s %p [%p]>{valid = %s, fd = %d source = %p, callout = %s (%p) context = "),
+						 kClassName,
                          cf,
                          CFGetAllocator(f),
                          (__CFFileDescriptorIsValid(f) ? "Yes" : "No"),
@@ -1737,7 +1739,7 @@ __CFFileDescriptorCopyDescription(CFTypeRef cf) {
         contextDesc = contextCopyDescriptionCallBack(contextInfo);
     }
     if (NULL == contextDesc) {
-        contextDesc = CFStringCreateWithFormat(CFGetAllocator(f), NULL, CFSTR("<CFFileDescriptor context %p>"), contextInfo);
+        contextDesc = CFStringCreateWithFormat(CFGetAllocator(f), NULL, CFSTR("<%s context %p>"), kClassName, contextInfo);
     }
 
     CFStringAppend(result, contextDesc);

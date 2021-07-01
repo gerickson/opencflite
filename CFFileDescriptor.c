@@ -574,6 +574,8 @@ __CFFileDescriptorAllocateSelectedDescriptorsContainer(struct __CFFileDescriptor
 														&kCFTypeArrayCallBacks);
 	container->_index = 0;
 
+	result = container;
+
  done:
 	return result;
 }

@@ -942,21 +942,10 @@ __CFFileDescriptorEnableCallBacks_LockedAndUnlock(CFFileDescriptorRef f,
         Boolean enableWrite = FALSE;
 
         if (enableRead || enableWrite) {
-            __CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
-
-            if (enableWrite) {
-
-            }
-
-            if (enableRead) {
-
-            }
-
-            if (wakeup && __sCFFileDescriptorManager.mThread == NULL) {
-                __sCFFileDescriptorManager.mThread = __CFStartSimpleThread((void*)__CFFileDescriptorManager, 0);
-            }
-
-            __CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+			wakeup = __CFFileDescriptorManagerMaybeAdd_Locked(f,
+															  enableRead,
+															  enableWrite,
+															  force);
         }
     }
 

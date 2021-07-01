@@ -127,8 +127,8 @@ struct __CFFileDescriptor {
     CFFileDescriptorCallBack          _callout;
     CFFileDescriptorContext           _context;
     SInt32                            _fileDescriptorSetCount;
-    CFRunLoopSourceRef                _source;
-    CFMutableArrayRef                 _loops;
+    CFRunLoopSourceRef                _rlsource;
+    CFMutableArrayRef                 _rloops;
 };
 
 struct __CFFileDescriptorManagerWatchedDescriptors {
@@ -582,16 +582,16 @@ __CFFileDescriptorAllocateSelectedDescriptorsContainer(struct __CFFileDescriptor
 
 /* static */ CFRunLoopRef
 __CFFileDescriptorCopyRunLoopToWakeUp(CFFileDescriptorRef f) {
-	const CFIndex count  = CFArrayGetCount(f->_loops);
+	const CFIndex count  = CFArrayGetCount(f->_rloops);
 	CFIndex       index  = 0;
     CFRunLoopRef  result = NULL;
 
 	__Require_Quiet(count > 0, done);
 
-	result = (CFRunLoopRef)CFArrayGetValueAtIndex(f->_loops, index);
+	result = (CFRunLoopRef)CFArrayGetValueAtIndex(f->_rloops, index);
 
 	for (index = 1; result != NULL && index < count; index++) {
-		CFRunLoopRef value = (CFRunLoopRef)CFArrayGetValueAtIndex(f->_loops, index);
+		CFRunLoopRef value = (CFRunLoopRef)CFArrayGetValueAtIndex(f->_rloops, index);
 		if (value != result) {
 			result = NULL;
 		}
@@ -612,10 +612,10 @@ __CFFileDescriptorCopyRunLoopToWakeUp(CFFileDescriptorRef f) {
 		 * a bit, and always search from the front */
 
 		for (index = 0; !foundIt && index < count; index++) {
-			CFRunLoopRef value = (CFRunLoopRef)CFArrayGetValueAtIndex(f->_loops, index);
+			CFRunLoopRef value = (CFRunLoopRef)CFArrayGetValueAtIndex(f->_rloops, index);
 			CFStringRef currentMode = CFRunLoopCopyCurrentMode(value);
 			if (NULL != currentMode) {
-				if (CFRunLoopContainsSource(value, f->_source, currentMode)) {
+				if (CFRunLoopContainsSource(value, f->_rlsource, currentMode)) {
 					if (CFRunLoopIsWaiting(value)) {
 						foundIndex = index;
 						foundIt = true;
@@ -629,12 +629,12 @@ __CFFileDescriptorCopyRunLoopToWakeUp(CFFileDescriptorRef f) {
 			}
 		}
 
-		result = (CFRunLoopRef)CFArrayGetValueAtIndex(f->_loops, foundIndex);
+		result = (CFRunLoopRef)CFArrayGetValueAtIndex(f->_rloops, foundIndex);
 
 		CFRetain(result);
 
-		CFArrayRemoveValueAtIndex(f->_loops, foundIndex);
-		CFArrayAppendValue(f->_loops, result);
+		CFArrayRemoveValueAtIndex(f->_rloops, foundIndex);
+		CFArrayAppendValue(f->_rloops, result);
 
 	} else {
 		CFRetain(result);
@@ -776,8 +776,8 @@ __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
         result->_descriptor              = fd;
 		result->_errorCode               = 0;
         result->_fileDescriptorSetCount  = 0;
-        result->_source                  = NULL;
-        result->_loops                   = CFArrayCreateMutable(allocator, 0, NULL);
+        result->_rlsource                = NULL;
+        result->_rloops                  = CFArrayCreateMutable(allocator, 0, NULL);
         result->_callout                 = callout;
 
         result->_context.info            = NULL;
@@ -1049,7 +1049,7 @@ __CFFileDescriptorHandleWrite(CFFileDescriptorRef f,
     } else {
         CFRunLoopRef rl;
 
-        CFRunLoopSourceSignal(f->_source);
+        CFRunLoopSourceSignal(f->_rlsource);
 
         rl = __CFFileDescriptorCopyRunLoopToWakeUp(f);
 
@@ -1794,7 +1794,7 @@ __CFFileDescriptorCopyDescription(CFTypeRef cf) {
                          CFGetAllocator(f),
                          (__CFFileDescriptorIsValid(f) ? "Yes" : "No"),
                          f->_descriptor,
-                         f->_source,
+                         f->_rlsource,
                          name,
                          addr);
 
@@ -1833,7 +1833,8 @@ __CFFileDescriptorRunLoopSchedule(void *info, CFRunLoopRef rl, CFStringRef mode)
     valid = __CFFileDescriptorIsValid(f);
 
     if (valid) {
-        CFArrayAppendValue(f->_loops, rl);
+        CFArrayAppendValue(f->_rloops, rl);
+
         f->_fileDescriptorSetCount++;
 
         if (f->_fileDescriptorSetCount == 1) {
@@ -1864,9 +1865,9 @@ __CFFileDescriptorRunLoopCancel(void *info, CFRunLoopRef rl, CFStringRef mode) {
         __CFFileDescriptorManagerRemove_Locked(f);
     }
 
-    if (f->_loops != NULL) {
-        index = CFArrayGetFirstIndexOfValue(f->_loops, CFRangeMake(0, CFArrayGetCount(f->_loops)), rl);
-        if (0 <= index) CFArrayRemoveValueAtIndex(f->_loops, index);
+    if (f->_rloops != NULL) {
+        index = CFArrayGetFirstIndexOfValue(f->_rloops, CFRangeMake(0, CFArrayGetCount(f->_rloops)), rl);
+        if (0 <= index) CFArrayRemoveValueAtIndex(f->_rloops, index);
     }
 
     __CFFileDescriptorUnlock(f);
@@ -2186,7 +2187,7 @@ CFFileDescriptorCreateRunLoopSource(CFAllocatorRef allocator, CFFileDescriptorRe
     // already attached with the retain count concommitantly
     // increased.
 
-    if (f->_source == NULL) {
+    if (f->_rlsource == NULL) {
         CFRunLoopSourceContext context;
 
         context.version         = 0;
@@ -2200,16 +2201,16 @@ CFFileDescriptorCreateRunLoopSource(CFAllocatorRef allocator, CFFileDescriptorRe
         context.cancel          = __CFFileDescriptorRunLoopCancel;
         context.perform         = __CFFileDescriptorRunLoopPerform;
 
-        f->_source = CFRunLoopSourceCreate(allocator, order, &context);
+        f->_rlsource = CFRunLoopSourceCreate(allocator, order, &context);
     }
 
     // The following retain is for the receiver (caller) which is
     // bound to observe "The Create Rule" for runloop object
     // ownership.
 
-    CFRetain(f->_source);
+    CFRetain(f->_rlsource);
 
-    result = f->_source;
+    result = f->_rlsource;
 
  unlock:
     __CFFileDescriptorUnlock(f);

@@ -1258,7 +1258,7 @@ __CFFileDescriptorManagerHandleReadyDescriptors(struct __CFFileDescriptorManager
 				// they had come on writeFDs, since the rest of our Unix-based code
 				// expects that.
 				CFArrayAppendValue(state->_selected._write._descriptors, f);
-				fd_set *exfds = (fd_set *)CFDataGetMutableBytePtr(__CFExceptFileDescriptorsNativeDescriptors);
+				fd_set *exfds = (fd_set *)CFDataGetMutableBytePtr(__sCFFileDescriptorManager.mExceptFileDescriptorsNativeDescriptors);
 				FD_CLR(fd, exfds);
 			}
 #endif
@@ -1654,7 +1654,7 @@ __CFFileDescriptorManagerRemove_Locked(CFFileDescriptorRef f) {
         CFArrayRemoveValueAtIndex(array, index);
         __CFFileDescriptorManagerClearFDForWrite_Locked(f);
 #if DEPLOYMENT_TARGET_WINDOWS
-        __CFFileDescriptorFdClr(f->_descriptor, __CFExceptFileDescriptorsNativeDescriptors);
+        __CFFileDescriptorFdClr(f->_descriptor, __sCFFileDescriptorManager.mExceptFileDescriptorsNativeDescriptors);
 #endif
     }
 

@@ -224,6 +224,10 @@ static void                __CFFileDescriptorManagerHandleReadyDescriptors(struc
 																		   Boolean causedByTimeout);
 static void                __CFFileDescriptorManagerHandleTimeout(struct __CFFileDescriptorManagerSelectState *state, const struct timeval *elapsed);
 static void                __CFFileDescriptorManagerInitialize_Locked(void);
+static Boolean  		   __CFFileDescriptorManagerMaybeAdd_Locked(CFFileDescriptorRef f,
+																	Boolean forRead,
+																	Boolean forWrite,
+																	Boolean force);
 static CFIndex             __CFFileDescriptorManagerPrepareWatches(struct __CFFileDescriptorManagerWatchedDescriptors *watches, struct timeval *timeout);
 #if LOG_CFFILEDESCRIPTOR
 static void                __CFFileDescriptorManagerPrepareWatchesMaybeLog(void);
@@ -1365,6 +1369,68 @@ __CFFileDescriptorManagerInitialize_Locked(void) {
     __CFFileDescriptorExit();
 
     return;
+}
+
+/* static */ Boolean
+__CFFileDescriptorManagerMaybeAdd_Locked(CFFileDescriptorRef f,
+										 Boolean forRead,
+										 Boolean forWrite,
+										 Boolean force)
+{
+	Boolean result = FALSE;
+
+    __CFFileDescriptorEnter();
+
+	__CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+	if (forWrite) {
+		__CFFileDescriptorMaybeLog("Adding descriptor %d for writing.\n", f->_descriptor);
+
+		if (force) {
+			CFMutableArrayRef array = __sCFFileDescriptorManager.mWriteFileDescriptors;
+			const CFIndex     index = CFArrayGetFirstIndexOfValue(array,
+																  CFRangeMake(0, CFArrayGetCount(array)),
+																  f);
+
+			if (index == kCFNotFound) {
+				CFArrayAppendValue(array, f);
+			}
+		}
+
+		if (__CFFileDescriptorManagerSetFDForWrite_Locked(f)) {
+			result = TRUE;
+		}
+	}
+
+	if (forRead) {
+		__CFFileDescriptorMaybeLog("Adding descriptor %d for reading.\n", f->_descriptor);
+
+		if (force) {
+			CFMutableArrayRef array = __sCFFileDescriptorManager.mReadFileDescriptors;
+			const CFIndex     index = CFArrayGetFirstIndexOfValue(array,
+																  CFRangeMake(0, CFArrayGetCount(array)),
+																  f);
+
+			if (index == kCFNotFound) {
+				CFArrayAppendValue(array, f);
+			}
+		}
+
+		if (__CFFileDescriptorManagerSetFDForRead_Locked(f)) {
+			result = TRUE;
+		}
+	}
+
+	if (result && __sCFFileDescriptorManager.mThread == NULL) {
+		__CFFileDescriptorMaybeLog("Starting manager thread...\n");
+		__sCFFileDescriptorManager.mThread = __CFStartSimpleThread((void*)__CFFileDescriptorManager, 0);
+	}
+
+	__CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+    __CFFileDescriptorExit();
+
+	return result;
 }
 
 /* static */ void

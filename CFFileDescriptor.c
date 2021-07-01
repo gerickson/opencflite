@@ -1504,14 +1504,14 @@ __CFFileDescriptorManagerPrepareWatchesMaybeLog(void)
 	data  = __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors;
 
 	if (CFArrayGetCount(array) > 0) {
-		__CFFileDescriptorMaybeLog(", and write descriptors");
+		__CFFileDescriptorMaybeLog(", and write descriptors ");
 		__CFFileDescriptorMaybeLogFileDescriptorList(array, data, FALSE);
 
 #if DEPLOYMENT_TARGET_WINDOWS
 		array = __sCFFileDescriptorManager.mWriteFileDescriptors;
 		data  = __sCFFileDescriptorManager.mExceptFileDescriptorsNativeDescriptors;
 
-		__CFFileDescriptorMaybeLog(", and except descriptors");
+		__CFFileDescriptorMaybeLog(", and except descriptors ");
 		__CFFileDescriptorMaybeLogFileDescriptorList(array, data, TRUE);
 #endif /* DEPLOYMENT_TARGET_WINDOWS */
 	}

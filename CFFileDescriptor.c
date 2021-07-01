@@ -894,6 +894,34 @@ __CFFileDescriptorDoCallback_LockedAndUnlock(CFFileDescriptorRef f) {
     __CFFileDescriptorExit();
 }
 
+/**
+ *  @brief
+ *    Enables callbacks for a given CFFileDescriptor.
+ *
+ *  If @a force is not asserted, it is assumed that the file
+ *  descriptor has already been added to the file descriptor manager
+ *  mReadFileDescriptors and mWriteFileDescriptors arrays.
+ *
+ *  @note
+ *    This should be called with the file descriptor lock held but
+ *    returns with it released!
+ *
+ *  @param[in]  f              A CFFileDescriptor.
+ *  @param[in]  callBackTypes  A bitmask that specifies which
+ *                             callbacks to enable.
+ *  @param[in]  force          A flag indicating that when asserted to
+ *                             clear the descriptor callback disabled
+ *                             mask and always reenable. If not
+ *                             asserted, always respect the callback
+ *                             disabled mask which may prevent this
+ *                             from enabling any callbacks at all.
+ *  @param[in]  wakeupReason   The wakeup reason to send to the file
+ *                             descriptor manager to wake it up for
+ *                             watched descriptor watching and
+ *                             processing.
+ *
+ *  @sa CFFileDescriptorDisableCallBacks
+ */
 /* static */ void
 __CFFileDescriptorEnableCallBacks_LockedAndUnlock(CFFileDescriptorRef f,
                                                   CFOptionFlags callBackTypes,

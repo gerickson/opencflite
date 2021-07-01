@@ -1100,16 +1100,32 @@ __CFFileDescriptorInvalidate_Retained(CFFileDescriptorRef f) {
     if (__CFFileDescriptorIsValid(f)) {
         __CFFileDescriptorContextReleaseCallBack *contextReleaseCallBack = NULL;
         void *                                    contextInfo            = NULL;
+        CFIndex                                   index;
+        CFRunLoopSourceRef                        rlsource;
 
         __CFFileDescriptorClearValid(f);
         __CFFileDescriptorClearWriteSignaled(f);
         __CFFileDescriptorClearReadSignaled(f);
+
+		__CFFileDescriptorManagerRemove_Locked(f);
 
         if (__CFFileDescriptorShouldCloseOnInvalidate(f)) {
             close(f->_descriptor);
         }
 
         f->_descriptor = __CFFILEDESCRIPTOR_INVALID_DESCRIPTOR;
+
+		f->_fileDescriptorSetCount = 0;
+
+        for (index = CFArrayGetCount(f->_rloops); index--;) {
+			CFRunLoopRef rloop = (CFRunLoopRef)CFArrayGetValueAtIndex(f->_rloops, index);
+
+            CFRunLoopWakeUp(rloop);
+        }
+        CFRelease(f->_rloops);
+        f->_rloops   = NULL;
+        rlsource     = f->_rlsource;
+        f->_rlsource = NULL;
 
         // Save the context information and release function pointer
         // before we zero them out such that we can invoke the release
@@ -1132,6 +1148,11 @@ __CFFileDescriptorInvalidate_Retained(CFFileDescriptorRef f) {
 
         if (contextReleaseCallBack != NULL) {
             contextReleaseCallBack(contextInfo);
+        }
+
+        if (rlsource != NULL) {
+            CFRunLoopSourceInvalidate(rlsource);
+            CFRelease(rlsource);
         }
     } else {
         __CFFileDescriptorUnlock(f);

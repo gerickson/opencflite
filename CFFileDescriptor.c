@@ -118,8 +118,7 @@ struct __CFFileDescriptor {
     CFRuntimeBase                     _base;
     struct {
         unsigned disabled:8;
-        unsigned enabled:8;
-        unsigned unused:16;
+        unsigned unused:24;
     }                                 _flags;
     CFSpinLock_t                      _lock;
     CFFileDescriptorNativeDescriptor  _descriptor;
@@ -768,7 +767,6 @@ __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
         __CFFileDescriptorClearWriteSignaled(result);
         __CFFileDescriptorClearReadSignaled(result);
 
-        result->_flags.enabled           = 0;
         result->_flags.disabled          = 0;
 
         CF_SPINLOCK_INIT_FOR_STRUCTS(result->_lock);
@@ -1943,7 +1941,7 @@ __CFFileDescriptorRunLoopPerform(void *info) {
     __CFFileDescriptorLock(f);
 
     __CFFileDescriptorEnableCallBacks_LockedAndUnlock(f,
-                                                      callBacksSignaled & f->_flags.enabled,
+                                                      callBacksSignaled & __CFFileDescriptorCallBackTypes(f),
                                                       FALSE,
                                                       __kWakeupReasonPerform);
 

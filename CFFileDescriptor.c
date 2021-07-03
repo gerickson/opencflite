@@ -939,7 +939,7 @@ __CFFileDescriptorDoCallBack_LockedAndUnlock(CFFileDescriptorRef f) {
 
     __CFFileDescriptorUnlock(f);
 
-    if ((callBackTypes & kCFFileDescriptorReadCallBack) != 0) {
+    if ((callBackTypes & kCFFileDescriptorReadCallBack) != __kCFFileDescriptorNoCallBacks) {
         if (readSignaled && (!calledOut || CFFileDescriptorIsValid(f))) {
             __CFFileDescriptorMaybeLog("perform calling out read to descriptor %d\n", f->_descriptor);
 
@@ -950,7 +950,7 @@ __CFFileDescriptorDoCallBack_LockedAndUnlock(CFFileDescriptorRef f) {
         }
     }
 
-    if ((callBackTypes & kCFFileDescriptorWriteCallBack) != 0) {
+    if ((callBackTypes & kCFFileDescriptorWriteCallBack) != __kCFFileDescriptorNoCallBacks) {
         if (writeSignaled && (!calledOut || CFFileDescriptorIsValid(f))) {
             __CFFileDescriptorMaybeLog("perform calling out write to descriptor %d\n", f->_descriptor);
 
@@ -1005,7 +1005,7 @@ __CFFileDescriptorEnableCallBacks_LockedAndUnlock(CFFileDescriptorRef f,
     __CFFileDescriptorMaybeLog("Attempting to enable descriptor %d callbacks 0x%lx w/ reason '%c'\n",
                                f->_descriptor, callBackTypes, wakeupReason);
 
-    __Require(callBackTypes != 0, unlock);
+    __Require(callBackTypes != __kCFFileDescriptorNoCallBacks, unlock);
 
     if (__CFFileDescriptorIsValid(f) && __CFFileDescriptorIsScheduled(f)) {
         Boolean enableRead = FALSE;
@@ -1814,7 +1814,7 @@ __CFFileDescriptorManagerShouldWake_Locked(CFFileDescriptorRef f,
 
     __CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
 
-    if ((callBackTypes & kCFFileDescriptorWriteCallBack) != 0) {
+    if ((callBackTypes & kCFFileDescriptorWriteCallBack) != __kCFFileDescriptorNoCallBacks) {
         if (__CFFileDescriptorManagerNativeDescriptorClearForWrite_Locked(f)) {
             const CFOptionFlags writeCallBacksAvailable = callBackTypes & kCFFileDescriptorWriteCallBack;
 
@@ -1827,10 +1827,10 @@ __CFFileDescriptorManagerShouldWake_Locked(CFFileDescriptorRef f,
             }
         }
 
-        if ((callBackTypes & kCFFileDescriptorReadCallBack) != 0) {
-            if (__CFFileDescriptorManagerNativeDescriptorClearForRead_Locked(f)) {
-                // do not wake up the file descriptor manager thread
-                // if callback type is read
+	if ((callBackTypes & kCFFileDescriptorReadCallBack) != __kCFFileDescriptorNoCallBacks) {
+		if (__CFFileDescriptorManagerNativeDescriptorClearForRead_Locked(f)) {
+			// do not wake up the file descriptor manager thread
+			// if callback type is read
 
                 if ((callBackTypes & kCFFileDescriptorReadCallBack) != kCFFileDescriptorReadCallBack) {
                     result = true;
@@ -2225,7 +2225,7 @@ CFFileDescriptorDisableCallBacks(CFFileDescriptorRef f, CFOptionFlags callBackTy
 
     __CFFileDescriptorEnter();
 
-    __Require(callBackTypes != 0, done);
+    __Require(callBackTypes != __kCFFileDescriptorNoCallBacks, done);
 
     __CFGenericValidateType(f, CFFileDescriptorGetTypeID());
 

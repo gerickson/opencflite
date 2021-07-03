@@ -122,7 +122,6 @@ struct __CFFileDescriptor {
     }                                 _flags;
     CFSpinLock_t                      _lock;
     CFFileDescriptorNativeDescriptor  _descriptor;
-    SInt32                            _errorCode;
     CFFileDescriptorCallBack          _callout;
     CFFileDescriptorContext           _context;
     SInt32                            _fileDescriptorSetCount;
@@ -824,7 +823,6 @@ __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
         CF_SPINLOCK_INIT_FOR_STRUCTS(result->_lock);
 
         result->_descriptor              = fd;
-		result->_errorCode               = 0;
         result->_fileDescriptorSetCount  = 0;
         result->_rlsource                = NULL;
         result->_rloops                  = CFArrayCreateMutable(allocator, 0, NULL);
@@ -1177,25 +1175,12 @@ __CFFileDescriptorHandleReadyDescriptors(CFMutableArrayRef descriptors, CFIndex 
 __CFFileDescriptorHandleWrite(CFFileDescriptorRef f,
 							  Boolean callBackNow) {
 	Boolean       valid;
-    SInt32        errorCode = 0;
     CFOptionFlags writeCallBacksAvailable;
 
     __CFFileDescriptorEnter();
 
 	valid = CFFileDescriptorIsValid(f);
 	__Require(valid, done);
-
-#if 0
-#if DEPLOYMENT_TARGET_WINDOWS
-    if (0 != getsockopt(f->_descriptor, SOL_SOCKET, SO_ERROR, (char *)&errorCode, (socklen_t *)&errorSize)) { errorCode = 0; }
-#else
-    if (0 != getsockopt(f->_descriptor, SOL_SOCKET, SO_ERROR, (void *)&errorCode, (socklen_t *)&errorSize)) { errorCode = 0; }
-#endif
-#endif
-
-    if (errorCode) {
-		__CFFileDescriptorMaybeLog("error %d on descriptor %d\n", errorCode, f->_descriptor);
-	}
 
     __CFFileDescriptorLock(f);
 
@@ -1209,8 +1194,6 @@ __CFFileDescriptorHandleWrite(CFFileDescriptorRef f,
         __CFFileDescriptorUnlock(f);
 		goto done;
     }
-
-    f->_errorCode = errorCode;
 
     __CFFileDescriptorSetWriteSignaled(f);
 

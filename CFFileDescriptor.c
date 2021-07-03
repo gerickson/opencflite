@@ -976,41 +976,70 @@ __CFFileDescriptorDoCallBack_LockedAndUnlock(CFFileDescriptorRef f) {
  *    This should be called with the file descriptor lock held but
  *    returns with it released!
  *
- *  @param[in]  f              A CFFileDescriptor.
- *  @param[in]  callBackTypes  A bitmask that specifies which
- *                             callbacks to enable.
- *  @param[in]  force          A flag indicating that when asserted to
- *                             clear the descriptor callback disabled
- *                             mask and always reenable. If not
- *                             asserted, always respect the callback
- *                             disabled mask which may prevent this
- *                             from enabling any callbacks at all.
- *  @param[in]  wakeupReason   The wakeup reason to send to the file
- *                             descriptor manager to wake it up for
- *                             watched descriptor watching and
- *                             processing.
+ *  @param[in]  f                    A CFFileDescriptor.
+ *  @param[in]  enableCallBackTypes  A bitmask that specifies which
+ *                                   callbacks to enable.
+ *  @param[in]  force                A flag indicating that when
+ *                                   asserted to clear the descriptor
+ *                                   callback disabled mask and always
+ *                                   reenable. If not asserted, always
+ *                                   respect the callback disabled
+ *                                   mask which may prevent this from
+ *                                   enabling any callbacks at all.
+ *  @param[in]  wakeupReason         The wakeup reason to send to the
+ *                                   file descriptor manager to wake
+ *                                   it up for watched descriptor
+ *                                   watching and processing.
  *
  *  @sa CFFileDescriptorDisableCallBacks
+ *
  */
 /* static */ void
 __CFFileDescriptorEnableCallBacks_LockedAndUnlock(CFFileDescriptorRef f,
-                                                  CFOptionFlags callBackTypes,
+                                                  CFOptionFlags enableCallBackTypes,
                                                   Boolean force,
                                                   char wakeupReason)
 {
-    Boolean wakeup = FALSE;
+	const Boolean       valid                = __CFFileDescriptorIsValid(f);
+	const Boolean       scheduled            = __CFFileDescriptorIsScheduled(f);
+	const CFOptionFlags currentCallBackTypes = __CFFileDescriptorCallBackTypes(f);
+	CFOptionFlags       updatedCallBackTypes;
+    Boolean             wakeup    = FALSE;
 
     __CFFileDescriptorEnter();
 
     __CFFileDescriptorMaybeLog("Attempting to enable descriptor %d callbacks 0x%lx w/ reason '%c'\n",
-                               f->_descriptor, callBackTypes, wakeupReason);
+                               f->_descriptor, enableCallBackTypes, wakeupReason);
 
-    __Require(callBackTypes != __kCFFileDescriptorNoCallBacks, unlock);
+    __Require(enableCallBackTypes != __kCFFileDescriptorNoCallBacks, unlock);
 
-    if (__CFFileDescriptorIsValid(f) && __CFFileDescriptorIsScheduled(f)) {
-        Boolean enableRead = FALSE;
-        Boolean enableWrite = FALSE;
+	// If the force flag was not asserted, only enable types that are
+	// not yet enabled by masking the requested types against the
+	// current types. If there's nothing left after that, then there
+	// is nothing to do.
 
+	if (!force) {
+		enableCallBackTypes &= ~currentCallBackTypes;
+		__Require_Quiet(enableCallBackTypes != __kCFFileDescriptorNoCallBacks, unlock);
+	}
+
+	updatedCallBackTypes = (currentCallBackTypes | enableCallBackTypes);
+
+	// Only bother doing any work if the descriptor is valid and
+	// scheduled on a run loop. If it's neither then we will not be
+	// selecting on it and dispatching callbacks anyway.
+
+    if (valid && scheduled) {
+        Boolean             enableRead  = FALSE;
+        Boolean             enableWrite = FALSE;
+
+		if ((enableCallBackTypes & kCFFileDescriptorReadCallBack) != __kCFFileDescriptorNoCallBacks) {
+			enableRead = TRUE;
+		}
+
+		if ((enableCallBackTypes & kCFFileDescriptorWriteCallBack) != __kCFFileDescriptorNoCallBacks) {
+			enableWrite = TRUE;
+		}
         if (enableRead || enableWrite) {
 			wakeup = __CFFileDescriptorManagerMaybeAdd_Locked(f,
 															  enableRead,
@@ -1018,6 +1047,12 @@ __CFFileDescriptorEnableCallBacks_LockedAndUnlock(CFFileDescriptorRef f,
 															  force);
         }
     }
+
+	// Unconditionally set the desired, updated callback types such
+	// that when the descriptor is finally scheduled, the desired
+	// callbacks will be dispatched.
+
+	__CFFileDescriptorSetCallBackTypes(f, updatedCallBackTypes);
 
  unlock:
     __CFFileDescriptorUnlock(f);

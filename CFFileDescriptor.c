@@ -62,7 +62,7 @@
 //   Bit    5 is used for read-signaled state (mutable)
 //   Bit    4 is used for valid state (mutable)
 //   Bit    3 is used for close-on-invalidate state (mutable)
-//   Bits 0-2 are used for callback types (immutable)
+//   Bits 0-2 are used for callback types (mutable)
 
 #define __kCFInfoCFFileDescriptorWriteSignaledFirstBit             6
 #define __kCFInfoCFFileDescriptorWriteSignaledLastBit              6

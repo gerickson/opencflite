@@ -1135,8 +1135,6 @@ __CFFileDescriptorHandleReadyDescriptors(CFMutableArrayRef descriptors, CFIndex 
 	CFIndex             index;
 	CFFileDescriptorRef f;
 
-    __CFFileDescriptorEnter();
-
 	__Require(descriptors != NULL, done);
 	__Require(count > 0, done);
 	__Require(handler != NULL, done);
@@ -1158,8 +1156,6 @@ __CFFileDescriptorHandleReadyDescriptors(CFMutableArrayRef descriptors, CFIndex 
 	}
 
  done:
-    __CFFileDescriptorExit();
-
 	return;
 }
 

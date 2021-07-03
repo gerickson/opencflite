@@ -2025,9 +2025,8 @@ __CFFileDescriptorRunLoopPerform(void *info) {
 
     if (!__CFFileDescriptorIsValid(f)) {
         __CFFileDescriptorUnlock(f);
-        __CFFileDescriptorExit();
 
-        return;
+        goto done;
     }
 
     if (__CFFileDescriptorIsReadSignaled(f)) {
@@ -2052,6 +2051,7 @@ __CFFileDescriptorRunLoopPerform(void *info) {
         CFRelease(rl);
     }
 
+ done:
     __CFFileDescriptorExit();
 }
 

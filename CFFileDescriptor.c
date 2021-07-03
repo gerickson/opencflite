@@ -697,18 +697,8 @@ __CFFileDescriptorCalculateMinTimeout_Locked(const void * value,
 	CFFileDescriptorRef f = (CFFileDescriptorRef)(value);
 	struct timeval** minTime = (struct timeval**)(context);
 
-#if 0
-	if (timerisset(&f->_readBufferTimeout) && (*minTime == NULL || timercmp(&f->_readBufferTimeout, *minTime, <)))
-		*minTime = &f->_readBufferTimeout;
-   else if (f->_leftoverBytes) {
-      /* If there's anyone with leftover bytes, they'll need to be awoken immediately */
-      static struct timeval sKickerTime = { 0, 0 };
-      *minTime = &sKickerTime;
-   }
-#else
 	(void)f;
 	(void)minTime;
-#endif
 }
 
 /* static */ CFFileDescriptorRef
@@ -1464,31 +1454,7 @@ __CFFileDescriptorManagerHandleTimeout(struct __CFFileDescriptorManagerSelectSta
 
 	for (index = 0; index < count; index++) {
 		CFFileDescriptorRef f = (CFFileDescriptorRef)CFArrayGetValueAtIndex(array, index);
-#if 0
-		if (timerisset(&f->_readBufferTimeout) || f->_leftoverBytes) {
-			CFFileDescriptorNativeDescriptor fd = f->_descriptor;
-			fd_set *   tempfds = NULL;
-			// We might have an new element in __sCFFileDescriptorManager.mReadFileDescriptors that we
-			// weren't listening to, in which case we must be sure not
-			// to test a bit in the fdset that is outside our mask
-			// size.
-			const Boolean fdInBounds = (0 <= fd && fd < max);
-			/* if this sockets timeout is less than or equal elapsed time, then signal it */
-			if (__CFFILEDESCRIPTOR_INVALID_DESCRIPTOR != fd && fdInBounds) {
-				__CFFileDescriptorMaybeLog("Expiring descriptor %d (delta %d, %d)\n",
-										   fd, f->_readBufferTimeout.tv_sec, f->_readBufferTimeout.tv_usec);
-
-				CFArraySetValueAtIndex(state->_selected._read._descriptors, state->_selected._read._index, f);
-
-				state->_selected._read._index++;
-				/* descriptor is removed from fds here, will be restored in read handling or in perform function */
-				if (!tempfds) tempfds = (fd_set *)CFDataGetMutableBytePtr(__sCFFileDescriptorManager.mReadFileDescriptorNativeDescriptors);
-				FD_CLR(fd, tempfds);
-			}
-		}
-#else
 		(void)f;
-#endif
 	}
 
 	__CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);

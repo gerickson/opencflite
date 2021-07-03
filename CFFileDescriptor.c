@@ -901,6 +901,7 @@ __CFFileDescriptorDoCallBack_LockedAndUnlock(CFFileDescriptorRef f) {
     Boolean writeSignaled = false;
     Boolean calledOut = false;
     uint8_t callBackTypes;
+	uint8_t callBackTypeToCheck;
 
     __CFFileDescriptorEnter();
 
@@ -920,23 +921,45 @@ __CFFileDescriptorDoCallBack_LockedAndUnlock(CFFileDescriptorRef f) {
 
     __CFFileDescriptorUnlock(f);
 
-    if ((callBackTypes & kCFFileDescriptorReadCallBack) != __kCFFileDescriptorNoCallBacks) {
+	// Check for read callout
+
+	callBackTypeToCheck = kCFFileDescriptorReadCallBack;
+
+    if ((callBackTypes & callBackTypeToCheck) != __kCFFileDescriptorNoCallBacks) {
         if (readSignaled && (!calledOut || CFFileDescriptorIsValid(f))) {
             __CFFileDescriptorMaybeLog("perform calling out read to descriptor %d\n", f->_descriptor);
 
             if (callout) {
-                callout(f, kCFFileDescriptorReadCallBack, contextInfo);
+				// For CFFileDescriptor (unlike CFSocket), callbacks
+				// are one-shot. Consequently, ensure the callback is
+				// disabled before performing the callout. The callout
+				// will need to reenable the callback, if desired.
+
+				CFFileDescriptorDisableCallBacks(f, callBackTypeToCheck);
+
+                callout(f, callBackTypeToCheck, contextInfo);
                 calledOut = true;
             }
         }
     }
 
-    if ((callBackTypes & kCFFileDescriptorWriteCallBack) != __kCFFileDescriptorNoCallBacks) {
+	// Check for write callout
+
+	callBackTypeToCheck = kCFFileDescriptorWriteCallBack;
+
+    if ((callBackTypes & callBackTypeToCheck) != __kCFFileDescriptorNoCallBacks) {
         if (writeSignaled && (!calledOut || CFFileDescriptorIsValid(f))) {
             __CFFileDescriptorMaybeLog("perform calling out write to descriptor %d\n", f->_descriptor);
 
             if (callout) {
-                callout(f, kCFFileDescriptorWriteCallBack, contextInfo);
+				// For CFFileDescriptor (unlike CFSocket), callbacks
+				// are one-shot. Consequently, ensure the callback is
+				// disabled before performing the callout. The callout
+				// will need to reenable the callback, if desired.
+
+				CFFileDescriptorDisableCallBacks(f, callBackTypeToCheck);
+
+                callout(f, callBackTypeToCheck, contextInfo);
                 calledOut = true;
             }
         }
@@ -1029,6 +1052,7 @@ __CFFileDescriptorEnableCallBacks_LockedAndUnlock(CFFileDescriptorRef f,
 		if ((enableCallBackTypes & kCFFileDescriptorWriteCallBack) != __kCFFileDescriptorNoCallBacks) {
 			enableWrite = TRUE;
 		}
+
         if (enableRead || enableWrite) {
 			wakeup = __CFFileDescriptorManagerMaybeAdd_Locked(f,
 															  enableRead,

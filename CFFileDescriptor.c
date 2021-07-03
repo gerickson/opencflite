@@ -502,26 +502,26 @@ CF_INLINE SInt32 __CFFileDescriptorManagerLastError(void) {
 #endif
 }
 
-CF_INLINE Boolean __CFFileDescriptorManagerSetFDForRead_Locked(CFFileDescriptorRef f) {
+CF_INLINE Boolean __CFFileDescriptorManagerNativeDescriptorSetForRead_Locked(CFFileDescriptorRef f) {
     __sCFFileDescriptorManager.mReadFileDescriptorsTimeoutInvalid = true;
 
     return __CFFileDescriptorNativeDescriptorSet(f->_descriptor,
                                                  __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors);
 }
 
-CF_INLINE Boolean __CFFileDescriptorManagerClearFDForRead_Locked(CFFileDescriptorRef f) {
+CF_INLINE Boolean __CFFileDescriptorManagerNativeDescriptorClearForRead_Locked(CFFileDescriptorRef f) {
     __sCFFileDescriptorManager.mReadFileDescriptorsTimeoutInvalid = true;
 
     return __CFFileDescriptorNativeDescriptorClear(f->_descriptor,
                                                    __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors);
 }
 
-CF_INLINE Boolean __CFFileDescriptorManagerSetFDForWrite_Locked(CFFileDescriptorRef f) {
+CF_INLINE Boolean __CFFileDescriptorManagerNativeDescriptorSetForWrite_Locked(CFFileDescriptorRef f) {
     return __CFFileDescriptorNativeDescriptorSet(f->_descriptor,
                                                  __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors);
 }
 
-CF_INLINE Boolean __CFFileDescriptorManagerClearFDForWrite_Locked(CFFileDescriptorRef f) {
+CF_INLINE Boolean __CFFileDescriptorManagerNativeDescriptorClearForWrite_Locked(CFFileDescriptorRef f) {
     return __CFFileDescriptorNativeDescriptorClear(f->_descriptor,
                                                    __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors);
 }
@@ -1462,7 +1462,7 @@ __CFFileDescriptorManagerMaybeAdd_Locked(CFFileDescriptorRef f,
 			}
 		}
 
-		if (__CFFileDescriptorManagerSetFDForWrite_Locked(f)) {
+		if (__CFFileDescriptorManagerNativeDescriptorSetForWrite_Locked(f)) {
 			result = TRUE;
 		}
 	}
@@ -1481,7 +1481,7 @@ __CFFileDescriptorManagerMaybeAdd_Locked(CFFileDescriptorRef f,
 			}
 		}
 
-		if (__CFFileDescriptorManagerSetFDForRead_Locked(f)) {
+		if (__CFFileDescriptorManagerNativeDescriptorSetForRead_Locked(f)) {
 			result = TRUE;
 		}
 	}
@@ -1687,7 +1687,7 @@ __CFFileDescriptorManagerRemove_Locked(CFFileDescriptorRef f) {
     index = CFArrayGetFirstIndexOfValue(array, CFRangeMake(0, CFArrayGetCount(array)), f);
     if (index >= 0) {
         CFArrayRemoveValueAtIndex(array, index);
-        __CFFileDescriptorManagerClearFDForWrite_Locked(f);
+        __CFFileDescriptorManagerNativeDescriptorClearForWrite_Locked(f);
 #if DEPLOYMENT_TARGET_WINDOWS
         __CFFileDescriptorNativeDescriptorClear(f->_descriptor, __sCFFileDescriptorManager.mExceptFileDescriptorsNativeDescriptors);
 #endif
@@ -1700,7 +1700,7 @@ __CFFileDescriptorManagerRemove_Locked(CFFileDescriptorRef f) {
     index = CFArrayGetFirstIndexOfValue(array, CFRangeMake(0, CFArrayGetCount(array)), f);
     if (index >= 0) {
         CFArrayRemoveValueAtIndex(array, index);
-        __CFFileDescriptorManagerClearFDForRead_Locked(f);
+        __CFFileDescriptorManagerNativeDescriptorClearForRead_Locked(f);
     }
 
     __CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
@@ -1716,7 +1716,7 @@ __CFFileDescriptorManagerShouldWake_Locked(CFFileDescriptorRef f,
     __CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
 
     if ((callBackTypes & kCFFileDescriptorWriteCallBack) != 0) {
-        if (__CFFileDescriptorManagerClearFDForWrite_Locked(f)) {
+        if (__CFFileDescriptorManagerNativeDescriptorClearForWrite_Locked(f)) {
             const CFOptionFlags writeCallBacksAvailable = callBackTypes & kCFFileDescriptorWriteCallBack;
 
                 // do not wake up the file descriptor manager thread
@@ -1729,7 +1729,7 @@ __CFFileDescriptorManagerShouldWake_Locked(CFFileDescriptorRef f,
         }
 
         if ((callBackTypes & kCFFileDescriptorReadCallBack) != 0) {
-            if (__CFFileDescriptorManagerClearFDForRead_Locked(f)) {
+            if (__CFFileDescriptorManagerNativeDescriptorClearForRead_Locked(f)) {
                 // do not wake up the file descriptor manager thread
                 // if callback type is read
 

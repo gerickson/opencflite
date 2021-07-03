@@ -867,24 +867,44 @@ __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
 }
 
 /* static */ Boolean
-__CFFileDescriptorDisableCallBacks_Locked(CFFileDescriptorRef f, CFOptionFlags callBackTypes) {
-    Boolean result = FALSE;
+__CFFileDescriptorDisableCallBacks_Locked(CFFileDescriptorRef f, CFOptionFlags disableCallBackTypes) {
+	const Boolean       valid                = __CFFileDescriptorIsValid(f);
+	const Boolean       scheduled            = __CFFileDescriptorIsScheduled(f);
+	const CFOptionFlags currentCallBackTypes = __CFFileDescriptorCallBackTypes(f);
+    Boolean             result = FALSE;
 
     __CFFileDescriptorEnter();
 
-    if (__CFFileDescriptorIsValid(f) && __CFFileDescriptorIsScheduled(f)) {
-        callBackTypes &= __CFFileDescriptorCallBackTypes(f);
-        f->_flags.disabled |= callBackTypes;
+    __CFFileDescriptorMaybeLog("Attempting to disable valid %u scheduled %u descriptor %d "
+							   "callbacks to disable 0x%lx current callbacks 0x%lx\n",
+							   valid,
+							   scheduled,
+							   f->_descriptor,
+							   disableCallBackTypes,
+							   currentCallBackTypes);
 
-        __CFFileDescriptorMaybeLog("unscheduling file descriptor %d disabled callback "
-                                   "types 0x%x for callback types 0x%lx\n",
-                                   f->_descriptor,
-                                   f->_flags.disabled,
-                                   callBackTypes);
+	// Only disable types that are actually enabled by masking the
+	// requested types against the current types. If there's nothing
+	// left after that, then there is nothing to do.
 
-        result = __CFFileDescriptorManagerShouldWake_Locked(f, callBackTypes);
+	disableCallBackTypes &= currentCallBackTypes;
+	__Require_Quiet(disableCallBackTypes != __kCFFileDescriptorNoCallBacks, done);
+
+	// Only bother doing any work if the descriptor is valid and
+	// scheduled on a run loop. If it's neither then we will not be
+	// selecting on it and dispatching callbacks anyway.
+
+    if (valid && scheduled) {
+		const CFOptionFlags remainingCallBackTypes = (currentCallBackTypes & ~disableCallBackTypes);
+
+        f->_flags.disabled |= disableCallBackTypes;
+
+        result = __CFFileDescriptorManagerShouldWake_Locked(f, disableCallBackTypes);
+
+		__CFFileDescriptorSetCallBackTypes(f, remainingCallBackTypes);
     }
 
+ done:
     __CFFileDescriptorExit();
 
     return result;

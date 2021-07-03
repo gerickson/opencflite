@@ -851,7 +851,8 @@ __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
 }
 
 /* static */ Boolean
-__CFFileDescriptorDisableCallBacks_Locked(CFFileDescriptorRef f, CFOptionFlags disableCallBackTypes) {
+__CFFileDescriptorDisableCallBacks_Locked(CFFileDescriptorRef f,
+										  CFOptionFlags disableCallBackTypes) {
 	const Boolean       valid                = __CFFileDescriptorIsValid(f);
 	const Boolean       scheduled            = __CFFileDescriptorIsScheduled(f);
 	const CFOptionFlags currentCallBackTypes = __CFFileDescriptorCallBackTypes(f);
@@ -879,11 +880,11 @@ __CFFileDescriptorDisableCallBacks_Locked(CFFileDescriptorRef f, CFOptionFlags d
 	// selecting on it and dispatching callbacks anyway.
 
     if (valid && scheduled) {
-		const CFOptionFlags remainingCallBackTypes = (currentCallBackTypes & ~disableCallBackTypes);
+		const CFOptionFlags updatedCallBackTypes = (currentCallBackTypes & ~disableCallBackTypes);
 
         result = __CFFileDescriptorManagerShouldWake_Locked(f, disableCallBackTypes);
 
-		__CFFileDescriptorSetCallBackTypes(f, remainingCallBackTypes);
+		__CFFileDescriptorSetCallBackTypes(f, updatedCallBackTypes);
     }
 
  done:
@@ -914,7 +915,7 @@ __CFFileDescriptorDoCallBack_LockedAndUnlock(CFFileDescriptorRef f) {
     contextInfo = f->_context.info;
 
     __CFFileDescriptorMaybeLog("entering perform for descriptor %d "
-                               "with read signaled %d write signaled %d callback types %x\n",
+                               "with read signaled %d write signaled %d callback types 0x%x\n",
                                f->_descriptor, readSignaled, writeSignaled, callBackTypes);
 
     __CFFileDescriptorUnlock(f);

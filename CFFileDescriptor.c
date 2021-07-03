@@ -42,7 +42,9 @@
 
 /* Preprocessor Definitions */
 
-#define LOG_CFFILEDESCRIPTOR 1
+#if !defined(LOG_CFFILEDESCRIPTOR)
+#define LOG_CFFILEDESCRIPTOR 0
+#endif
 
 #if LOG_CFFILEDESCRIPTOR
 #define __CFFileDescriptorMaybeLog(format, ...)  do { fprintf(stderr, format, ##__VA_ARGS__); fflush(stderr); } while (0)
@@ -1125,8 +1127,7 @@ __CFFileDescriptorHandleRead(CFFileDescriptorRef f,
     }
 
 	if (causedByTimeout) {
-		__CFFileDescriptorMaybeLog("TIMEOUT RECEIVED - WILL SIGNAL IMMEDIATELY TO FLUSH\n");
-		__CFFileDescriptorMaybeLog("TIMEOUT - but no bytes, restoring to active set\n");
+		__CFFileDescriptorMaybeLog("TIMEOUT RECEIVED - restoring to active set\n");
 
 		__CFFileDescriptorManagerNativeDescriptorSetForRead(f);
 
@@ -1477,7 +1478,7 @@ __CFFileDescriptorManagerHandleTimeout(struct __CFFileDescriptorManagerSelectSta
 	CFIndex    index;
 
 	__CFFileDescriptorMaybeLog("file descriptor manager received timeout - "
-							   "kicking off expired reads (expired delta %ld, %ld)\n",
+							   "(expired delta %ld, %ld)\n",
 							   elapsed->tv_sec, elapsed->tv_usec);
 
 	__CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);

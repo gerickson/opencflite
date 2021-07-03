@@ -400,6 +400,19 @@ CF_INLINE CFIndex __CFFileDescriptorFdGetSize(CFDataRef fdSet) {
 #endif
 }
 
+/**
+ *  Add the specified native file descriptor to the synchronous I/O
+ *  wait set.
+ *
+ *  @param[in]  fd     The native file descriptor to add to the wait
+ *                     set.
+ *  @param[in]  fdSet  The synchronous I/O wait set to add @a fd to.
+ *
+ *  @returns
+ *    True if the descriptor was added, resulting in a set change;
+ *    otherwise, false.
+ *
+ */
 CF_INLINE Boolean __CFFileDescriptorFdSet(CFFileDescriptorNativeDescriptor fd, CFMutableDataRef fdSet) {
     /* returns true if a change occurred, false otherwise */
     Boolean retval = false;
@@ -438,6 +451,20 @@ CF_INLINE Boolean __CFFileDescriptorFdSet(CFFileDescriptorNativeDescriptor fd, C
     return retval;
 }
 
+/**
+ *  Remove the specified native file descriptor from the synchronous
+ *  I/O wait set.
+ *
+ *  @param[in]  fd     The native file descriptor to remove from the
+ *                     wait set.
+ *  @param[in]  fdSet  The synchronous I/O wait set to remove @a fd
+ *                     from.
+ *
+ *  @returns
+ *    True if the descriptor was removed, resulting in a set change;
+ *    otherwise, false.
+ *
+ */
 CF_INLINE Boolean __CFFileDescriptorFdClr(CFFileDescriptorNativeDescriptor fd, CFMutableDataRef fdSet) {
     /* returns true if a change occurred, false otherwise */
     Boolean retval = false;

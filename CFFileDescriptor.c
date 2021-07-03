@@ -1032,7 +1032,52 @@ __CFFileDescriptorFindAndAppendInvalidDescriptors(CFArrayRef descriptors, CFMuta
 /* static */ void
 __CFFileDescriptorHandleRead(CFFileDescriptorRef f,
 							 Boolean causedByTimeout) {
+	Boolean       valid;
+    CFOptionFlags readCallBacksAvailable;
+	CFRunLoopRef  rl = NULL;
+
     __CFFileDescriptorEnter();
+
+	valid = CFFileDescriptorIsValid(f);
+	__Require(valid, done);
+
+	__CFFileDescriptorLock(f);
+
+	readCallBacksAvailable = __CFFileDescriptorCallBackTypes(f) & (kCFFileDescriptorReadCallBack);
+
+	valid = __CFFileDescriptorIsValid(f);
+
+    if (!valid || (readCallBacksAvailable == __kCFFileDescriptorNoCallBacks)) {
+		__CFFileDescriptorMaybeLog("%s: valid %u descriptor read callbacks 0x%lx\n",
+								   __func__, valid, readCallBacksAvailable);
+
+		goto done;
+    }
+
+	if (causedByTimeout) {
+		__CFFileDescriptorMaybeLog("TIMEOUT RECEIVED - WILL SIGNAL IMMEDIATELY TO FLUSH\n");
+		__CFFileDescriptorMaybeLog("TIMEOUT - but no bytes, restoring to active set\n");
+
+		__CFFileDescriptorManagerNativeDescriptorSetForRead(f);
+
+		goto done;
+	}
+
+	__CFFileDescriptorSetReadSignaled(f);
+
+    __CFFileDescriptorMaybeLog("read signaling source for descriptor %d\n", f->_descriptor);
+
+    CFRunLoopSourceSignal(f->_rlsource);
+
+    rl = __CFFileDescriptorCopyRunLoopToWakeUp(f);
+
+ done:
+    __CFFileDescriptorUnlock(f);
+
+    if (rl != NULL) {
+        CFRunLoopWakeUp(rl);
+        CFRelease(rl);
+    }
 
     __CFFileDescriptorExit();
 }

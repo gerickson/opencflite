@@ -128,6 +128,7 @@ struct __CFFileDescriptor {
 };
 
 struct __CFFileDescriptorManagerWatchedDescriptors {
+	CFIndex  _count;
 	fd_set * _read;
 	fd_set * _write;
 	fd_set * _except;
@@ -183,12 +184,38 @@ static void        __CFFileDescriptorRunLoopSchedule(void *info, CFRunLoopRef rl
 static void        __CFFileDescriptorRunLoopCancel(void *info, CFRunLoopRef rl, CFStringRef mode);
 static void        __CFFileDescriptorRunLoopPerform(void *info);
 
+// Manager Functions
+
+static void                __CFFileDescriptorManager(void * arg);
+static void *              __CFFileDescriptorManagerAllocateWatchedDescriptors(struct __CFFileDescriptorManagerWatchedDescriptors *watches, CFIndex count);
+static void *              __CFFileDescriptorManagerAllocateSelectState(struct __CFFileDescriptorManagerSelectState *state, CFIndex watches_count);
+static void *              __CFFileDescriptorManagerAllocateSelectedDescriptors(struct __CFFileDescriptorManagerSelectedDescriptors *selected);
+static void *              __CFFileDescriptorManagerAllocateSelectedDescriptorsContainer(struct __CFFileDescriptorManagerSelectedDescriptorsContainer *container);
+static SInt32              __CFFileDescriptorManagerCreateWakeupPipe(void);
+static void                __CFFileDescriptorManagerHandleError(void);
+static void                __CFFileDescriptorManagerHandleReadyDescriptors(struct __CFFileDescriptorManagerSelectState *state,
+																		   CFIndex max,
+																		   Boolean causedByTimeout);
+static void                __CFFileDescriptorManagerHandleTimeout(struct __CFFileDescriptorManagerSelectState *state, const struct timeval *elapsed);
+static void                __CFFileDescriptorManagerInitialize_Locked(void);
+static Boolean  		   __CFFileDescriptorManagerMaybeAdd_Locked(CFFileDescriptorRef f,
+																	Boolean forRead,
+																	Boolean forWrite,
+																	Boolean force);
+static CFIndex             __CFFileDescriptorManagerPrepareWatches(struct __CFFileDescriptorManagerWatchedDescriptors *watches, struct timeval *timeout);
+#if LOG_CFFILEDESCRIPTOR
+static void                __CFFileDescriptorManagerPrepareWatchesMaybeLog(void);
+#endif
+static void                __CFFileDescriptorManagerProcessState(struct __CFFileDescriptorManagerSelectState *state, CFIndex count, CFIndex max, const struct timeval *elapsed);
+static void *              __CFFileDescriptorManagerMaybeReallocateAndClearWatchedDescriptors_Locked(struct __CFFileDescriptorManagerWatchedDescriptors *watches, CFIndex requested_count);
+static void         	   __CFFileDescriptorManagerRemoveInvalidFileDescriptors(void);
+static void                __CFFileDescriptorManagerRemove_Locked(CFFileDescriptorRef f);
+static Boolean             __CFFileDescriptorManagerShouldWake_Locked(CFFileDescriptorRef f,
+                                                                      CFOptionFlags callBackTypes);
+static void                __CFFileDescriptorManagerWakeup(char reason);
+
 // Other Functions
 
-static void *              __CFFileDescriptorAllocateWatchedDescriptors(struct __CFFileDescriptorManagerWatchedDescriptors *watches, CFIndex count);
-static void *              __CFFileDescriptorAllocateSelectState(struct __CFFileDescriptorManagerSelectState *state, CFIndex watches_count);
-static void *              __CFFileDescriptorAllocateSelectedDescriptors(struct __CFFileDescriptorManagerSelectedDescriptors *selected);
-static void *              __CFFileDescriptorAllocateSelectedDescriptorsContainer(struct __CFFileDescriptorManagerSelectedDescriptorsContainer *container);
 static void                __CFFileDescriptorCalculateMinTimeout_Locked(const void * value, void * context);
 static CFRunLoopRef        __CFFileDescriptorCopyRunLoopToWakeUp(CFFileDescriptorRef f);
 static CFFileDescriptorRef __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
@@ -216,33 +243,10 @@ static void                __CFFileDescriptorHandleReadyDescriptors(CFMutableArr
 static void                __CFFileDescriptorHandleWrite(CFFileDescriptorRef f,
 														 Boolean callBackNow);
 static void                __CFFileDescriptorInvalidate_Retained(CFFileDescriptorRef f);
-static void                __CFFileDescriptorManager(void * arg);
-static SInt32              __CFFileDescriptorManagerCreateWakeupPipe(void);
-static void                __CFFileDescriptorManagerHandleError(void);
-static void                __CFFileDescriptorManagerHandleReadyDescriptors(struct __CFFileDescriptorManagerSelectState *state,
-																		   CFIndex max,
-																		   Boolean causedByTimeout);
-static void                __CFFileDescriptorManagerHandleTimeout(struct __CFFileDescriptorManagerSelectState *state, const struct timeval *elapsed);
-static void                __CFFileDescriptorManagerInitialize_Locked(void);
-static Boolean  		   __CFFileDescriptorManagerMaybeAdd_Locked(CFFileDescriptorRef f,
-																	Boolean forRead,
-																	Boolean forWrite,
-																	Boolean force);
-static CFIndex             __CFFileDescriptorManagerPrepareWatches(struct __CFFileDescriptorManagerWatchedDescriptors *watches, struct timeval *timeout);
-#if LOG_CFFILEDESCRIPTOR
-static void                __CFFileDescriptorManagerPrepareWatchesMaybeLog(void);
-#endif
-static void                __CFFileDescriptorManagerProcessState(struct __CFFileDescriptorManagerSelectState *state, CFIndex count, CFIndex max, const struct timeval *elapsed);
-static void         	   __CFFileDescriptorManagerRemoveInvalidFileDescriptors(void);
-static void                __CFFileDescriptorManagerRemove_Locked(CFFileDescriptorRef f);
-static Boolean             __CFFileDescriptorManagerShouldWake_Locked(CFFileDescriptorRef f,
-                                                                      CFOptionFlags callBackTypes);
-static void                __CFFileDescriptorManagerWakeup(char reason);
 #if LOG_CFFILEDESCRIPTOR
 static void                __CFFileDescriptorMaybeLogFileDescriptorList(CFArrayRef descriptors, CFDataRef fdSet, Boolean onlyIfSet);
 #endif
 static const char *        __CFFileDescriptorNameForSymbol(void *address);
-static void *              __CFFileDescriptorReallocateWatchedDescriptors(struct __CFFileDescriptorManagerWatchedDescriptors *watches, CFIndex count);
 static Boolean             __CFNativeFileDescriptorIsValid(CFFileDescriptorNativeDescriptor fd);
 
 /* Global Variables */
@@ -394,7 +398,7 @@ CF_INLINE Boolean __CFFileDescriptorIsScheduled(CFFileDescriptorRef f) {
     return (f->_fileDescriptorSetCount > 0);
 }
 
-CF_INLINE CFIndex __CFFileDescriptorFdGetSize(CFDataRef fdSet) {
+CF_INLINE CFIndex __CFFileDescriptorNativeDescriptorGetSize(CFDataRef fdSet) {
 #if DEPLOYMENT_TARGET_WINDOWS
     fd_set* set = (fd_set*)CFDataGetBytePtr(fdSet);
     return set ? set->fd_count : 0;
@@ -548,10 +552,70 @@ CF_INLINE Boolean __CFFileDescriptorManagerNativeDescriptorClearForWrite_Locked(
     return __CFFileDescriptorNativeDescriptorClear(f->_descriptor, set);
 }
 
-// MARK: Other Functions
+CF_INLINE CFIndex __CFFileDescriptorManagerNativeDescriptorCalculateMaxSize_Locked(void)
+{
+	const CFIndex rfds   = __CFFileDescriptorNativeDescriptorGetSize(__sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors);
+	const CFIndex wfds   = __CFFileDescriptorNativeDescriptorGetSize(__sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors);
+	const CFIndex result = __CFMax(rfds, wfds);
+
+	return result;
+}
+
+// MARK: Manager Functions
+
+#ifdef __GNUC__
+__attribute__ ((noreturn))
+#endif /* __GNUC__ */
+/* static */ void
+__CFFileDescriptorManager(void * arg) {
+	struct __CFFileDescriptorManagerSelectState state;
+	void *result;
+    CFIndex nrfds, maxnrfds, fdentries = 1;
+    struct timeval timeout;
+    struct timeval timeBeforeSelect;
+    struct timeval timeAfterSelect;
+	struct timeval timeElapsed;
+
+    __CFFileDescriptorEnter();
+
+#if defined(__OBJC__)
+    if (objc_collecting_enabled()) auto_zone_register_thread(auto_zone());
+#endif
+
+	result = __CFFileDescriptorManagerAllocateSelectState(&state, fdentries);
+	__Verify_Action(result != NULL, abort());
+
+    for (;;) {
+		maxnrfds = __CFFileDescriptorManagerPrepareWatches(&state._watches, &timeout);
+
+		gettimeofday(&timeBeforeSelect, NULL);
+
+        nrfds = select(maxnrfds,
+					   state._watches._read,
+					   state._watches._write,
+					   state._watches._except,
+					   &timeout);
+
+		gettimeofday(&timeAfterSelect, NULL);
+
+		timersub(&timeAfterSelect, &timeBeforeSelect, &timeElapsed);
+
+		__CFFileDescriptorMaybeLog("file descriptor manager woke from select, "
+								   "ret=%ld\n",
+								   nrfds);
+
+		__CFFileDescriptorManagerProcessState(&state, nrfds, maxnrfds, &timeElapsed);
+    }
+
+#if defined(__OBJC__)
+    if (objc_collecting_enabled()) auto_zone_unregister_thread(auto_zone());
+#endif
+
+    __CFFileDescriptorExit();
+}
 
 /* static */ void *
-__CFFileDescriptorAllocateWatchedDescriptors(struct __CFFileDescriptorManagerWatchedDescriptors *watches, CFIndex count)
+__CFFileDescriptorManagerAllocateWatchedDescriptors(struct __CFFileDescriptorManagerWatchedDescriptors *watches, CFIndex count)
 {
 	void * result = NULL;
 
@@ -568,6 +632,8 @@ __CFFileDescriptorAllocateWatchedDescriptors(struct __CFFileDescriptorManagerWat
     watches->_read   = (fd_set *)CFAllocatorAllocate(kCFAllocatorSystemDefault, count * sizeof(HANDLE) + sizeof(u_int), 0);
 #endif /* !DEPLOYMENT_TARGET_WINDOWS */
 
+	watches->_count = count;
+
 	result = watches;
 
  done:
@@ -575,16 +641,16 @@ __CFFileDescriptorAllocateWatchedDescriptors(struct __CFFileDescriptorManagerWat
 }
 
 static void *
-__CFFileDescriptorAllocateSelectState(struct __CFFileDescriptorManagerSelectState *state, CFIndex watches_count) {
+__CFFileDescriptorManagerAllocateSelectState(struct __CFFileDescriptorManagerSelectState *state, CFIndex watches_count) {
 	void *result = NULL;
 
 	__Require(state != NULL, done);
 
-	result = __CFFileDescriptorAllocateWatchedDescriptors(&state->_watches,
-														  watches_count);
+	result = __CFFileDescriptorManagerAllocateWatchedDescriptors(&state->_watches,
+																 watches_count);
 	__Require(result != NULL, done);
 
-	result = __CFFileDescriptorAllocateSelectedDescriptors(&state->_selected);
+	result = __CFFileDescriptorManagerAllocateSelectedDescriptors(&state->_selected);
 	__Require(result != NULL, done);
 
 	result = state;
@@ -594,15 +660,15 @@ __CFFileDescriptorAllocateSelectState(struct __CFFileDescriptorManagerSelectStat
 }
 
 /* static */ void *
-__CFFileDescriptorAllocateSelectedDescriptors(struct __CFFileDescriptorManagerSelectedDescriptors *selected) {
+__CFFileDescriptorManagerAllocateSelectedDescriptors(struct __CFFileDescriptorManagerSelectedDescriptors *selected) {
 	void *result = NULL;
 
 	__Require(selected != NULL, done);
 
-	result = __CFFileDescriptorAllocateSelectedDescriptorsContainer(&selected->_read);
+	result = __CFFileDescriptorManagerAllocateSelectedDescriptorsContainer(&selected->_read);
 	__Require(result != NULL, done);
 
-	result = __CFFileDescriptorAllocateSelectedDescriptorsContainer(&selected->_write);
+	result = __CFFileDescriptorManagerAllocateSelectedDescriptorsContainer(&selected->_write);
 	__Require(result != NULL, done);
 
 	result = selected;
@@ -612,7 +678,7 @@ __CFFileDescriptorAllocateSelectedDescriptors(struct __CFFileDescriptorManagerSe
 }
 
 static void *
-__CFFileDescriptorAllocateSelectedDescriptorsContainer(struct __CFFileDescriptorManagerSelectedDescriptorsContainer *container) {
+__CFFileDescriptorManagerAllocateSelectedDescriptorsContainer(struct __CFFileDescriptorManagerSelectedDescriptorsContainer *container) {
 	void *result = NULL;
 
 	__Require(container != NULL, done);
@@ -627,6 +693,543 @@ __CFFileDescriptorAllocateSelectedDescriptorsContainer(struct __CFFileDescriptor
  done:
 	return result;
 }
+
+/* static */ SInt32
+__CFFileDescriptorManagerCreateWakeupPipe(void)
+{
+    return pipe(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe);
+}
+
+/* static */ void
+__CFFileDescriptorManagerHandleError(void) {
+	const SInt32 selectError = __CFFileDescriptorManagerLastError();
+
+	__CFFileDescriptorMaybeLog("file descriptor manager received error %d from select\n", selectError);
+
+	switch (selectError) {
+
+	case EBADF:
+		__CFFileDescriptorManagerRemoveInvalidFileDescriptors();
+		break;
+
+	default:
+		__CFFileDescriptorMaybeLog("Unhandled select error %d: %s\n", selectError, strerror(selectError));
+		abort();
+		break;
+
+	}
+}
+
+/* static */ void
+__CFFileDescriptorManagerHandleReadyDescriptors(struct __CFFileDescriptorManagerSelectState *state, CFIndex max, Boolean causedByTimeout) {
+	CFIndex    count;
+	CFIndex    index;
+	fd_set *   tempfds = NULL;
+
+	__CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+	// Process descriptors ready for writing
+
+	tempfds = NULL;
+	count = CFArrayGetCount(__sCFFileDescriptorManager.mWriteFileDescriptors);
+	for (index = 0; index < count; index++) {
+		CFFileDescriptorRef f = (CFFileDescriptorRef)CFArrayGetValueAtIndex(__sCFFileDescriptorManager.mWriteFileDescriptors, index);
+		CFFileDescriptorNativeDescriptor fd = f->_descriptor;
+		// We might have an new element in __sCFFileDescriptorManager.mWriteFileDescriptors that we weren't listening to,
+		// in which case we must be sure not to test a bit in the fdset that is
+		// outside our mask size.
+#if !DEPLOYMENT_TARGET_WINDOWS
+		const Boolean fdInBounds = (0 <= fd && fd < max);
+#else
+		const Boolean fdInBounds = true;
+#endif
+		if (__CFFILEDESCRIPTOR_INVALID_DESCRIPTOR != fd && fdInBounds) {
+			if (FD_ISSET(fd, state->_watches._write)) {
+				CFArraySetValueAtIndex(state->_selected._write._descriptors, state->_selected._write._index, f);
+				state->_selected._write._index++;
+				/* descriptor is removed from fds here, restored by CFFileDescriptorReschedule */
+				if (!tempfds) tempfds = (fd_set *)CFDataGetMutableBytePtr(__sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors);
+				FD_CLR(fd, tempfds);
+#if DEPLOYMENT_TARGET_WINDOWS
+				fd_set *exfds = (fd_set *)CFDataGetMutableBytePtr(__sCFFileDescriptorManager.mExceptFileDescriptorsNativeDescriptors);
+				FD_CLR(fd, exfds);
+#endif
+
+			}
+#if DEPLOYMENT_TARGET_WINDOWS
+			else if (FD_ISSET(fd, exceptfds)) {
+				// On Win32 connect errors come in on exceptFDs.  We treat these as if
+				// they had come on writeFDs, since the rest of our Unix-based code
+				// expects that.
+				CFArrayAppendValue(state->_selected._write._descriptors, f);
+				fd_set *exfds = (fd_set *)CFDataGetMutableBytePtr(__sCFFileDescriptorManager.mExceptFileDescriptorsNativeDescriptors);
+				FD_CLR(fd, exfds);
+			}
+#endif
+		}
+	}
+
+	// Process descriptors ready for reading
+
+	tempfds = NULL;
+	count = CFArrayGetCount(__sCFFileDescriptorManager.mReadFileDescriptors);
+	for (index = 0; index < count; index++) {
+		CFFileDescriptorRef f = (CFFileDescriptorRef)CFArrayGetValueAtIndex(__sCFFileDescriptorManager.mReadFileDescriptors, index);
+		CFFileDescriptorNativeDescriptor fd = f->_descriptor;
+#if !DEPLOYMENT_TARGET_WINDOWS
+		// We might have an new element in __sCFFileDescriptorManager.mReadFileDescriptors that we weren't listening to,
+		// in which case we must be sure not to test a bit in the fdset that is
+		// outside our mask size.
+		const Boolean fdInBounds = (0 <= fd && fd < max);
+#else
+		// fdset's are arrays, so we don't have that issue above
+		const Boolean fdInBounds = true;
+#endif
+		if (__CFFILEDESCRIPTOR_INVALID_DESCRIPTOR != fd && fdInBounds && FD_ISSET(fd, state->_watches._read)) {
+			CFArraySetValueAtIndex(state->_selected._read._descriptors, state->_selected._read._index, f);
+			state->_selected._read._index++;
+			/* descriptor is removed from fds here, will be restored in read handling or in perform function */
+			if (!tempfds) tempfds = (fd_set *)CFDataGetMutableBytePtr(__sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors);
+			FD_CLR(fd, tempfds);
+		}
+	}
+
+	__CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+	// Dispatch and handle descriptors ready for writing
+
+	__CFFileDescriptorHandleReadyDescriptors(state->_selected._write._descriptors,
+											 state->_selected._write._index,
+											 __CFFileDescriptorHandleWrite,
+											 FALSE);
+
+	state->_selected._write._index = 0;
+
+	// Dispatch and handle descriptors ready for reading
+
+	__CFFileDescriptorHandleReadyDescriptors(state->_selected._read._descriptors,
+											 state->_selected._read._index,
+											 __CFFileDescriptorHandleRead,
+											 causedByTimeout);
+
+	state->_selected._read._index = 0;
+}
+
+/* static */ void
+__CFFileDescriptorManagerHandleTimeout(struct __CFFileDescriptorManagerSelectState *state, const struct timeval *elapsed) {
+	CFArrayRef array;
+	CFIndex    count;
+	CFIndex    index;
+
+	__CFFileDescriptorMaybeLog("file descriptor manager received timeout - "
+							   "(expired delta %ld, %ld)\n",
+							   elapsed->tv_sec, elapsed->tv_usec);
+
+	__CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+	array = __sCFFileDescriptorManager.mReadFileDescriptors;
+	count = CFArrayGetCount(array);
+
+	for (index = 0; index < count; index++) {
+		CFFileDescriptorRef f = (CFFileDescriptorRef)CFArrayGetValueAtIndex(array, index);
+		(void)f;
+	}
+
+	__CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+}
+
+/* static */ void
+__CFFileDescriptorManagerInitialize_Locked(void) {
+    SInt32 status;
+
+    __CFFileDescriptorEnter();
+
+    __sCFFileDescriptorManager.mReadFileDescriptors  = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, NULL);
+    __sCFFileDescriptorManager.mWriteFileDescriptors = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, NULL);
+
+    __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors  = CFDataCreateMutable(kCFAllocatorSystemDefault, 0);
+    __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors = CFDataCreateMutable(kCFAllocatorSystemDefault, 0);
+
+#if DEPLOYMENT_TARGET_WINDOWS
+#warning "CFFileDescriptor Windows portability issue!"
+#endif
+
+    status = __CFFileDescriptorManagerCreateWakeupPipe();
+
+    if (status < 0) {
+        CFLog(kCFLogLevelWarning, CFSTR("*** Could not create wakeup pipe for CFFileDescriptor!!!"));
+    } else {
+        status = fcntl(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeWriterIndex],
+                       F_SETFL,
+                       O_NONBLOCK);
+        __Require(status == 0, done);
+
+        status = fcntl(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeReaderIndex],
+                       F_SETFL,
+                       O_NONBLOCK);
+        __Require(status == 0, done);
+
+        __CFFileDescriptorNativeDescriptorSet(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeReaderIndex],
+                                              __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors);
+    }
+
+ done:
+    __CFFileDescriptorExit();
+
+    return;
+}
+
+/* static */ Boolean
+__CFFileDescriptorManagerMaybeAdd_Locked(CFFileDescriptorRef f,
+										 Boolean forRead,
+										 Boolean forWrite,
+										 Boolean force)
+{
+	Boolean result = FALSE;
+
+    __CFFileDescriptorEnter();
+
+	__CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+	if (forWrite) {
+		__CFFileDescriptorMaybeLog("Adding descriptor %d for writing.\n", f->_descriptor);
+
+		if (force) {
+			CFMutableArrayRef array = __sCFFileDescriptorManager.mWriteFileDescriptors;
+			const CFIndex     index = CFArrayGetFirstIndexOfValue(array,
+																  CFRangeMake(0, CFArrayGetCount(array)),
+																  f);
+
+			if (index == kCFNotFound) {
+				CFArrayAppendValue(array, f);
+			}
+		}
+
+		if (__CFFileDescriptorManagerNativeDescriptorSetForWrite_Locked(f)) {
+			result = TRUE;
+		}
+	}
+
+	if (forRead) {
+		__CFFileDescriptorMaybeLog("Adding descriptor %d for reading.\n", f->_descriptor);
+
+		if (force) {
+			CFMutableArrayRef array = __sCFFileDescriptorManager.mReadFileDescriptors;
+			const CFIndex     index = CFArrayGetFirstIndexOfValue(array,
+																  CFRangeMake(0, CFArrayGetCount(array)),
+																  f);
+
+			if (index == kCFNotFound) {
+				CFArrayAppendValue(array, f);
+			}
+		}
+
+		if (__CFFileDescriptorManagerNativeDescriptorSetForRead_Locked(f)) {
+			result = TRUE;
+		}
+	}
+
+	if (result && __sCFFileDescriptorManager.mThread == NULL) {
+		__CFFileDescriptorMaybeLog("Starting manager thread...\n");
+		__sCFFileDescriptorManager.mThread = __CFStartSimpleThread((void*)__CFFileDescriptorManager, 0);
+	}
+
+	__CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+    __CFFileDescriptorExit();
+
+	return result;
+}
+
+/* static */ void
+__CFFileDescriptorManagerPrepareWatchesMaybeLog(void)
+{
+#if LOG_CFFILEDESCRIPTOR
+	CFArrayRef array;
+	CFDataRef  data;
+
+    __CFFileDescriptorMaybeLog("file descriptor manager iteration %u "
+							   "looking at read descriptors ",
+							   __sCFFileDescriptorManager.mGeneration);
+
+	array = __sCFFileDescriptorManager.mReadFileDescriptors;
+	data  = __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors;
+
+	__CFFileDescriptorMaybeLogFileDescriptorList(array, data, FALSE);
+
+	array = __sCFFileDescriptorManager.mWriteFileDescriptors;
+	data  = __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors;
+
+	if (CFArrayGetCount(array) > 0) {
+		__CFFileDescriptorMaybeLog(", and write descriptors ");
+		__CFFileDescriptorMaybeLogFileDescriptorList(array, data, FALSE);
+
+#if DEPLOYMENT_TARGET_WINDOWS
+		array = __sCFFileDescriptorManager.mWriteFileDescriptors;
+		data  = __sCFFileDescriptorManager.mExceptFileDescriptorsNativeDescriptors;
+
+		__CFFileDescriptorMaybeLog(", and except descriptors ");
+		__CFFileDescriptorMaybeLogFileDescriptorList(array, data, TRUE);
+#endif /* DEPLOYMENT_TARGET_WINDOWS */
+	}
+
+	__CFFileDescriptorMaybeLog("\n");
+#endif /* LOG_CFFILEDESCRIPTOR */
+}
+
+/* static */ CFIndex
+__CFFileDescriptorManagerPrepareWatches(struct __CFFileDescriptorManagerWatchedDescriptors * watches, struct timeval *timeout) {
+	void *result = NULL;
+    struct timeval tv;
+	CFIndex maxnrfds = 0;
+
+    __CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+	__sCFFileDescriptorManager.mGeneration++;
+
+	__CFFileDescriptorManagerPrepareWatchesMaybeLog();
+
+	maxnrfds = __CFFileDescriptorManagerNativeDescriptorCalculateMaxSize_Locked();
+
+	result = __CFFileDescriptorManagerMaybeReallocateAndClearWatchedDescriptors_Locked(watches, maxnrfds);
+	__Verify_Action(result != NULL, abort());
+
+	if (__sCFFileDescriptorManager.mReadFileDescriptorsTimeoutInvalid) {
+		struct timeval* minTimeout = NULL;
+
+		__sCFFileDescriptorManager.mReadFileDescriptorsTimeoutInvalid = false;
+		__CFFileDescriptorMaybeLog("Figuring out which file descriptors have timeouts...\n");
+		CFArrayApplyFunction(__sCFFileDescriptorManager.mReadFileDescriptors,
+							 CFRangeMake(0, CFArrayGetCount(__sCFFileDescriptorManager.mReadFileDescriptors)),
+							 __CFFileDescriptorCalculateMinTimeout_Locked,
+							 (void *)&minTimeout);
+
+		if (minTimeout == NULL) {
+			__CFFileDescriptorMaybeLog("No one wants a timeout!\n");
+
+			timeout = NULL;
+		} else {
+			__CFFileDescriptorMaybeLog("timeout will be %ld, %ld!\n",
+									   minTimeout->tv_sec,
+									   minTimeout->tv_usec);
+
+			tv = *minTimeout;
+			*timeout = tv;
+		}
+	}
+
+	if (timeout) {
+		__CFFileDescriptorMaybeLog("select will have a %ld, %ld timeout\n",
+								   timeout->tv_sec,
+								   timeout->tv_usec);
+	}
+
+    __CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+	return maxnrfds;
+}
+
+/* static */ void
+__CFFileDescriptorManagerProcessState(struct __CFFileDescriptorManagerSelectState * state, CFIndex count, CFIndex max, const struct timeval *elapsed) {
+	const Boolean kDidTimeout = (count == 0);
+	const Boolean kHadError   = (count < 0);
+
+	if (kDidTimeout) {
+		__CFFileDescriptorManagerHandleTimeout(state, elapsed);
+
+	} else if (kHadError) {
+		__CFFileDescriptorManagerHandleError();
+
+	}
+
+	if (FD_ISSET(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeReaderIndex], state->_watches._read)) {
+		uint8_t       buffer[256];
+		int           status;
+
+		do {
+			status = read(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeReaderIndex], buffer, sizeof(buffer));
+		} while((status == -1) && (errno == EAGAIN));
+		__Verify(status == sizeof(char));
+
+		__CFFileDescriptorMaybeLog("file descriptor manager received reason '%c' on wakeup pipe\n",
+								   buffer[0]);
+	}
+
+	__CFFileDescriptorManagerHandleReadyDescriptors(state, max, kDidTimeout);
+}
+
+/* static */ void *
+__CFFileDescriptorManagerMaybeReallocateAndClearWatchedDescriptors_Locked(struct __CFFileDescriptorManagerWatchedDescriptors *watches, CFIndex requested_count)
+{
+	CFIndex current_count = watches->_count;
+	void *  result = NULL;
+
+#if !DEPLOYMENT_TARGET_WINDOWS
+	// Maybe reallocate
+
+	if (requested_count > current_count * (int)NFDBITS) {
+		current_count = (requested_count + NFDBITS - 1) / NFDBITS;
+
+		watches->_write = (fd_set *)CFAllocatorReallocate(kCFAllocatorSystemDefault, watches->_write, current_count * sizeof(fd_mask), 0);
+		watches->_read  = (fd_set *)CFAllocatorReallocate(kCFAllocatorSystemDefault, watches->_read, current_count * sizeof(fd_mask), 0);
+	}
+
+	// Clear
+
+	memset(watches->_write, 0, current_count * sizeof(fd_mask));
+	memset(watches->_read,  0, current_count * sizeof(fd_mask));
+#else
+	// Maybe reallocate
+
+	if (requested_count > current_count) {
+		current_count = requested_count;
+
+		watches->_except = (fd_set *)CFAllocatorReallocate(kCFAllocatorSystemDefault, watches->_except, current_count * sizeof(HANDLE) + sizeof(u_int), 0);
+		watches->_write  = (fd_set *)CFAllocatorReallocate(kCFAllocatorSystemDefault, watches->_write, current_count * sizeof(HANDLE) + sizeof(u_int), 0);
+		watches->_read   = (fd_set *)CFAllocatorReallocate(kCFAllocatorSystemDefault, watches->_read, current_count * sizeof(HANDLE) + sizeof(u_int), 0);
+	}
+
+	// Clear
+
+	memset(watches->_except, 0, current_count * sizeof(HANDLE) + sizeof(u_int));
+	memset(watches->_write,  0, current_count * sizeof(HANDLE) + sizeof(u_int));
+	memset(watches->_read,   0, current_count * sizeof(HANDLE) + sizeof(u_int));
+
+	CFDataGetBytes(__sCFFileDescriptorManager.mExceptFileDescriptorsNativeDescriptors,
+				   CFRangeMake(0, __CFFileDescriptorNativeDescriptorGetSize(__sCFFileDescriptorManager.mExceptFileDescriptorsNativeDescriptors) * sizeof(HANDLE) + sizeof(u_int)),
+				   (UInt8 *)watches->_except);
+#endif /* !DEPLOYMENT_TARGET_WINDOWS */
+
+	CFDataGetBytes(__sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors,
+				   CFRangeMake(0, CFDataGetLength(__sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors)),
+				   (UInt8 *)watches->_write);
+	CFDataGetBytes(__sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors,
+				   CFRangeMake(0, CFDataGetLength(__sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors)),
+				   (UInt8 *)watches->_read);
+
+	watches->_count = current_count;
+
+	result = watches;
+
+	return result;
+}
+
+/* static */ void
+__CFFileDescriptorManagerRemoveInvalidFileDescriptors(void) {
+	CFMutableArrayRef invalidFileDescriptors = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, &kCFTypeArrayCallBacks);
+	CFIndex count;
+	CFIndex index;
+
+	__CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+	__CFFileDescriptorFindAndAppendInvalidDescriptors(__sCFFileDescriptorManager.mWriteFileDescriptors,
+													  invalidFileDescriptors,
+													  "write");
+
+	__CFFileDescriptorFindAndAppendInvalidDescriptors(__sCFFileDescriptorManager.mReadFileDescriptors,
+													  invalidFileDescriptors,
+													  "read");
+
+	__CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+	count = CFArrayGetCount(invalidFileDescriptors);
+	for (index = 0; index < count; index++) {
+		CFFileDescriptorInvalidate(((CFFileDescriptorRef)CFArrayGetValueAtIndex(invalidFileDescriptors, index)));
+	}
+	CFRelease(invalidFileDescriptors);
+}
+
+/* static */ void
+__CFFileDescriptorManagerRemove_Locked(CFFileDescriptorRef f) {
+    CFMutableArrayRef array;
+    CFIndex index;
+
+    __CFFileDescriptorEnter();
+
+    __CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+    // Handle removing the descriptor from the active write descriptor collection.
+
+    array = __sCFFileDescriptorManager.mWriteFileDescriptors;
+
+    index = CFArrayGetFirstIndexOfValue(array, CFRangeMake(0, CFArrayGetCount(array)), f);
+    if (index >= 0) {
+        CFArrayRemoveValueAtIndex(array, index);
+        __CFFileDescriptorManagerNativeDescriptorClearForWrite_Locked(f);
+#if DEPLOYMENT_TARGET_WINDOWS
+        __CFFileDescriptorNativeDescriptorClear(f->_descriptor, __sCFFileDescriptorManager.mExceptFileDescriptorsNativeDescriptors);
+#endif
+    }
+
+    // Handle removing the descriptor from the active read descriptor collection.
+
+    array = __sCFFileDescriptorManager.mReadFileDescriptors;
+
+    index = CFArrayGetFirstIndexOfValue(array, CFRangeMake(0, CFArrayGetCount(array)), f);
+    if (index >= 0) {
+        CFArrayRemoveValueAtIndex(array, index);
+        __CFFileDescriptorManagerNativeDescriptorClearForRead_Locked(f);
+    }
+
+    __CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+    __CFFileDescriptorExit();
+}
+
+/* static */ Boolean
+__CFFileDescriptorManagerShouldWake_Locked(CFFileDescriptorRef f,
+                                           CFOptionFlags callBackTypes) {
+    Boolean result = FALSE;
+
+    __CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+    if ((callBackTypes & kCFFileDescriptorWriteCallBack) != __kCFFileDescriptorNoCallBacks) {
+        if (__CFFileDescriptorManagerNativeDescriptorClearForWrite_Locked(f)) {
+			// do not wake up the file descriptor manager thread
+			// if all relevant write callbacks are disabled
+
+			if ((callBackTypes & kCFFileDescriptorWriteCallBack) != kCFFileDescriptorWriteCallBack) {
+				result = true;
+			}
+		}
+	}
+
+	if ((callBackTypes & kCFFileDescriptorReadCallBack) != __kCFFileDescriptorNoCallBacks) {
+		if (__CFFileDescriptorManagerNativeDescriptorClearForRead_Locked(f)) {
+			// do not wake up the file descriptor manager thread
+			// if callback type is read
+
+			if ((callBackTypes & kCFFileDescriptorReadCallBack) != kCFFileDescriptorReadCallBack) {
+				result = true;
+			}
+		}
+	}
+
+	__CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+    return result;
+}
+
+/* static */ void
+__CFFileDescriptorManagerWakeup(char reason)
+{
+    int status;
+
+    __CFFileDescriptorEnter();
+
+    __CFFileDescriptorMaybeLog("Waking up the file descriptor manager w/ reason '%c'\n", reason);
+
+	do {
+		status = write(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeWriterIndex],
+					   &reason,
+					   sizeof(reason));
+	} while ((status == -1) && (errno == EAGAIN));
+    __Verify(status == sizeof(reason));
+
+    __CFFileDescriptorExit();
+}
+
+// MARK: Other Functions
 
 /* static */ CFRunLoopRef
 __CFFileDescriptorCopyRunLoopToWakeUp(CFFileDescriptorRef f) {
@@ -1298,570 +1901,6 @@ __CFFileDescriptorInvalidate_Retained(CFFileDescriptorRef f) {
     }
 }
 
-#ifdef __GNUC__
-__attribute__ ((noreturn))
-#endif /* __GNUC__ */
-/* static */ void
-__CFFileDescriptorManager(void * arg) {
-	struct __CFFileDescriptorManagerSelectState state;
-	void *result;
-    CFIndex nrfds, maxnrfds, fdentries = 1;
-    struct timeval timeout;
-    struct timeval timeBeforeSelect;
-    struct timeval timeAfterSelect;
-	struct timeval timeElapsed;
-
-    __CFFileDescriptorEnter();
-
-#if defined(__OBJC__)
-    if (objc_collecting_enabled()) auto_zone_register_thread(auto_zone());
-#endif
-
-	result = __CFFileDescriptorAllocateSelectState(&state, fdentries);
-	__Verify_Action(result != NULL, abort());
-
-    for (;;) {
-		maxnrfds = __CFFileDescriptorManagerPrepareWatches(&state._watches, &timeout);
-
-		gettimeofday(&timeBeforeSelect, NULL);
-
-        nrfds = select(maxnrfds,
-					   state._watches._read,
-					   state._watches._write,
-					   state._watches._except,
-					   &timeout);
-
-		gettimeofday(&timeAfterSelect, NULL);
-
-		timersub(&timeAfterSelect, &timeBeforeSelect, &timeElapsed);
-
-		__CFFileDescriptorMaybeLog("file descriptor manager woke from select, "
-								   "ret=%ld\n",
-								   nrfds);
-
-		__CFFileDescriptorManagerProcessState(&state, nrfds, maxnrfds, &timeElapsed);
-    }
-
-#if defined(__OBJC__)
-    if (objc_collecting_enabled()) auto_zone_unregister_thread(auto_zone());
-#endif
-
-    __CFFileDescriptorExit();
-}
-
-
-/* static */ SInt32
-__CFFileDescriptorManagerCreateWakeupPipe(void)
-{
-    return pipe(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe);
-}
-
-/* static */ void
-__CFFileDescriptorManagerHandleError(void) {
-	const SInt32 selectError = __CFFileDescriptorManagerLastError();
-
-	__CFFileDescriptorMaybeLog("file descriptor manager received error %d from select\n", selectError);
-
-	switch (selectError) {
-
-	case EBADF:
-		__CFFileDescriptorManagerRemoveInvalidFileDescriptors();
-		break;
-
-	default:
-		__CFFileDescriptorMaybeLog("Unhandled select error %d: %s\n", selectError, strerror(selectError));
-		abort();
-		break;
-
-	}
-}
-
-/* static */ void
-__CFFileDescriptorManagerHandleReadyDescriptors(struct __CFFileDescriptorManagerSelectState *state, CFIndex max, Boolean causedByTimeout) {
-	CFIndex    count;
-	CFIndex    index;
-	fd_set *   tempfds = NULL;
-
-	__CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
-
-	// Process descriptors ready for writing
-
-	tempfds = NULL;
-	count = CFArrayGetCount(__sCFFileDescriptorManager.mWriteFileDescriptors);
-	for (index = 0; index < count; index++) {
-		CFFileDescriptorRef f = (CFFileDescriptorRef)CFArrayGetValueAtIndex(__sCFFileDescriptorManager.mWriteFileDescriptors, index);
-		CFFileDescriptorNativeDescriptor fd = f->_descriptor;
-		// We might have an new element in __sCFFileDescriptorManager.mWriteFileDescriptors that we weren't listening to,
-		// in which case we must be sure not to test a bit in the fdset that is
-		// outside our mask size.
-#if !DEPLOYMENT_TARGET_WINDOWS
-		const Boolean fdInBounds = (0 <= fd && fd < max);
-#else
-		const Boolean fdInBounds = true;
-#endif
-		if (__CFFILEDESCRIPTOR_INVALID_DESCRIPTOR != fd && fdInBounds) {
-			if (FD_ISSET(fd, state->_watches._write)) {
-				CFArraySetValueAtIndex(state->_selected._write._descriptors, state->_selected._write._index, f);
-				state->_selected._write._index++;
-				/* descriptor is removed from fds here, restored by CFFileDescriptorReschedule */
-				if (!tempfds) tempfds = (fd_set *)CFDataGetMutableBytePtr(__sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors);
-				FD_CLR(fd, tempfds);
-#if DEPLOYMENT_TARGET_WINDOWS
-				fd_set *exfds = (fd_set *)CFDataGetMutableBytePtr(__sCFFileDescriptorManager.mExceptFileDescriptorsNativeDescriptors);
-				FD_CLR(fd, exfds);
-#endif
-
-			}
-#if DEPLOYMENT_TARGET_WINDOWS
-			else if (FD_ISSET(fd, exceptfds)) {
-				// On Win32 connect errors come in on exceptFDs.  We treat these as if
-				// they had come on writeFDs, since the rest of our Unix-based code
-				// expects that.
-				CFArrayAppendValue(state->_selected._write._descriptors, f);
-				fd_set *exfds = (fd_set *)CFDataGetMutableBytePtr(__sCFFileDescriptorManager.mExceptFileDescriptorsNativeDescriptors);
-				FD_CLR(fd, exfds);
-			}
-#endif
-		}
-	}
-
-	// Process descriptors ready for reading
-
-	tempfds = NULL;
-	count = CFArrayGetCount(__sCFFileDescriptorManager.mReadFileDescriptors);
-	for (index = 0; index < count; index++) {
-		CFFileDescriptorRef f = (CFFileDescriptorRef)CFArrayGetValueAtIndex(__sCFFileDescriptorManager.mReadFileDescriptors, index);
-		CFFileDescriptorNativeDescriptor fd = f->_descriptor;
-#if !DEPLOYMENT_TARGET_WINDOWS
-		// We might have an new element in __sCFFileDescriptorManager.mReadFileDescriptors that we weren't listening to,
-		// in which case we must be sure not to test a bit in the fdset that is
-		// outside our mask size.
-		const Boolean fdInBounds = (0 <= fd && fd < max);
-#else
-		// fdset's are arrays, so we don't have that issue above
-		const Boolean fdInBounds = true;
-#endif
-		if (__CFFILEDESCRIPTOR_INVALID_DESCRIPTOR != fd && fdInBounds && FD_ISSET(fd, state->_watches._read)) {
-			CFArraySetValueAtIndex(state->_selected._read._descriptors, state->_selected._read._index, f);
-			state->_selected._read._index++;
-			/* descriptor is removed from fds here, will be restored in read handling or in perform function */
-			if (!tempfds) tempfds = (fd_set *)CFDataGetMutableBytePtr(__sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors);
-			FD_CLR(fd, tempfds);
-		}
-	}
-
-	__CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
-
-	// Dispatch and handle descriptors ready for writing
-
-	__CFFileDescriptorHandleReadyDescriptors(state->_selected._write._descriptors,
-											 state->_selected._write._index,
-											 __CFFileDescriptorHandleWrite,
-											 FALSE);
-
-	state->_selected._write._index = 0;
-
-	// Dispatch and handle descriptors ready for reading
-
-	__CFFileDescriptorHandleReadyDescriptors(state->_selected._read._descriptors,
-											 state->_selected._read._index,
-											 __CFFileDescriptorHandleRead,
-											 causedByTimeout);
-
-	state->_selected._read._index = 0;
-}
-
-/* static */ void
-__CFFileDescriptorManagerHandleTimeout(struct __CFFileDescriptorManagerSelectState *state, const struct timeval *elapsed) {
-	CFArrayRef array;
-	CFIndex    count;
-	CFIndex    index;
-
-	__CFFileDescriptorMaybeLog("file descriptor manager received timeout - "
-							   "(expired delta %ld, %ld)\n",
-							   elapsed->tv_sec, elapsed->tv_usec);
-
-	__CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
-
-	array = __sCFFileDescriptorManager.mReadFileDescriptors;
-	count = CFArrayGetCount(array);
-
-	for (index = 0; index < count; index++) {
-		CFFileDescriptorRef f = (CFFileDescriptorRef)CFArrayGetValueAtIndex(array, index);
-		(void)f;
-	}
-
-	__CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
-}
-
-/* static */ void
-__CFFileDescriptorManagerInitialize_Locked(void) {
-    SInt32 status;
-
-    __CFFileDescriptorEnter();
-
-    __sCFFileDescriptorManager.mReadFileDescriptors  = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, NULL);
-    __sCFFileDescriptorManager.mWriteFileDescriptors = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, NULL);
-
-    __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors  = CFDataCreateMutable(kCFAllocatorSystemDefault, 0);
-    __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors = CFDataCreateMutable(kCFAllocatorSystemDefault, 0);
-
-#if DEPLOYMENT_TARGET_WINDOWS
-#warning "CFFileDescriptor Windows portability issue!"
-#endif
-
-    status = __CFFileDescriptorManagerCreateWakeupPipe();
-
-    if (status < 0) {
-        CFLog(kCFLogLevelWarning, CFSTR("*** Could not create wakeup pipe for CFFileDescriptor!!!"));
-    } else {
-        status = fcntl(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeWriterIndex],
-                       F_SETFL,
-                       O_NONBLOCK);
-        __Require(status == 0, done);
-
-        status = fcntl(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeReaderIndex],
-                       F_SETFL,
-                       O_NONBLOCK);
-        __Require(status == 0, done);
-
-        __CFFileDescriptorNativeDescriptorSet(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeReaderIndex],
-                                              __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors);
-    }
-
- done:
-    __CFFileDescriptorExit();
-
-    return;
-}
-
-/* static */ Boolean
-__CFFileDescriptorManagerMaybeAdd_Locked(CFFileDescriptorRef f,
-										 Boolean forRead,
-										 Boolean forWrite,
-										 Boolean force)
-{
-	Boolean result = FALSE;
-
-    __CFFileDescriptorEnter();
-
-	__CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
-
-	if (forWrite) {
-		__CFFileDescriptorMaybeLog("Adding descriptor %d for writing.\n", f->_descriptor);
-
-		if (force) {
-			CFMutableArrayRef array = __sCFFileDescriptorManager.mWriteFileDescriptors;
-			const CFIndex     index = CFArrayGetFirstIndexOfValue(array,
-																  CFRangeMake(0, CFArrayGetCount(array)),
-																  f);
-
-			if (index == kCFNotFound) {
-				CFArrayAppendValue(array, f);
-			}
-		}
-
-		if (__CFFileDescriptorManagerNativeDescriptorSetForWrite_Locked(f)) {
-			result = TRUE;
-		}
-	}
-
-	if (forRead) {
-		__CFFileDescriptorMaybeLog("Adding descriptor %d for reading.\n", f->_descriptor);
-
-		if (force) {
-			CFMutableArrayRef array = __sCFFileDescriptorManager.mReadFileDescriptors;
-			const CFIndex     index = CFArrayGetFirstIndexOfValue(array,
-																  CFRangeMake(0, CFArrayGetCount(array)),
-																  f);
-
-			if (index == kCFNotFound) {
-				CFArrayAppendValue(array, f);
-			}
-		}
-
-		if (__CFFileDescriptorManagerNativeDescriptorSetForRead_Locked(f)) {
-			result = TRUE;
-		}
-	}
-
-	if (result && __sCFFileDescriptorManager.mThread == NULL) {
-		__CFFileDescriptorMaybeLog("Starting manager thread...\n");
-		__sCFFileDescriptorManager.mThread = __CFStartSimpleThread((void*)__CFFileDescriptorManager, 0);
-	}
-
-	__CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
-
-    __CFFileDescriptorExit();
-
-	return result;
-}
-
-/* static */ void
-__CFFileDescriptorManagerPrepareWatchesMaybeLog(void)
-{
-#if LOG_CFFILEDESCRIPTOR
-	CFArrayRef array;
-	CFDataRef  data;
-
-    __CFFileDescriptorMaybeLog("file descriptor manager iteration %u "
-							   "looking at read descriptors ",
-							   __sCFFileDescriptorManager.mGeneration);
-
-	array = __sCFFileDescriptorManager.mReadFileDescriptors;
-	data  = __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors;
-
-	__CFFileDescriptorMaybeLogFileDescriptorList(array, data, FALSE);
-
-	array = __sCFFileDescriptorManager.mWriteFileDescriptors;
-	data  = __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors;
-
-	if (CFArrayGetCount(array) > 0) {
-		__CFFileDescriptorMaybeLog(", and write descriptors ");
-		__CFFileDescriptorMaybeLogFileDescriptorList(array, data, FALSE);
-
-#if DEPLOYMENT_TARGET_WINDOWS
-		array = __sCFFileDescriptorManager.mWriteFileDescriptors;
-		data  = __sCFFileDescriptorManager.mExceptFileDescriptorsNativeDescriptors;
-
-		__CFFileDescriptorMaybeLog(", and except descriptors ");
-		__CFFileDescriptorMaybeLogFileDescriptorList(array, data, TRUE);
-#endif /* DEPLOYMENT_TARGET_WINDOWS */
-	}
-
-	__CFFileDescriptorMaybeLog("\n");
-#endif /* LOG_CFFILEDESCRIPTOR */
-}
-
-/* static */ CFIndex
-__CFFileDescriptorManagerPrepareWatches(struct __CFFileDescriptorManagerWatchedDescriptors * watches, struct timeval *timeout) {
-    CFIndex fdentries = 1;
-    CFIndex rfds, wfds;
-    struct timeval tv;
-	CFIndex maxnrfds = 0;
-
-    __CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
-
-	__sCFFileDescriptorManager.mGeneration++;
-
-	__CFFileDescriptorManagerPrepareWatchesMaybeLog();
-
-	rfds     = __CFFileDescriptorFdGetSize(__sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors);
-	wfds     = __CFFileDescriptorFdGetSize(__sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors);
-	maxnrfds = __CFMax(rfds, wfds);
-
-#if !DEPLOYMENT_TARGET_WINDOWS
-	if (maxnrfds > fdentries * (int)NFDBITS) {
-		fdentries = (maxnrfds + NFDBITS - 1) / NFDBITS;
-		watches->_write = (fd_set *)CFAllocatorReallocate(kCFAllocatorSystemDefault, watches->_write, fdentries * sizeof(fd_mask), 0);
-		watches->_read  = (fd_set *)CFAllocatorReallocate(kCFAllocatorSystemDefault, watches->_read, fdentries * sizeof(fd_mask), 0);
-	}
-
-	memset(watches->_write, 0, fdentries * sizeof(fd_mask));
-	memset(watches->_read,  0, fdentries * sizeof(fd_mask));
-#else
-	if (maxnrfds > fdentries) {
-		fdentries = maxnrfds;
-		watches->_except = (fd_set *)CFAllocatorReallocate(kCFAllocatorSystemDefault, watches->_except, fdentries * sizeof(HANDLE) + sizeof(u_int), 0);
-		watches->_write  = (fd_set *)CFAllocatorReallocate(kCFAllocatorSystemDefault, watches->_write, fdentries * sizeof(HANDLE) + sizeof(u_int), 0);
-		watches->_read   = (fd_set *)CFAllocatorReallocate(kCFAllocatorSystemDefault, watches->_read, fdentries * sizeof(HANDLE) + sizeof(u_int), 0);
-	}
-
-	memset(watches->_except, 0, fdentries * sizeof(HANDLE) + sizeof(u_int));
-	memset(watches->_write,  0, fdentries * sizeof(HANDLE) + sizeof(u_int));
-	memset(watches->_read,   0, fdentries * sizeof(HANDLE) + sizeof(u_int));
-
-	CFDataGetBytes(__sCFFileDescriptorManager.mExceptFileDescriptorsNativeDescriptors,
-				   CFRangeMake(0, __CFFileDescriptorFdGetSize(__sCFFileDescriptorManager.mExceptFileDescriptorsNativeDescriptors) * sizeof(HANDLE) + sizeof(u_int)),
-				   (UInt8 *)watches->_except);
-#endif /* !DEPLOYMENT_TARGET_WINDOWS */
-
-	CFDataGetBytes(__sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors,
-				   CFRangeMake(0, CFDataGetLength(__sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors)),
-				   (UInt8 *)watches->_write);
-	CFDataGetBytes(__sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors,
-				   CFRangeMake(0, CFDataGetLength(__sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors)),
-				   (UInt8 *)watches->_read);
-
-	if (__sCFFileDescriptorManager.mReadFileDescriptorsTimeoutInvalid) {
-		struct timeval* minTimeout = NULL;
-
-		__sCFFileDescriptorManager.mReadFileDescriptorsTimeoutInvalid = false;
-		__CFFileDescriptorMaybeLog("Figuring out which file descriptors have timeouts...\n");
-		CFArrayApplyFunction(__sCFFileDescriptorManager.mReadFileDescriptors,
-							 CFRangeMake(0, CFArrayGetCount(__sCFFileDescriptorManager.mReadFileDescriptors)),
-							 __CFFileDescriptorCalculateMinTimeout_Locked,
-							 (void *)&minTimeout);
-
-		if (minTimeout == NULL) {
-			__CFFileDescriptorMaybeLog("No one wants a timeout!\n");
-
-			timeout = NULL;
-		} else {
-			__CFFileDescriptorMaybeLog("timeout will be %ld, %ld!\n",
-									   minTimeout->tv_sec,
-									   minTimeout->tv_usec);
-
-			tv = *minTimeout;
-			*timeout = tv;
-		}
-	}
-
-	if (timeout) {
-		__CFFileDescriptorMaybeLog("select will have a %ld, %ld timeout\n",
-								   timeout->tv_sec,
-								   timeout->tv_usec);
-	}
-
-    __CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
-
-	return maxnrfds;
-}
-
-/* static */ void
-__CFFileDescriptorManagerProcessState(struct __CFFileDescriptorManagerSelectState * state, CFIndex count, CFIndex max, const struct timeval *elapsed) {
-	const Boolean kDidTimeout = (count == 0);
-	const Boolean kHadError   = (count < 0);
-
-	if (kDidTimeout) {
-		__CFFileDescriptorManagerHandleTimeout(state, elapsed);
-
-	} else if (kHadError) {
-		__CFFileDescriptorManagerHandleError();
-
-	}
-
-	if (FD_ISSET(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeReaderIndex], state->_watches._read)) {
-		uint8_t       buffer[256];
-		int           status;
-
-		do {
-			status = read(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeReaderIndex], buffer, sizeof(buffer));
-		} while((status == -1) && (errno == EAGAIN));
-		__Verify(status == sizeof(char));
-
-		__CFFileDescriptorMaybeLog("file descriptor manager received reason '%c' on wakeup pipe\n",
-								   buffer[0]);
-	}
-
-	__CFFileDescriptorManagerHandleReadyDescriptors(state, max, kDidTimeout);
-}
-
-/* static */ void
-__CFFileDescriptorManagerRemoveInvalidFileDescriptors(void) {
-	CFMutableArrayRef invalidFileDescriptors = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, &kCFTypeArrayCallBacks);
-	CFIndex count;
-	CFIndex index;
-
-	__CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
-
-	__CFFileDescriptorFindAndAppendInvalidDescriptors(__sCFFileDescriptorManager.mWriteFileDescriptors,
-													  invalidFileDescriptors,
-													  "write");
-
-	__CFFileDescriptorFindAndAppendInvalidDescriptors(__sCFFileDescriptorManager.mReadFileDescriptors,
-													  invalidFileDescriptors,
-													  "read");
-
-	__CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
-
-	count = CFArrayGetCount(invalidFileDescriptors);
-	for (index = 0; index < count; index++) {
-		CFFileDescriptorInvalidate(((CFFileDescriptorRef)CFArrayGetValueAtIndex(invalidFileDescriptors, index)));
-	}
-	CFRelease(invalidFileDescriptors);
-}
-
-/* static */ void
-__CFFileDescriptorManagerRemove_Locked(CFFileDescriptorRef f) {
-    CFMutableArrayRef array;
-    CFIndex index;
-
-    __CFFileDescriptorEnter();
-
-    __CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
-
-    // Handle removing the descriptor from the active write descriptor collection.
-
-    array = __sCFFileDescriptorManager.mWriteFileDescriptors;
-
-    index = CFArrayGetFirstIndexOfValue(array, CFRangeMake(0, CFArrayGetCount(array)), f);
-    if (index >= 0) {
-        CFArrayRemoveValueAtIndex(array, index);
-        __CFFileDescriptorManagerNativeDescriptorClearForWrite_Locked(f);
-#if DEPLOYMENT_TARGET_WINDOWS
-        __CFFileDescriptorNativeDescriptorClear(f->_descriptor, __sCFFileDescriptorManager.mExceptFileDescriptorsNativeDescriptors);
-#endif
-    }
-
-    // Handle removing the descriptor from the active read descriptor collection.
-
-    array = __sCFFileDescriptorManager.mReadFileDescriptors;
-
-    index = CFArrayGetFirstIndexOfValue(array, CFRangeMake(0, CFArrayGetCount(array)), f);
-    if (index >= 0) {
-        CFArrayRemoveValueAtIndex(array, index);
-        __CFFileDescriptorManagerNativeDescriptorClearForRead_Locked(f);
-    }
-
-    __CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
-
-    __CFFileDescriptorExit();
-}
-
-/* static */ Boolean
-__CFFileDescriptorManagerShouldWake_Locked(CFFileDescriptorRef f,
-                                           CFOptionFlags callBackTypes) {
-    Boolean result = FALSE;
-
-    __CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
-
-    if ((callBackTypes & kCFFileDescriptorWriteCallBack) != __kCFFileDescriptorNoCallBacks) {
-        if (__CFFileDescriptorManagerNativeDescriptorClearForWrite_Locked(f)) {
-			// do not wake up the file descriptor manager thread
-			// if all relevant write callbacks are disabled
-
-			if ((callBackTypes & kCFFileDescriptorWriteCallBack) != kCFFileDescriptorWriteCallBack) {
-				result = true;
-			}
-		}
-	}
-
-	if ((callBackTypes & kCFFileDescriptorReadCallBack) != __kCFFileDescriptorNoCallBacks) {
-		if (__CFFileDescriptorManagerNativeDescriptorClearForRead_Locked(f)) {
-			// do not wake up the file descriptor manager thread
-			// if callback type is read
-
-			if ((callBackTypes & kCFFileDescriptorReadCallBack) != kCFFileDescriptorReadCallBack) {
-				result = true;
-			}
-		}
-	}
-
-	__CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
-
-    return result;
-}
-
-/* static */ void
-__CFFileDescriptorManagerWakeup(char reason)
-{
-    int status;
-
-    __CFFileDescriptorEnter();
-
-    __CFFileDescriptorMaybeLog("Waking up the file descriptor manager w/ reason '%c'\n", reason);
-
-	do {
-		status = write(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeWriterIndex],
-					   &reason,
-					   sizeof(reason));
-	} while ((status == -1) && (errno == EAGAIN));
-    __Verify(status == sizeof(reason));
-
-    __CFFileDescriptorExit();
-}
-
 #if LOG_CFFILEDESCRIPTOR
 /* static */ void
 __CFFileDescriptorMaybeLogFileDescriptorList(CFArrayRef descriptors, CFDataRef fdSet, Boolean onlyIfSet) {
@@ -1891,14 +1930,6 @@ __CFFileDescriptorNameForSymbol(void *address) {
     Dl_info info;
     result = (dladdr(address, &info) && info.dli_saddr == address && info.dli_sname) ? info.dli_sname : kUnknownName;
 #endif
-
-	return result;
-}
-
-/* static */ void *
-__CFFileDescriptorReallocateWatchedDescriptors(struct __CFFileDescriptorManagerWatchedDescriptors *watches, CFIndex count)
-{
-	void *result = NULL;
 
 	return result;
 }

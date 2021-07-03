@@ -81,6 +81,7 @@ CF_include_HEADERS		= CFArray.h				\
 				  CFDictionary.h			\
 				  CFError.h				\
 				  CFError_Private.h			\
+				  CFFileDescriptor.h                    \
 				  CFLocale.h				\
 				  CFLogUtilities.h			\
 				  CFMachPort.h				\
@@ -140,6 +141,7 @@ CF_COMMON_SOURCES		= CFApplicationPreferences.c		\
 				  CFDate.c				\
 				  CFDictionary.c			\
 				  CFError.c				\
+				  CFFileDescriptor.c                    \
 				  CFFileUtilities.c			\
 				  CFLocaleIdentifier.c			\
 				  CFLocale.c				\
@@ -232,7 +234,7 @@ EXTRA_DIST			= APPLE_LICENSE	\
 				  INSTALL \
 				  LICENSE \
 				  README.md \
-				  TODO \
+				  TODO.md \
 				  BuildCFLite \
 				  BuildCFLite.windows \
 				  macosx/CFLite.xcodeproj/project.pbxproj \

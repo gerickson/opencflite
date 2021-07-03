@@ -1,6 +1,10 @@
                       Changes and What's New in OpenCFLite
                       ------------------------------------
 
+2021-07-02 v476.19.1
+
+  * Added CFFileDescriptor support.
+
 2021-06-10 v476.19.0
 
   * Forked and migrated the package to GitHub.

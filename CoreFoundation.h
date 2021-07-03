@@ -86,6 +86,7 @@
 #include <CoreFoundation/CFDateFormatter.h>
 #include <CoreFoundation/CFDictionary.h>
 #include <CoreFoundation/CFError.h>
+#include <CoreFoundation/CFFileDescriptor.h>
 #include <CoreFoundation/CFLocale.h>
 #include <CoreFoundation/CFLogUtilities.h>
 #include <CoreFoundation/CFMachPort.h>

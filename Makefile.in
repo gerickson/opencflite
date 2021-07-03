@@ -174,6 +174,7 @@ am__objects_1 = libCoreFoundation_la-CFApplicationPreferences.lo \
 	libCoreFoundation_la-CFDate.lo \
 	libCoreFoundation_la-CFDictionary.lo \
 	libCoreFoundation_la-CFError.lo \
+	libCoreFoundation_la-CFFileDescriptor.lo \
 	libCoreFoundation_la-CFFileUtilities.lo \
 	libCoreFoundation_la-CFLocaleIdentifier.lo \
 	libCoreFoundation_la-CFLocale.lo \
@@ -235,11 +236,11 @@ am__libCoreFoundation_debug_la_SOURCES_DIST =  \
 	CFBuiltinConverters.c CFBundle.c CFBundle_Resources.c \
 	CFCalendar.c CFCharacterSet.c CFConcreteStreams.c CFData.c \
 	CFDateFormatter.c CFDate.c CFDictionary.c CFError.c \
-	CFFileUtilities.c CFLocaleIdentifier.c CFLocale.c CFMachPort.c \
-	CFMessagePort.c CFNumberFormatter.c CFNumber.c CFPlatform.c \
-	CFPlugIn_Factory.c CFPlugIn_Instance.c CFPlugIn.c \
-	CFPlugIn_PlugIn.c CFPreferences.c CFPropertyList.c CFRunLoop.c \
-	CFRuntime.c CFSet.c CFSocket.c CFSocketStream.c \
+	CFFileDescriptor.c CFFileUtilities.c CFLocaleIdentifier.c \
+	CFLocale.c CFMachPort.c CFMessagePort.c CFNumberFormatter.c \
+	CFNumber.c CFPlatform.c CFPlugIn_Factory.c CFPlugIn_Instance.c \
+	CFPlugIn.c CFPlugIn_PlugIn.c CFPreferences.c CFPropertyList.c \
+	CFRunLoop.c CFRuntime.c CFSet.c CFSocket.c CFSocketStream.c \
 	CFSortFunctions.c CFStorage.c CFStream.c \
 	CFStringEncodingConverter.c CFStringEncodings.c CFString.c \
 	CFStringScanner.c CFStringUtilities.c CFSystemDirectories.c \
@@ -267,6 +268,7 @@ am__objects_2 =  \
 	libCoreFoundation_debug_la-CFDate.lo \
 	libCoreFoundation_debug_la-CFDictionary.lo \
 	libCoreFoundation_debug_la-CFError.lo \
+	libCoreFoundation_debug_la-CFFileDescriptor.lo \
 	libCoreFoundation_debug_la-CFFileUtilities.lo \
 	libCoreFoundation_debug_la-CFLocaleIdentifier.lo \
 	libCoreFoundation_debug_la-CFLocale.lo \
@@ -330,11 +332,11 @@ am__libCoreFoundation_profile_la_SOURCES_DIST =  \
 	CFBuiltinConverters.c CFBundle.c CFBundle_Resources.c \
 	CFCalendar.c CFCharacterSet.c CFConcreteStreams.c CFData.c \
 	CFDateFormatter.c CFDate.c CFDictionary.c CFError.c \
-	CFFileUtilities.c CFLocaleIdentifier.c CFLocale.c CFMachPort.c \
-	CFMessagePort.c CFNumberFormatter.c CFNumber.c CFPlatform.c \
-	CFPlugIn_Factory.c CFPlugIn_Instance.c CFPlugIn.c \
-	CFPlugIn_PlugIn.c CFPreferences.c CFPropertyList.c CFRunLoop.c \
-	CFRuntime.c CFSet.c CFSocket.c CFSocketStream.c \
+	CFFileDescriptor.c CFFileUtilities.c CFLocaleIdentifier.c \
+	CFLocale.c CFMachPort.c CFMessagePort.c CFNumberFormatter.c \
+	CFNumber.c CFPlatform.c CFPlugIn_Factory.c CFPlugIn_Instance.c \
+	CFPlugIn.c CFPlugIn_PlugIn.c CFPreferences.c CFPropertyList.c \
+	CFRunLoop.c CFRuntime.c CFSet.c CFSocket.c CFSocketStream.c \
 	CFSortFunctions.c CFStorage.c CFStream.c \
 	CFStringEncodingConverter.c CFStringEncodings.c CFString.c \
 	CFStringScanner.c CFStringUtilities.c CFSystemDirectories.c \
@@ -362,6 +364,7 @@ am__objects_3 =  \
 	libCoreFoundation_profile_la-CFDate.lo \
 	libCoreFoundation_profile_la-CFDictionary.lo \
 	libCoreFoundation_profile_la-CFError.lo \
+	libCoreFoundation_profile_la-CFFileDescriptor.lo \
 	libCoreFoundation_profile_la-CFFileUtilities.lo \
 	libCoreFoundation_profile_la-CFLocaleIdentifier.lo \
 	libCoreFoundation_profile_la-CFLocale.lo \
@@ -506,7 +509,7 @@ am__DIST_COMMON = $(srcdir)/CoreFoundation.pc.in $(srcdir)/Makefile.in \
 	$(top_srcdir)/config/config.sub $(top_srcdir)/config/depcomp \
 	$(top_srcdir)/config/install-sh $(top_srcdir)/config/ltmain.sh \
 	$(top_srcdir)/config/missing \
-	$(top_srcdir)/config/mkinstalldirs INSTALL TODO config/compile \
+	$(top_srcdir)/config/mkinstalldirs INSTALL config/compile \
 	config/config.guess config/config.sub config/depcomp \
 	config/install-sh config/ltmain.sh config/missing \
 	config/mkinstalldirs
@@ -766,6 +769,7 @@ CF_include_HEADERS = CFArray.h				\
 				  CFDictionary.h			\
 				  CFError.h				\
 				  CFError_Private.h			\
+				  CFFileDescriptor.h                    \
 				  CFLocale.h				\
 				  CFLogUtilities.h			\
 				  CFMachPort.h				\
@@ -825,6 +829,7 @@ CF_COMMON_SOURCES = CFApplicationPreferences.c		\
 				  CFDate.c				\
 				  CFDictionary.c			\
 				  CFError.c				\
+				  CFFileDescriptor.c                    \
 				  CFFileUtilities.c			\
 				  CFLocaleIdentifier.c			\
 				  CFLocale.c				\
@@ -895,7 +900,7 @@ EXTRA_DIST = APPLE_LICENSE	\
 				  INSTALL \
 				  LICENSE \
 				  README.md \
-				  TODO \
+				  TODO.md \
 				  BuildCFLite \
 				  BuildCFLite.windows \
 				  macosx/CFLite.xcodeproj/project.pbxproj \
@@ -1151,6 +1156,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_debug_la-CFDateFormatter.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_debug_la-CFDictionary.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_debug_la-CFError.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_debug_la-CFFileDescriptor.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_debug_la-CFFileUtilities.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_debug_la-CFLocale.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_debug_la-CFLocaleIdentifier.Plo@am__quote@
@@ -1214,6 +1220,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_la-CFDateFormatter.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_la-CFDictionary.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_la-CFError.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_la-CFFileDescriptor.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_la-CFFileUtilities.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_la-CFLocale.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_la-CFLocaleIdentifier.Plo@am__quote@
@@ -1277,6 +1284,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_profile_la-CFDateFormatter.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_profile_la-CFDictionary.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_profile_la-CFError.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_profile_la-CFFileDescriptor.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_profile_la-CFFileUtilities.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_profile_la-CFLocale.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libCoreFoundation_profile_la-CFLocaleIdentifier.Plo@am__quote@
@@ -1472,6 +1480,13 @@ libCoreFoundation_la-CFError.lo: CFError.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='CFError.c' object='libCoreFoundation_la-CFError.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_la-CFError.lo `test -f 'CFError.c' || echo '$(srcdir)/'`CFError.c
+
+libCoreFoundation_la-CFFileDescriptor.lo: CFFileDescriptor.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_la-CFFileDescriptor.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_la-CFFileDescriptor.Tpo -c -o libCoreFoundation_la-CFFileDescriptor.lo `test -f 'CFFileDescriptor.c' || echo '$(srcdir)/'`CFFileDescriptor.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libCoreFoundation_la-CFFileDescriptor.Tpo $(DEPDIR)/libCoreFoundation_la-CFFileDescriptor.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='CFFileDescriptor.c' object='libCoreFoundation_la-CFFileDescriptor.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_la-CFFileDescriptor.lo `test -f 'CFFileDescriptor.c' || echo '$(srcdir)/'`CFFileDescriptor.c
 
 libCoreFoundation_la-CFFileUtilities.lo: CFFileUtilities.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_la-CFFileUtilities.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_la-CFFileUtilities.Tpo -c -o libCoreFoundation_la-CFFileUtilities.lo `test -f 'CFFileUtilities.c' || echo '$(srcdir)/'`CFFileUtilities.c
@@ -1914,6 +1929,13 @@ libCoreFoundation_debug_la-CFError.lo: CFError.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_debug_la-CFError.lo `test -f 'CFError.c' || echo '$(srcdir)/'`CFError.c
 
+libCoreFoundation_debug_la-CFFileDescriptor.lo: CFFileDescriptor.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_debug_la-CFFileDescriptor.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_debug_la-CFFileDescriptor.Tpo -c -o libCoreFoundation_debug_la-CFFileDescriptor.lo `test -f 'CFFileDescriptor.c' || echo '$(srcdir)/'`CFFileDescriptor.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libCoreFoundation_debug_la-CFFileDescriptor.Tpo $(DEPDIR)/libCoreFoundation_debug_la-CFFileDescriptor.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='CFFileDescriptor.c' object='libCoreFoundation_debug_la-CFFileDescriptor.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_debug_la-CFFileDescriptor.lo `test -f 'CFFileDescriptor.c' || echo '$(srcdir)/'`CFFileDescriptor.c
+
 libCoreFoundation_debug_la-CFFileUtilities.lo: CFFileUtilities.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_debug_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_debug_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_debug_la-CFFileUtilities.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_debug_la-CFFileUtilities.Tpo -c -o libCoreFoundation_debug_la-CFFileUtilities.lo `test -f 'CFFileUtilities.c' || echo '$(srcdir)/'`CFFileUtilities.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libCoreFoundation_debug_la-CFFileUtilities.Tpo $(DEPDIR)/libCoreFoundation_debug_la-CFFileUtilities.Plo
@@ -2354,6 +2376,13 @@ libCoreFoundation_profile_la-CFError.lo: CFError.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='CFError.c' object='libCoreFoundation_profile_la-CFError.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_profile_la-CFError.lo `test -f 'CFError.c' || echo '$(srcdir)/'`CFError.c
+
+libCoreFoundation_profile_la-CFFileDescriptor.lo: CFFileDescriptor.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_profile_la-CFFileDescriptor.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_profile_la-CFFileDescriptor.Tpo -c -o libCoreFoundation_profile_la-CFFileDescriptor.lo `test -f 'CFFileDescriptor.c' || echo '$(srcdir)/'`CFFileDescriptor.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libCoreFoundation_profile_la-CFFileDescriptor.Tpo $(DEPDIR)/libCoreFoundation_profile_la-CFFileDescriptor.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='CFFileDescriptor.c' object='libCoreFoundation_profile_la-CFFileDescriptor.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -c -o libCoreFoundation_profile_la-CFFileDescriptor.lo `test -f 'CFFileDescriptor.c' || echo '$(srcdir)/'`CFFileDescriptor.c
 
 libCoreFoundation_profile_la-CFFileUtilities.lo: CFFileUtilities.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libCoreFoundation_profile_la_CPPFLAGS) $(CPPFLAGS) $(libCoreFoundation_profile_la_CFLAGS) $(CFLAGS) -MT libCoreFoundation_profile_la-CFFileUtilities.lo -MD -MP -MF $(DEPDIR)/libCoreFoundation_profile_la-CFFileUtilities.Tpo -c -o libCoreFoundation_profile_la-CFFileUtilities.lo `test -f 'CFFileUtilities.c' || echo '$(srcdir)/'`CFFileUtilities.c

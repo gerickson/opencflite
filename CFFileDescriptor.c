@@ -1453,8 +1453,6 @@ __CFFileDescriptorManagerHandleTimeout(struct __CFFileDescriptorManagerSelectSta
 	CFIndex    count;
 	CFIndex    index;
 
-	__CFFileDescriptorEnter();
-
 	__CFFileDescriptorMaybeLog("file descriptor manager received timeout - "
 							   "kicking off expired reads (expired delta %ld, %ld)\n",
 							   elapsed->tv_sec, elapsed->tv_usec);
@@ -1494,8 +1492,6 @@ __CFFileDescriptorManagerHandleTimeout(struct __CFFileDescriptorManagerSelectSta
 	}
 
 	__CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
-
-	__CFFileDescriptorExit();
 }
 
 /* static */ void

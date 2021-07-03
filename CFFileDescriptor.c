@@ -1731,7 +1731,9 @@ __CFFileDescriptorManagerProcessState(struct __CFFileDescriptorManagerSelectStat
 		uint8_t       buffer[256];
 		int           status;
 
-		status = read(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeReaderIndex], buffer, sizeof(buffer));
+		do {
+			status = read(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeReaderIndex], buffer, sizeof(buffer));
+		} while((status == -1) && (errno == EAGAIN));
 		__Verify(status == sizeof(char));
 
 		__CFFileDescriptorMaybeLog("file descriptor manager received reason '%c' on wakeup pipe\n",
@@ -1848,9 +1850,11 @@ __CFFileDescriptorManagerWakeup(char reason)
 
     __CFFileDescriptorMaybeLog("Waking up the file descriptor manager w/ reason '%c'\n", reason);
 
-    status = write(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeWriterIndex],
-                   &reason,
-                   sizeof(reason));
+	do {
+		status = write(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeWriterIndex],
+					   &reason,
+					   sizeof(reason));
+	} while ((status == -1) && (errno == EAGAIN));
     __Verify(status == sizeof(reason));
 
     __CFFileDescriptorExit();

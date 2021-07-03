@@ -413,7 +413,7 @@ CF_INLINE CFIndex __CFFileDescriptorFdGetSize(CFDataRef fdSet) {
  *    otherwise, false.
  *
  */
-CF_INLINE Boolean __CFFileDescriptorFdSet(CFFileDescriptorNativeDescriptor fd, CFMutableDataRef fdSet) {
+CF_INLINE Boolean __CFFileDescriptorNativeDescriptorSet(CFFileDescriptorNativeDescriptor fd, CFMutableDataRef fdSet) {
     /* returns true if a change occurred, false otherwise */
     Boolean retval = false;
 
@@ -465,7 +465,7 @@ CF_INLINE Boolean __CFFileDescriptorFdSet(CFFileDescriptorNativeDescriptor fd, C
  *    otherwise, false.
  *
  */
-CF_INLINE Boolean __CFFileDescriptorFdClr(CFFileDescriptorNativeDescriptor fd, CFMutableDataRef fdSet) {
+CF_INLINE Boolean __CFFileDescriptorNativeDescriptorClear(CFFileDescriptorNativeDescriptor fd, CFMutableDataRef fdSet) {
     /* returns true if a change occurred, false otherwise */
     Boolean retval = false;
 
@@ -505,25 +505,25 @@ CF_INLINE SInt32 __CFFileDescriptorManagerLastError(void) {
 CF_INLINE Boolean __CFFileDescriptorManagerSetFDForRead_Locked(CFFileDescriptorRef f) {
     __sCFFileDescriptorManager.mReadFileDescriptorsTimeoutInvalid = true;
 
-    return __CFFileDescriptorFdSet(f->_descriptor,
-                                   __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors);
+    return __CFFileDescriptorNativeDescriptorSet(f->_descriptor,
+                                                 __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors);
 }
 
 CF_INLINE Boolean __CFFileDescriptorManagerClearFDForRead_Locked(CFFileDescriptorRef f) {
     __sCFFileDescriptorManager.mReadFileDescriptorsTimeoutInvalid = true;
 
-    return __CFFileDescriptorFdClr(f->_descriptor,
-                                   __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors);
+    return __CFFileDescriptorNativeDescriptorClear(f->_descriptor,
+                                                   __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors);
 }
 
 CF_INLINE Boolean __CFFileDescriptorManagerSetFDForWrite_Locked(CFFileDescriptorRef f) {
-    return __CFFileDescriptorFdSet(f->_descriptor,
-                                   __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors);
+    return __CFFileDescriptorNativeDescriptorSet(f->_descriptor,
+                                                 __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors);
 }
 
 CF_INLINE Boolean __CFFileDescriptorManagerClearFDForWrite_Locked(CFFileDescriptorRef f) {
-    return __CFFileDescriptorFdClr(f->_descriptor,
-                                   __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors);
+    return __CFFileDescriptorNativeDescriptorClear(f->_descriptor,
+                                                   __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors);
 }
 
 // MARK: Other Functions
@@ -1426,8 +1426,8 @@ __CFFileDescriptorManagerInitialize_Locked(void) {
                        O_NONBLOCK);
         __Require(status == 0, done);
 
-        __CFFileDescriptorFdSet(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeReaderIndex],
-                                __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors);
+        __CFFileDescriptorNativeDescriptorSet(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeReaderIndex],
+                                              __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors);
     }
 
  done:
@@ -1689,7 +1689,7 @@ __CFFileDescriptorManagerRemove_Locked(CFFileDescriptorRef f) {
         CFArrayRemoveValueAtIndex(array, index);
         __CFFileDescriptorManagerClearFDForWrite_Locked(f);
 #if DEPLOYMENT_TARGET_WINDOWS
-        __CFFileDescriptorFdClr(f->_descriptor, __sCFFileDescriptorManager.mExceptFileDescriptorsNativeDescriptors);
+        __CFFileDescriptorNativeDescriptorClear(f->_descriptor, __sCFFileDescriptorManager.mExceptFileDescriptorsNativeDescriptors);
 #endif
     }
 

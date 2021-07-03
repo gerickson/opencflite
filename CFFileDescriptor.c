@@ -198,7 +198,7 @@ static CFFileDescriptorRef __CFFileDescriptorCreateWithNative(CFAllocatorRef    
                                                               Boolean                          reuseExistingInstance);
 static Boolean             __CFFileDescriptorDisableCallBacks_Locked(CFFileDescriptorRef f,
                                                                      CFOptionFlags callBackTypes);
-static void                __CFFileDescriptorDoCallback_LockedAndUnlock(CFFileDescriptorRef f);
+static void                __CFFileDescriptorDoCallBack_LockedAndUnlock(CFFileDescriptorRef f);
 static void                __CFFileDescriptorEnableCallBacks_LockedAndUnlock(CFFileDescriptorRef f,
                                                                              CFOptionFlags callBackTypes,
                                                                              Boolean force,
@@ -872,7 +872,7 @@ __CFFileDescriptorDisableCallBacks_Locked(CFFileDescriptorRef f, CFOptionFlags c
 }
 
 static void
-__CFFileDescriptorDoCallback_LockedAndUnlock(CFFileDescriptorRef f) {
+__CFFileDescriptorDoCallBack_LockedAndUnlock(CFFileDescriptorRef f) {
     CFFileDescriptorCallBack callout = NULL;
     void *contextInfo = NULL;
     Boolean readSignaled = false;
@@ -1091,7 +1091,7 @@ __CFFileDescriptorHandleWrite(CFFileDescriptorRef f,
     __CFFileDescriptorMaybeLog("write signaling source for descriptor %d\n", f->_descriptor);
 
     if (callBackNow) {
-        __CFFileDescriptorDoCallback_LockedAndUnlock(f);
+        __CFFileDescriptorDoCallBack_LockedAndUnlock(f);
     } else {
         CFRunLoopRef rl;
 
@@ -1969,7 +1969,7 @@ __CFFileDescriptorRunLoopPerform(void *info) {
         callBacksSignaled |= kCFFileDescriptorWriteCallBack;
     }
 
-    __CFFileDescriptorDoCallback_LockedAndUnlock(f);
+    __CFFileDescriptorDoCallBack_LockedAndUnlock(f);
 
     __CFFileDescriptorLock(f);
 

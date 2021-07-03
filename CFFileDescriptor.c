@@ -517,6 +517,18 @@ CF_INLINE Boolean __CFFileDescriptorManagerNativeDescriptorSetForRead_Locked(CFF
     return __CFFileDescriptorNativeDescriptorSet(f->_descriptor, set);
 }
 
+CF_INLINE Boolean __CFFileDescriptorManagerNativeDescriptorSetForRead(CFFileDescriptorRef f) {
+	Boolean result;
+
+	__CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+	result = __CFFileDescriptorManagerNativeDescriptorSetForRead_Locked(f);
+
+	__CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+    return result;
+}
+
 CF_INLINE Boolean __CFFileDescriptorManagerNativeDescriptorClearForRead_Locked(CFFileDescriptorRef f) {
 	CFMutableDataRef set = __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors;
 

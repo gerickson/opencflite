@@ -6,6 +6,7 @@ source code control and the project repository hosting site.
 - [ ] CFRunLoop tests and implementation for Windows and Linux.
 - [ ] Better examples
 - [ ] List of projects using Open CF-lite.
+- [ ] Figure out how to unify CFSocket and CFFileDescriptor as their implementations are very similar and there is no reason to have two manager threads that do nearly the same work. Perhaps there could be a CFDescriptorManagerPriv, based on how CFFileDescriptor is structured which is already quite a bit more structured and organized than CFSocket.
 
 #### Original Apple CF-lite to-do list:
 

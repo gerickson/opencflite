@@ -503,27 +503,31 @@ CF_INLINE SInt32 __CFFileDescriptorManagerLastError(void) {
 }
 
 CF_INLINE Boolean __CFFileDescriptorManagerNativeDescriptorSetForRead_Locked(CFFileDescriptorRef f) {
+	CFMutableDataRef set = __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors;
+
     __sCFFileDescriptorManager.mReadFileDescriptorsTimeoutInvalid = true;
 
-    return __CFFileDescriptorNativeDescriptorSet(f->_descriptor,
-                                                 __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors);
+    return __CFFileDescriptorNativeDescriptorSet(f->_descriptor, set);
 }
 
 CF_INLINE Boolean __CFFileDescriptorManagerNativeDescriptorClearForRead_Locked(CFFileDescriptorRef f) {
+	CFMutableDataRef set = __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors;
+
     __sCFFileDescriptorManager.mReadFileDescriptorsTimeoutInvalid = true;
 
-    return __CFFileDescriptorNativeDescriptorClear(f->_descriptor,
-                                                   __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors);
+    return __CFFileDescriptorNativeDescriptorClear(f->_descriptor, set);
 }
 
 CF_INLINE Boolean __CFFileDescriptorManagerNativeDescriptorSetForWrite_Locked(CFFileDescriptorRef f) {
-    return __CFFileDescriptorNativeDescriptorSet(f->_descriptor,
-                                                 __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors);
+	CFMutableDataRef set = __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors;
+
+    return __CFFileDescriptorNativeDescriptorSet(f->_descriptor, set);
 }
 
 CF_INLINE Boolean __CFFileDescriptorManagerNativeDescriptorClearForWrite_Locked(CFFileDescriptorRef f) {
-    return __CFFileDescriptorNativeDescriptorClear(f->_descriptor,
-                                                   __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors);
+	CFMutableDataRef set = __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors;
+
+    return __CFFileDescriptorNativeDescriptorClear(f->_descriptor, set);
 }
 
 // MARK: Other Functions

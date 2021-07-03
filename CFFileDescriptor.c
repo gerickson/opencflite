@@ -1142,14 +1142,19 @@ __CFFileDescriptorHandleWrite(CFFileDescriptorRef f,
 
     __CFFileDescriptorLock(f);
 
-    writeCallBacksAvailable = __CFFileDescriptorCallBackTypes(f) & (kCFFileDescriptorWriteCallBack);
+	writeCallBacksAvailable = __CFFileDescriptorCallBackTypes(f) & (kCFFileDescriptorWriteCallBack);
 
-    if (!__CFFileDescriptorIsValid(f) || ((f->_flags.disabled & writeCallBacksAvailable) == writeCallBacksAvailable)) {
+	valid = __CFFileDescriptorIsValid(f);
+
+    if (!valid || (writeCallBacksAvailable == __kCFFileDescriptorNoCallBacks)) {
+		__CFFileDescriptorMaybeLog("%s: valid %u descriptor write callbacks 0x%lx\n",
+								   __func__, valid, writeCallBacksAvailable);
         __CFFileDescriptorUnlock(f);
 		goto done;
     }
 
     f->_errorCode = errorCode;
+
     __CFFileDescriptorSetWriteSignaled(f);
 
     __CFFileDescriptorMaybeLog("write signaling source for descriptor %d\n", f->_descriptor);

@@ -509,7 +509,7 @@ am__DIST_COMMON = $(srcdir)/CoreFoundation.pc.in $(srcdir)/Makefile.in \
 	$(top_srcdir)/config/config.sub $(top_srcdir)/config/depcomp \
 	$(top_srcdir)/config/install-sh $(top_srcdir)/config/ltmain.sh \
 	$(top_srcdir)/config/missing \
-	$(top_srcdir)/config/mkinstalldirs INSTALL TODO config/compile \
+	$(top_srcdir)/config/mkinstalldirs INSTALL config/compile \
 	config/config.guess config/config.sub config/depcomp \
 	config/install-sh config/ltmain.sh config/missing \
 	config/mkinstalldirs
@@ -900,7 +900,7 @@ EXTRA_DIST = APPLE_LICENSE	\
 				  INSTALL \
 				  LICENSE \
 				  README.md \
-				  TODO \
+				  TODO.md \
 				  BuildCFLite \
 				  BuildCFLite.windows \
 				  macosx/CFLite.xcodeproj/project.pbxproj \

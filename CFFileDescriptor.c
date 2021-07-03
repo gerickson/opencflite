@@ -431,10 +431,13 @@ CF_INLINE Boolean __CFFileDescriptorNativeDescriptorSet(CFFileDescriptorNativeDe
         FD_SET(fd, set);
     }
 #else
-    CFIndex numFds = NBBY * CFDataGetLength(fdSet);
+    const CFIndex numFds = NBBY * CFDataGetLength(fdSet);
     fd_mask *fds_bits;
     if (fd >= numFds) {
-        CFIndex oldSize = numFds / NFDBITS, newSize = (fd + NFDBITS) / NFDBITS, changeInBytes = (newSize - oldSize) * sizeof(fd_mask);
+        const CFIndex oldSize       = numFds / NFDBITS;
+		const CFIndex newSize       = (fd + NFDBITS) / NFDBITS;
+		const CFIndex changeInBytes = (newSize - oldSize) * sizeof(fd_mask);
+
         CFDataIncreaseLength(fdSet, changeInBytes);
         fds_bits = (fd_mask *)CFDataGetMutableBytePtr(fdSet);
         memset(fds_bits + oldSize, 0, changeInBytes);
@@ -479,7 +482,7 @@ CF_INLINE Boolean __CFFileDescriptorNativeDescriptorClear(CFFileDescriptorNative
         FD_CLR(fd, set);
     }
 #else
-    CFIndex numFds = NBBY * CFDataGetLength(fdSet);
+    const CFIndex numFds = NBBY * CFDataGetLength(fdSet);
     fd_mask *fds_bits;
     if (fd < numFds) {
         fds_bits = (fd_mask *)CFDataGetMutableBytePtr(fdSet);

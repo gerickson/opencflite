@@ -989,8 +989,16 @@ __CFFileDescriptorEnableCallBacks_LockedAndUnlock(CFFileDescriptorRef f,
 
     __CFFileDescriptorEnter();
 
-    __CFFileDescriptorMaybeLog("Attempting to enable descriptor %d callbacks 0x%lx w/ reason '%c'\n",
-                               f->_descriptor, enableCallBackTypes, wakeupReason);
+    __CFFileDescriptorMaybeLog("Attempting to %senable valid %u scheduled %u descriptor %d "
+							   "callbacks to enable 0x%lx current callbacks 0x%lx "
+							   "w/ file manager wakeup reason '%c'\n",
+                               (force ? "forcibly " : ""),
+							   valid,
+							   scheduled,
+							   f->_descriptor,
+							   enableCallBackTypes,
+							   currentCallBackTypes,
+							   wakeupReason);
 
     __Require(enableCallBackTypes != __kCFFileDescriptorNoCallBacks, unlock);
 

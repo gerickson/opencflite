@@ -1397,6 +1397,8 @@ __CFFileDescriptorManagerHandleTimeout(struct __CFFileDescriptorManagerSelectSta
 	}
 
 	__CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+
+	__CFFileDescriptorExit();
 }
 
 /* static */ void

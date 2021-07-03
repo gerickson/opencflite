@@ -116,10 +116,6 @@ struct __CFFileDescriptorManager {
 
 struct __CFFileDescriptor {
     CFRuntimeBase                     _base;
-    struct {
-        unsigned disabled:8;
-        unsigned unused:24;
-    }                                 _flags;
     CFSpinLock_t                      _lock;
     CFFileDescriptorNativeDescriptor  _descriptor;
     CFFileDescriptorCallBack          _callout;
@@ -818,8 +814,6 @@ __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
         __CFFileDescriptorClearWriteSignaled(result);
         __CFFileDescriptorClearReadSignaled(result);
 
-        result->_flags.disabled          = 0;
-
         CF_SPINLOCK_INIT_FOR_STRUCTS(result->_lock);
 
         result->_descriptor              = fd;
@@ -896,8 +890,6 @@ __CFFileDescriptorDisableCallBacks_Locked(CFFileDescriptorRef f, CFOptionFlags d
 
     if (valid && scheduled) {
 		const CFOptionFlags remainingCallBackTypes = (currentCallBackTypes & ~disableCallBackTypes);
-
-        f->_flags.disabled |= disableCallBackTypes;
 
         result = __CFFileDescriptorManagerShouldWake_Locked(f, disableCallBackTypes);
 
@@ -1834,29 +1826,27 @@ __CFFileDescriptorManagerShouldWake_Locked(CFFileDescriptorRef f,
 
     if ((callBackTypes & kCFFileDescriptorWriteCallBack) != __kCFFileDescriptorNoCallBacks) {
         if (__CFFileDescriptorManagerNativeDescriptorClearForWrite_Locked(f)) {
-            const CFOptionFlags writeCallBacksAvailable = callBackTypes & kCFFileDescriptorWriteCallBack;
+			// do not wake up the file descriptor manager thread
+			// if all relevant write callbacks are disabled
 
-                // do not wake up the file descriptor manager thread
-                // if all relevant write callbacks are disabled
-
-                if ((f->_flags.disabled & writeCallBacksAvailable) != writeCallBacksAvailable) {
-                    result = true;
-                }
-            }
-        }
+			if ((callBackTypes & kCFFileDescriptorWriteCallBack) != kCFFileDescriptorWriteCallBack) {
+				result = true;
+			}
+		}
+	}
 
 	if ((callBackTypes & kCFFileDescriptorReadCallBack) != __kCFFileDescriptorNoCallBacks) {
 		if (__CFFileDescriptorManagerNativeDescriptorClearForRead_Locked(f)) {
 			// do not wake up the file descriptor manager thread
 			// if callback type is read
 
-                if ((callBackTypes & kCFFileDescriptorReadCallBack) != kCFFileDescriptorReadCallBack) {
-                    result = true;
-                }
-            }
-        }
+			if ((callBackTypes & kCFFileDescriptorReadCallBack) != kCFFileDescriptorReadCallBack) {
+				result = true;
+			}
+		}
+	}
 
-        __CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
+	__CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
 
     return result;
 }

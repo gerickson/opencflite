@@ -241,7 +241,9 @@ static void                __CFFileDescriptorManagerRemove_Locked(CFFileDescript
 static Boolean             __CFFileDescriptorManagerShouldWake_Locked(CFFileDescriptorRef f,
                                                                       CFOptionFlags callBackTypes);
 static void                __CFFileDescriptorManagerWakeup(char reason);
+#if LOG_CFFILEDESCRIPTOR
 static void                __CFFileDescriptorMaybeLogFileDescriptorList(CFArrayRef descriptors, CFDataRef fdSet, Boolean onlyIfSet);
+#endif
 static const char *        __CFFileDescriptorNameForSymbol(void *address);
 static void *              __CFFileDescriptorReallocateWatchedDescriptors(struct __CFFileDescriptorManagerWatchedDescriptors *watches, CFIndex count);
 static Boolean             __CFNativeFileDescriptorIsValid(CFFileDescriptorNativeDescriptor fd);

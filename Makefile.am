@@ -234,7 +234,7 @@ EXTRA_DIST			= APPLE_LICENSE	\
 				  INSTALL \
 				  LICENSE \
 				  README.md \
-				  TODO \
+				  TODO.md \
 				  BuildCFLite \
 				  BuildCFLite.windows \
 				  macosx/CFLite.xcodeproj/project.pbxproj \

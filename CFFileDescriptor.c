@@ -158,6 +158,10 @@ typedef CFStringRef (__CFFileDescriptorContextCopyDescriptionCallBack)(void *inf
 typedef void        (__CFFileDescriptorReadyHandler)(CFFileDescriptorRef f, Boolean value);
 
 enum {
+	__kCFFileDescriptorNoCallBacks = 0
+};
+
+enum {
     __kWakeupPipeWriterIndex = 0,
     __kWakeupPipeReaderIndex = 1
 };

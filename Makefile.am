@@ -47,6 +47,7 @@ CF_COMMON_CPPFLAGS		= $(AM_CPPFLAGS)			\
 				  -DU_SHOW_DRAFT_API=1			\
 				  -DCF_BUILDING_CF=1			\
 				  -D__kCFCharacterSetDir=\"${libCoreFoundation_la_datadir}\" \
+				  -DCFNETWORK_LIBRARY_PATH=\"${libdir}/libCFNetwork.so\" \
 				  -DMAC_OS_X_VERSION_MAX_ALLOWED=MAC_OS_X_VERSION_10_7	\
 				  -DTARGET_OS_LINUX			\
 				  -DDEPLOYMENT_TARGET_LINUX		\

@@ -980,7 +980,6 @@ __CFFileDescriptorManagerPrepareWatchesMaybeLog(void)
 /* static */ CFIndex
 __CFFileDescriptorManagerPrepareWatches(struct __CFFileDescriptorManagerWatchedDescriptors * watches, struct timeval *timeout) {
 	void *result = NULL;
-    struct timeval tv;
 	CFIndex maxnrfds = 0;
 
     __CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
@@ -994,31 +993,32 @@ __CFFileDescriptorManagerPrepareWatches(struct __CFFileDescriptorManagerWatchedD
 	result = __CFFileDescriptorManagerMaybeReallocateAndClearWatchedDescriptors_Locked(watches, maxnrfds);
 	__Verify_Action(result != NULL, abort());
 
-	if (__sCFFileDescriptorManager.mReadFileDescriptorsTimeoutInvalid) {
-		struct timeval* minTimeout = NULL;
+	if (timeout != NULL) {
+		if (__sCFFileDescriptorManager.mReadFileDescriptorsTimeoutInvalid) {
+			struct timeval* minTimeout = NULL;
 
-		__sCFFileDescriptorManager.mReadFileDescriptorsTimeoutInvalid = false;
-		__CFFileDescriptorMaybeLog("Figuring out which file descriptors have timeouts...\n");
-		CFArrayApplyFunction(__sCFFileDescriptorManager.mReadFileDescriptors,
-							 CFRangeMake(0, CFArrayGetCount(__sCFFileDescriptorManager.mReadFileDescriptors)),
-							 __CFFileDescriptorCalculateMinTimeout_Locked,
-							 (void *)&minTimeout);
+			__sCFFileDescriptorManager.mReadFileDescriptorsTimeoutInvalid = false;
+			__CFFileDescriptorMaybeLog("Figuring out which file descriptors have timeouts...\n");
+			CFArrayApplyFunction(__sCFFileDescriptorManager.mReadFileDescriptors,
+								 CFRangeMake(0, CFArrayGetCount(__sCFFileDescriptorManager.mReadFileDescriptors)),
+								 __CFFileDescriptorCalculateMinTimeout_Locked,
+								 (void *)&minTimeout);
 
-		if (minTimeout == NULL) {
-			__CFFileDescriptorMaybeLog("No one wants a timeout!\n");
+			if (minTimeout != NULL) {
+				__CFFileDescriptorMaybeLog("timeout will be %ld, %ld!\n",
+										   minTimeout->tv_sec,
+										   minTimeout->tv_usec);
 
-			timeout = NULL;
+				*timeout = *minTimeout;
+			} else {
+				__CFFileDescriptorMaybeLog("No one wants a timeout!\n");
+
+				memset(timeout, 0, sizeof(struct timeval));
+			}
 		} else {
-			__CFFileDescriptorMaybeLog("timeout will be %ld, %ld!\n",
-									   minTimeout->tv_sec,
-									   minTimeout->tv_usec);
-
-			tv = *minTimeout;
-			*timeout = tv;
+			memset(timeout, 0, sizeof(struct timeval));
 		}
-	}
 
-	if (timeout) {
 		__CFFileDescriptorMaybeLog("select will have a %ld, %ld timeout\n",
 								   timeout->tv_sec,
 								   timeout->tv_usec);

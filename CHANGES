@@ -1,6 +1,11 @@
                       Changes and What's New in OpenCFLite
                       ------------------------------------
 
+2021-07-07 v476.19.2
+
+  * Addressed an issue with an uninitialized read of the
+    timeout value passed to select in __CFFileDescriptorManager.
+
 2021-07-02 v476.19.1
 
   * Added CFFileDescriptor support.

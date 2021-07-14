@@ -48,6 +48,7 @@
 #include <asl.h>
 #include <sys/uio.h>
 #endif
+#include <inttypes.h>
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
@@ -70,10 +71,17 @@
 #if DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     #include <string.h>
     #include <pthread.h>
+    #include <dlfcn.h>
+    #include <unistd.h>
 #elif DEPLOYMENT_TARGET_WINDOWS
     #include <windows.h>
     #include <process.h>
     #define getpid _getpid
+#endif
+#if DEPLOYMENT_TARGET_LINUX
+    #if HAVE_SYS_AUXV_H
+        #include <sys/auxv.h>
+    #endif
 #endif
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
@@ -433,26 +441,50 @@ CF_EXPORT Boolean _CFExecutableLinkedOnOrAfter(CFSystemVersion version) {
 }
 #endif
 
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX
+static Boolean
+__CFIsCurrentProcessTainted(void) {
+	Boolean ret = true;
 #if DEPLOYMENT_TARGET_MACOSX
+	ret = issetugid();
+#elif DEPLOYMENT_TARGET_LINUX
+# if HAVE_GETAUXVAL
+    ret = !(getauxval(AT_SECURE));
+# elif HAVE_GETUID && HAVE_GETEUID && HAVE_GETGID && HAVE_GETEGID
+    ret = ((getuid() != geteuid()) || (getgid() != getegid()));
+# else
+#  warning "Linux portability issue!"
+# endif /* HAVE_GETAUXVAL */
+#else
+# warning "Platform portability issue!"
+#endif
+	return ret;
+}
+
 __private_extern__ void *__CFLookupCFNetworkFunction(const char *name) {
     static void *image = NULL;
     if (NULL == image) {
-	const char *path = NULL;
-	if (!issetugid()) {
-	    path = getenv("CFNETWORK_LIBRARY_PATH");
-	}
-	if (!path) {
-	    path = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/CFNetwork.framework/Versions/A/CFNetwork";
-	}
-	image = dlopen(path, RTLD_LAZY | RTLD_LOCAL);
+		const char *path = NULL;
+		if (!__CFIsCurrentProcessTainted()) {
+			path = getenv("CFNETWORK_LIBRARY_PATH");
+		}
+		if (!path) {
+#if DEPLOYMENT_TARGET_MACOS
+			path = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/CFNetwork.framework/Versions/A/CFNetwork";
+#elif DEPLOYMENT_TARGET_LINUX
+			path = CFNETWORK_LIBRARY_PATH;
+#endif
+		}
+		image = dlopen(path, RTLD_LAZY | RTLD_LOCAL);
+		if (!image) CFLog(__kCFLogAssertion, CFSTR("CoreFoundation: failed to dynamically load CFNetwork: %s"), dlerror());
     }
     void *dyfunc = NULL;
     if (image) {
-	dyfunc = dlsym(image, name);
+		dyfunc = dlsym(image, name);
     }
     return dyfunc;
 }
-#endif //__MACH__
+#endif /* DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX */
 
 
 #ifndef __CFGetSessionID_defined
@@ -575,7 +607,7 @@ void CFLog(int32_t lev, CFStringRef format, ...) {
 #if DEPLOYMENT_TARGET_WINDOWS
     printf("%04d-%02d-%02d %02d:%02d:%06.3f %s[%d] CFLog (%d): ", (int)gdate.year, gdate.month, gdate.day, gdate.hour, gdate.minute, gdate.second, *_CFGetProgname(), getpid(), lev);
 #elif DEPLOYMENT_TARGET_LINUX
-	fprintf(stderr, "%04d-%02d-%02d %02d:%02d:%06.3f %s[%d:%x] CFLog: ", (int)gdate.year, gdate.month, gdate.day, gdate.hour, gdate.minute, gdate.second, *_CFGetProgname(), getpid(), (uintptr_t)pthread_self());
+	fprintf(stderr, "%04d-%02d-%02d %02d:%02d:%06.3f %s[%d:%" PRIxPTR "] CFLog: ", (int)gdate.year, gdate.month, gdate.day, gdate.hour, gdate.minute, gdate.second, *_CFGetProgname(), getpid(), (uintptr_t)pthread_self());
 #else
     fprintf_l(stderr, NULL, "%04d-%02d-%02d %02d:%02d:%06.3f %s[%d:%x] CFLog: ", (int)gdate.year, gdate.month, gdate.day, gdate.hour, gdate.minute, gdate.second, *_CFGetProgname(), getpid(), pthread_mach_thread_np(pthread_self()));
 #endif

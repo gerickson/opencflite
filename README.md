@@ -67,7 +67,7 @@ checking the build results is recommended:
 
 ### Dependencies
 
-In addition to depending on the C Standard Libraries and the Open
+In addition to depending on the C Standard Libraries, Open
 CF-lite depends on:
 
   * [International Components for Unicode](http://icu-project.org/)

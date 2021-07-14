@@ -71,6 +71,8 @@
 #if DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     #include <string.h>
     #include <pthread.h>
+    #include <dlfcn.h>
+    #include <unistd.h>
 #elif DEPLOYMENT_TARGET_WINDOWS
     #include <windows.h>
     #include <process.h>
@@ -439,7 +441,7 @@ CF_EXPORT Boolean _CFExecutableLinkedOnOrAfter(CFSystemVersion version) {
 }
 #endif
 
-#if DEPLOYMENT_TARGET_MACOSX
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX
 static Boolean
 __CFIsCurrentProcessTainted(void) {
 	Boolean ret = true;
@@ -462,22 +464,27 @@ __CFIsCurrentProcessTainted(void) {
 __private_extern__ void *__CFLookupCFNetworkFunction(const char *name) {
     static void *image = NULL;
     if (NULL == image) {
-	const char *path = NULL;
-	if (!__CFIsCurrentProcessTainted()) {
-	    path = getenv("CFNETWORK_LIBRARY_PATH");
-	}
-	if (!path) {
-	    path = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/CFNetwork.framework/Versions/A/CFNetwork";
-	}
-	image = dlopen(path, RTLD_LAZY | RTLD_LOCAL);
+		const char *path = NULL;
+		if (!__CFIsCurrentProcessTainted()) {
+			path = getenv("CFNETWORK_LIBRARY_PATH");
+		}
+		if (!path) {
+#if DEPLOYMENT_TARGET_MACOS
+			path = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/CFNetwork.framework/Versions/A/CFNetwork";
+#elif DEPLOYMENT_TARGET_LINUX
+			path = CFNETWORK_LIBRARY_PATH;
+#endif
+		}
+		image = dlopen(path, RTLD_LAZY | RTLD_LOCAL);
+		if (!image) CFLog(__kCFLogAssertion, CFSTR("CoreFoundation: failed to dynamically load CFNetwork: %s"), dlerror());
     }
     void *dyfunc = NULL;
     if (image) {
-	dyfunc = dlsym(image, name);
+		dyfunc = dlsym(image, name);
     }
     return dyfunc;
 }
-#endif //__MACH__
+#endif /* DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX */
 
 
 #ifndef __CFGetSessionID_defined

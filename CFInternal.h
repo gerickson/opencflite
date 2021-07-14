@@ -703,7 +703,7 @@ extern void *__CF_INVOKE_CALLBACK(void *, ...);
 //   DEFINE_WEAK_CARBONCORE_FUNC(void, DisposeHandle, (Handle h), (h))
 //
 
-#if DEPLOYMENT_TARGET_MACOSX
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX
 
 extern void *__CFLookupCFNetworkFunction(const char *name);
 

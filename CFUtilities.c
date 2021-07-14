@@ -76,6 +76,11 @@
     #include <process.h>
     #define getpid _getpid
 #endif
+#if DEPLOYMENT_TARGET_LINUX
+    #if HAVE_SYS_AUXV_H
+        #include <sys/auxv.h>
+    #endif
+#endif
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 typedef void* (*THREAD_FUN_TYPE)(void*);
@@ -435,11 +440,30 @@ CF_EXPORT Boolean _CFExecutableLinkedOnOrAfter(CFSystemVersion version) {
 #endif
 
 #if DEPLOYMENT_TARGET_MACOSX
+static Boolean
+__CFIsCurrentProcessTainted(void) {
+	Boolean ret = true;
+#if DEPLOYMENT_TARGET_MACOSX
+	ret = issetugid();
+#elif DEPLOYMENT_TARGET_LINUX
+# if HAVE_GETAUXVAL
+    ret = !(getauxval(AT_SECURE));
+# elif HAVE_GETUID && HAVE_GETEUID && HAVE_GETGID && HAVE_GETEGID
+    ret = ((getuid() != geteuid()) || (getgid() != getegid()));
+# else
+#  warning "Linux portability issue!"
+# endif /* HAVE_GETAUXVAL */
+#else
+# warning "Platform portability issue!"
+#endif
+	return ret;
+}
+
 __private_extern__ void *__CFLookupCFNetworkFunction(const char *name) {
     static void *image = NULL;
     if (NULL == image) {
 	const char *path = NULL;
-	if (!issetugid()) {
+	if (!__CFIsCurrentProcessTainted()) {
 	    path = getenv("CFNETWORK_LIBRARY_PATH");
 	}
 	if (!path) {

@@ -53,6 +53,9 @@
 /* Define to 1 if you have the `fork' function. */
 #undef HAVE_FORK
 
+/* Define to 1 if you have the `getauxval' function. */
+#undef HAVE_GETAUXVAL
+
 /* Define to 1 if you have the `getcwd' function. */
 #undef HAVE_GETCWD
 
@@ -274,6 +277,9 @@
 
 /* Define to 1 if you have the <syslog.h> header file. */
 #undef HAVE_SYSLOG_H
+
+/* Define to 1 if you have the <sys/auxv.h> header file. */
+#undef HAVE_SYS_AUXV_H
 
 /* Define to 1 if you have the <sys/cdefs.h> header file. */
 #undef HAVE_SYS_CDEFS_H

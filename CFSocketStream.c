@@ -145,11 +145,10 @@ static struct {
 
 #define CFNETWORK_CALL(sym, args)		((CFNetworkSupport.sym)args)
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX
 #define CFNETWORK_LOAD_SYM(sym)   __CFLookupCFNetworkFunction(#sym)
 #elif DEPLOYMENT_TARGET_WINDOWS
 #define CFNETWORK_LOAD_SYM(sym)   (void *)GetProcAddress(CFNetworkSupport.image, #sym)
-#elif DEPLOYMENT_TARGET_LINUX
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif
@@ -157,7 +156,7 @@ static struct {
 static void initializeCFNetworkSupport(void) {
     __CFBitSet(CFNetworkSupport.flags, kTriedToLoad);
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX
     CFNetworkSupport._CFSocketStreamCreatePair = CFNETWORK_LOAD_SYM(_CFSocketStreamCreatePair);
     CFNetworkSupport._CFErrorCreateWithStreamError = CFNETWORK_LOAD_SYM(_CFErrorCreateWithStreamError);
     CFNetworkSupport._CFStreamErrorFromCFError = CFNETWORK_LOAD_SYM(_CFStreamErrorFromCFError);
@@ -191,7 +190,6 @@ static void initializeCFNetworkSupport(void) {
         CFNetworkSupport._CFErrorCreateWithStreamError = (CFErrorRef(*)(CFAllocatorRef, CFStreamError *))CFNETWORK_LOAD_SYM(_CFErrorCreateWithStreamError);
         CFNetworkSupport._CFStreamErrorFromCFError = (CFStreamError(*)(CFErrorRef))CFNETWORK_LOAD_SYM(_CFStreamErrorFromCFError);
     }
-#elif DEPLOYMENT_TARGET_LINUX
 #else
 #error Unknown or unspecified DEPLOYMENT_TARGET
 #endif

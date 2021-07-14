@@ -1,6 +1,10 @@
                       Changes and What's New in OpenCFLite
                       ------------------------------------
 
+2021-07-14 v476.19.3
+
+  * Enabled dynamic CFNetwork support on Linux.
+
 2021-07-07 v476.19.2
 
   * Addressed an issue with an uninitialized read of the

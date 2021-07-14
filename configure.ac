@@ -676,6 +676,7 @@ AC_CHECK_HEADERS([syslog.h])
 AC_CHECK_HEADERS([time.h])
 AC_CHECK_HEADERS([unistd.h])
 AC_CHECK_HEADERS([xlocale.h])
+AC_CHECK_HEADERS([sys/auxv.h])
 AC_CHECK_HEADERS([sys/cdefs.h])
 AC_CHECK_HEADERS([sys/errno.h])
 AC_CHECK_HEADERS([sys/fcntl.h])
@@ -718,6 +719,7 @@ AC_FUNC_FORK
 AC_FUNC_MMAP
 AC_FUNC_SELECT_ARGTYPES
 
+AC_CHECK_FUNCS([getauxval])
 AC_CHECK_FUNCS([getcwd])
 AC_CHECK_FUNCS([gethostname])
 AC_CHECK_FUNCS([malloc realloc])

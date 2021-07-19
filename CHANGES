@@ -1,6 +1,14 @@
                       Changes and What's New in OpenCFLite
                       ------------------------------------
 
+2021-07-19 v476.19.4
+
+  * Addressed an issue in which back-to-back CFFileDescriptor
+    objects created in sequence result in the second and
+    subsequent such descriptor objects fulfilled from the
+    stale manager cache with an invalid native descriptor
+    value.
+
 2021-07-14 v476.19.3
 
   * Enabled dynamic CFNetwork support on Linux.

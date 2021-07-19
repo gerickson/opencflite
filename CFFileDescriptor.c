@@ -1844,6 +1844,7 @@ __CFFileDescriptorHandleWrite(CFFileDescriptorRef f,
 
 /* static */ void
 __CFFileDescriptorInvalidate_Retained(CFFileDescriptorRef f) {
+    __CFSpinLock(&__sCFFileDescriptorManager.mAllFileDescriptorsLock);
     __CFFileDescriptorLock(f);
 
     if (__CFFileDescriptorIsValid(f)) {
@@ -1857,6 +1858,12 @@ __CFFileDescriptorInvalidate_Retained(CFFileDescriptorRef f) {
         __CFFileDescriptorClearReadSignaled(f);
 
 		__CFFileDescriptorManagerRemove_Locked(f);
+
+        // Remove the descriptor from the cache.
+
+        CFDictionaryRemoveValue(__sCFFileDescriptorManager.mAllFileDescriptorsMap, (void *)(uintptr_t)(f->_descriptor));
+
+        // if requested by the client, close the native descriptor.
 
         if (__CFFileDescriptorShouldCloseOnInvalidate(f)) {
             close(f->_descriptor);
@@ -1906,6 +1913,8 @@ __CFFileDescriptorInvalidate_Retained(CFFileDescriptorRef f) {
     } else {
         __CFFileDescriptorUnlock(f);
     }
+
+    __CFSpinUnlock(&__sCFFileDescriptorManager.mAllFileDescriptorsLock);
 }
 
 #if LOG_CFFILEDESCRIPTOR

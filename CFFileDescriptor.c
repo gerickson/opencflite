@@ -52,9 +52,16 @@
 #define __CFFileDescriptorMaybeLog(format, ...)
 #endif
 
-#define __CFFileDescriptorMaybeTrace(dir, name)  __CFFileDescriptorMaybeLog(dir " %s\n", name);
-#define __CFFileDescriptorEnter()                __CFFileDescriptorMaybeTrace("-->", __func__);
-#define __CFFileDescriptorExit()                 __CFFileDescriptorMaybeTrace("<--", __func__);
+#define __CFFileDescriptorMaybeTraceWithFormat(dir, name, format, ...)	  \
+	__CFFileDescriptorMaybeLog(dir " %s" format, name, ##__VA_ARGS__)
+#define __CFFileDescriptorTraceEnterWithFormat(format, ...)               \
+	__CFFileDescriptorMaybeTraceWithFormat("-->", __func__, " " format, ##__VA_ARGS__)
+#define __CFFileDescriptorTraceExitWithFormat(format, ...)                \
+	__CFFileDescriptorMaybeTraceWithFormat("<--", __func__, " " format, ##__VA_ARGS__)
+#define __CFFileDescriptorTraceEnter()                                    \
+	__CFFileDescriptorTraceEnterWithFormat("\n")
+#define __CFFileDescriptorTraceExit()                                     \
+	__CFFileDescriptorTraceExitWithFormat("\n")
 
 #define __CFFILEDESCRIPTOR_INVALID_DESCRIPTOR    (CFFileDescriptorNativeDescriptor)(-1)
 
@@ -576,7 +583,7 @@ __CFFileDescriptorManager(void * arg) {
     struct timeval timeAfterSelect;
 	struct timeval timeElapsed;
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
 #if defined(__OBJC__)
     if (objc_collecting_enabled()) auto_zone_register_thread(auto_zone());
@@ -611,7 +618,7 @@ __CFFileDescriptorManager(void * arg) {
     if (objc_collecting_enabled()) auto_zone_unregister_thread(auto_zone());
 #endif
 
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 }
 
 /* static */ void *
@@ -842,7 +849,7 @@ __CFFileDescriptorManagerHandleTimeout(struct __CFFileDescriptorManagerSelectSta
 __CFFileDescriptorManagerInitialize_Locked(void) {
     SInt32 status;
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
     __sCFFileDescriptorManager.mReadFileDescriptors  = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, NULL);
     __sCFFileDescriptorManager.mWriteFileDescriptors = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, NULL);
@@ -874,7 +881,7 @@ __CFFileDescriptorManagerInitialize_Locked(void) {
     }
 
  done:
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 
     return;
 }
@@ -887,7 +894,7 @@ __CFFileDescriptorManagerMaybeAdd_Locked(CFFileDescriptorRef f,
 {
 	Boolean result = FALSE;
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
 	__CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
 
@@ -936,7 +943,7 @@ __CFFileDescriptorManagerMaybeAdd_Locked(CFFileDescriptorRef f,
 
 	__CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
 
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 
 	return result;
 }
@@ -1144,7 +1151,7 @@ __CFFileDescriptorManagerRemove_Locked(CFFileDescriptorRef f) {
     CFMutableArrayRef array;
     CFIndex index;
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
     __CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
 
@@ -1173,7 +1180,7 @@ __CFFileDescriptorManagerRemove_Locked(CFFileDescriptorRef f) {
 
     __CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
 
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 }
 
 /* static */ Boolean
@@ -1215,7 +1222,7 @@ __CFFileDescriptorManagerWakeup(char reason)
 {
     int status;
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
     __CFFileDescriptorMaybeLog("Waking up the file descriptor manager w/ reason '%c'\n", reason);
 
@@ -1226,7 +1233,7 @@ __CFFileDescriptorManagerWakeup(char reason)
 	} while ((status == -1) && (errno == EAGAIN));
     __Verify(status == sizeof(reason));
 
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 }
 
 // MARK: Other Functions
@@ -1317,7 +1324,7 @@ __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
     Boolean                          cached;
     CFFileDescriptorRef              result = NULL;
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
     // Ensure the native descriptor is valid.
 
@@ -1450,7 +1457,7 @@ __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
     }
 
  done:
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 
     return result;
 }
@@ -1463,7 +1470,7 @@ __CFFileDescriptorDisableCallBacks_Locked(CFFileDescriptorRef f,
 	const CFOptionFlags currentCallBackTypes = __CFFileDescriptorCallBackTypes(f);
     Boolean             result = FALSE;
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
     __CFFileDescriptorMaybeLog("Attempting to disable valid %u scheduled %u descriptor %d "
 							   "callbacks to disable 0x%lx current callbacks 0x%lx\n",
@@ -1493,7 +1500,7 @@ __CFFileDescriptorDisableCallBacks_Locked(CFFileDescriptorRef f,
     }
 
  done:
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 
     return result;
 }
@@ -1508,7 +1515,7 @@ __CFFileDescriptorDoCallBack_LockedAndUnlock(CFFileDescriptorRef f) {
     uint8_t callBackTypes;
 	uint8_t callBackTypeToCheck;
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
     callBackTypes = __CFFileDescriptorCallBackTypes(f);
     readSignaled  = __CFFileDescriptorIsReadSignaled(f);
@@ -1570,7 +1577,7 @@ __CFFileDescriptorDoCallBack_LockedAndUnlock(CFFileDescriptorRef f) {
         }
     }
 
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 }
 
 /**
@@ -1615,7 +1622,7 @@ __CFFileDescriptorEnableCallBacks_LockedAndUnlock(CFFileDescriptorRef f,
 	CFOptionFlags       updatedCallBackTypes;
     Boolean             wakeup    = FALSE;
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
     __CFFileDescriptorMaybeLog("Attempting to %senable valid %u scheduled %u descriptor %d "
 							   "callbacks to enable 0x%lx current callbacks 0x%lx "
@@ -1679,7 +1686,7 @@ __CFFileDescriptorEnableCallBacks_LockedAndUnlock(CFFileDescriptorRef f,
         __CFFileDescriptorManagerWakeup(wakeupReason);
     }
 
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 
     return;
 }
@@ -1711,7 +1718,7 @@ __CFFileDescriptorHandleRead(CFFileDescriptorRef f,
     CFOptionFlags readCallBacksAvailable;
 	CFRunLoopRef  rl = NULL;
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
 	valid = CFFileDescriptorIsValid(f);
 	__Require(valid, done);
@@ -1753,7 +1760,7 @@ __CFFileDescriptorHandleRead(CFFileDescriptorRef f,
         CFRelease(rl);
     }
 
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 }
 
 /* static */ void
@@ -1792,7 +1799,7 @@ __CFFileDescriptorHandleWrite(CFFileDescriptorRef f,
 	Boolean       valid;
     CFOptionFlags writeCallBacksAvailable;
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
 	valid = CFFileDescriptorIsValid(f);
 	__Require(valid, done);
@@ -1832,7 +1839,7 @@ __CFFileDescriptorHandleWrite(CFFileDescriptorRef f,
     }
 
  done:
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 }
 
 /* static */ void
@@ -1948,11 +1955,11 @@ __CFNativeFileDescriptorIsValid(CFFileDescriptorNativeDescriptor fd) {
 // MARK: CFRuntimeClass Functions
 
 __private_extern__ void __CFFileDescriptorInitialize(void) {
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
     __kCFFileDescriptorTypeID = _CFRuntimeRegisterClass(&__CFFileDescriptorClass);
 
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 }
 
 /* static */ void
@@ -2021,7 +2028,7 @@ __CFFileDescriptorRunLoopSchedule(void *info, CFRunLoopRef rl, CFStringRef mode)
     CFFileDescriptorRef f = (CFFileDescriptorRef)(info);
     Boolean             valid;
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
     __CFFileDescriptorLock(f);
 
@@ -2043,7 +2050,7 @@ __CFFileDescriptorRunLoopSchedule(void *info, CFRunLoopRef rl, CFStringRef mode)
         __CFFileDescriptorUnlock(f);
     }
 
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 }
 
 /* static */ void
@@ -2051,7 +2058,7 @@ __CFFileDescriptorRunLoopCancel(void *info, CFRunLoopRef rl, CFStringRef mode) {
     CFFileDescriptorRef f = (CFFileDescriptorRef)(info);
     CFIndex             index;
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
     __CFFileDescriptorLock(f);
 
@@ -2067,7 +2074,7 @@ __CFFileDescriptorRunLoopCancel(void *info, CFRunLoopRef rl, CFStringRef mode) {
 
     __CFFileDescriptorUnlock(f);
 
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 }
 
 /* static */ void
@@ -2076,7 +2083,7 @@ __CFFileDescriptorRunLoopPerform(void *info) {
     CFOptionFlags       callBacksSignaled = 0;
     CFRunLoopRef        rl = NULL;
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
     __CFFileDescriptorLock(f);
 
@@ -2109,7 +2116,7 @@ __CFFileDescriptorRunLoopPerform(void *info) {
     }
 
  done:
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 }
 
 // MARK: CFFileDescriptor Public API Functions
@@ -2158,7 +2165,7 @@ CFFileDescriptorCreate(CFAllocatorRef                   allocator,
     static const Boolean kReuseExistingInstance = TRUE;
     CFFileDescriptorRef  result                 = NULL;
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
     result = __CFFileDescriptorCreateWithNative(allocator,
                                                 fd,
@@ -2167,7 +2174,7 @@ CFFileDescriptorCreate(CFAllocatorRef                   allocator,
                                                 context,
                                                 kReuseExistingInstance);
 
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 
     return result;
 }
@@ -2229,7 +2236,7 @@ void
 CFFileDescriptorEnableCallBacks(CFFileDescriptorRef f, CFOptionFlags callBackTypes) {
     CHECK_FOR_FORK();
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
     __CFGenericValidateType(f, CFFileDescriptorGetTypeID());
 
@@ -2237,7 +2244,7 @@ CFFileDescriptorEnableCallBacks(CFFileDescriptorRef f, CFOptionFlags callBackTyp
 
     __CFFileDescriptorEnableCallBacks_LockedAndUnlock(f, callBackTypes, TRUE, __kWakeupReasonEnable);
 
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 }
 
 /**
@@ -2254,7 +2261,7 @@ CFFileDescriptorDisableCallBacks(CFFileDescriptorRef f, CFOptionFlags callBackTy
     CHECK_FOR_FORK();
     Boolean wakeup = FALSE;
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
     __Require(callBackTypes != __kCFFileDescriptorNoCallBacks, done);
 
@@ -2271,7 +2278,7 @@ CFFileDescriptorDisableCallBacks(CFFileDescriptorRef f, CFOptionFlags callBackTy
     }
 
  done:
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 
     return;
 }
@@ -2300,7 +2307,7 @@ void
 CFFileDescriptorInvalidate(CFFileDescriptorRef f) {
     CHECK_FOR_FORK();
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
     __CFGenericValidateType(f, CFFileDescriptorGetTypeID());
 
@@ -2312,7 +2319,7 @@ CFFileDescriptorInvalidate(CFFileDescriptorRef f) {
 
     CFRelease(f);
 
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 }
 
 /**
@@ -2331,13 +2338,13 @@ CFFileDescriptorIsValid(CFFileDescriptorRef f) {
     CHECK_FOR_FORK();
     Boolean result;
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
     __CFGenericValidateType(f, CFFileDescriptorGetTypeID());
 
     result = __CFFileDescriptorIsValid(f);
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
     return result;
 }
@@ -2368,7 +2375,7 @@ CFFileDescriptorCreateRunLoopSource(CFAllocatorRef allocator, CFFileDescriptorRe
     Boolean            valid;
     CFRunLoopSourceRef result = NULL;
 
-    __CFFileDescriptorEnter();
+    __CFFileDescriptorTraceEnter();
 
     __CFGenericValidateType(f, CFFileDescriptorGetTypeID());
 
@@ -2410,7 +2417,7 @@ CFFileDescriptorCreateRunLoopSource(CFAllocatorRef allocator, CFFileDescriptorRe
  unlock:
     __CFFileDescriptorUnlock(f);
 
-    __CFFileDescriptorExit();
+    __CFFileDescriptorTraceExit();
 
     return result;
 }

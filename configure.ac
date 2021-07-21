@@ -827,13 +827,14 @@ AC_MSG_NOTICE([
   Time Zone data directory    : ${tz_data_dir}
   C Preprocessor              : ${CPP}
   C Compiler                  : ${CC}
+  Objective C Compiler        : ${OBJC:--}
   Archiver                    : ${AR}
   Archive Indexer             : ${RANLIB}
   Symbol Stripper             : ${STRIP}
   Object Copier               : ${OBJCOPY}
   C Preprocessor flags        : ${CPPFLAGS:--}
   C Compile flags             : ${CFLAGS:--}
+  Objective C Compile flags   : ${OBJCFLAGS:--}
   Link flags                  : ${LDFLAGS:--}
   Link libraries              : ${LIBS}
-
 ])

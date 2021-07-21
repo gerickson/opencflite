@@ -155,6 +155,9 @@
 /* Define if you have POSIX threads libraries and header files. */
 #undef HAVE_PTHREAD
 
+/* Have PTHREAD_PRIO_INHERIT. */
+#undef HAVE_PTHREAD_PRIO_INHERIT
+
 /* Define to 1 if you have the <pwd.h> header file. */
 #undef HAVE_PWD_H
 
@@ -394,12 +397,8 @@
 /* Define this if your target compiler supports __sync_synchronize */
 #undef HAVE___SYNC_SYNCHRONIZE
 
-/* Define to the sub-directory in which libtool stores uninstalled libraries.
-   */
+/* Define to the sub-directory where libtool stores uninstalled libraries. */
 #undef LT_OBJDIR
-
-/* Define to 1 if your C compiler doesn't accept -c and -o together. */
-#undef NO_MINUS_C_MINUS_O
 
 /* Name of package */
 #undef PACKAGE
@@ -488,6 +487,11 @@
 /* Enable BSD extensions on systems that have them.  */
 #ifndef _BSD_SOURCE
 # undef _BSD_SOURCE
+#endif
+
+/* Enable BSD or SVID extensions on systems that have them.  */
+#ifndef _DEFAULT_SOURCE
+# undef _DEFAULT_SOURCE
 #endif
 
 /* Define to 1 if on MINIX. */

@@ -1,26 +1,26 @@
 /*
      File:       ConditionalMacros.h
- 
+
      Contains:   Set up for compiler independent conditionals
- 
+
      Version:    QuickTime 7.1
- 
+
      Copyright:  © 1993-2006 by Apple Computer, Inc., all rights reserved
- 
+
      Bugs?:      For bug reports, consult the following page on
                  the World Wide Web:
- 
+
                      http://developer.apple.com/bugreporter/
- 
+
 */
 #ifndef __CONDITIONALMACROS__
 #define __CONDITIONALMACROS__
 
 /****************************************************************************************************
     UNIVERSAL_INTERFACES_VERSION
-    
+
         0x0400 --> version 4.0 (Mac OS X only)
-        0x0335 --> version 3.4 
+        0x0335 --> version 3.4
         0x0331 --> version 3.3.1
         0x0330 --> version 3.3
         0x0320 --> version 3.2
@@ -36,47 +36,48 @@
 
 /****************************************************************************************************
 
-    TARGET_CPU_Å    
+    TARGET_CPU_Å
     These conditionals specify which microprocessor instruction set is being
     generated.  At most one of these is true, the rest are false.
 
         TARGET_CPU_PPC          - Compiler is generating PowerPC instructions
         TARGET_CPU_68K          - Compiler is generating 680x0 instructions
-        TARGET_CPU_X86          - Compiler is generating x86 instructions
+        TARGET_CPU_X86          - Compiler is generating x86 instructions for 32-bit mode
+        TARGET_CPU_X86_64       - Compiler is generating x86 instructions for 64-bit mode
         TARGET_CPU_MIPS         - Compiler is generating MIPS instructions
         TARGET_CPU_SPARC        - Compiler is generating Sparc instructions
         TARGET_CPU_ALPHA        - Compiler is generating Dec Alpha instructions
 
 
-    TARGET_OS_Å 
+    TARGET_OS_Å
     These conditionals specify in which Operating System the generated code will
     run. At most one of the these is true, the rest are false.
 
         TARGET_OS_MAC           - Generate code will run under Mac OS
         TARGET_OS_WIN32         - Generate code will run under 32-bit Windows
-        TARGET_OS_UNIX          - Generate code will run under some unix 
+        TARGET_OS_UNIX          - Generate code will run under some unix
 
 
-    TARGET_RT_Å 
+    TARGET_RT_Å
     These conditionals specify in which runtime the generated code will
     run. This is needed when the OS and CPU support more than one runtime
     (e.g. MacOS on 68K supports CFM68K and Classic 68k).
 
         TARGET_RT_LITTLE_ENDIAN - Generated code uses little endian format for integers
-        TARGET_RT_BIG_ENDIAN    - Generated code uses big endian format for integers    
+        TARGET_RT_BIG_ENDIAN    - Generated code uses big endian format for integers
         TARGET_RT_MAC_CFM       - TARGET_OS_MAC is true and CFM68K or PowerPC CFM (TVectors) are used
         TARGET_RT_MAC_MACHO     - TARGET_OS_MAC is true and Mach-O style runtime
-        TARGET_RT_MAC_68881     - TARGET_OS_MAC is true and 68881 floating point instructions used  
+        TARGET_RT_MAC_68881     - TARGET_OS_MAC is true and 68881 floating point instructions used
 
 
-    TARGET__API_Å_Å 
+    TARGET__API_Å_Å
     These conditionals are used to differentiate between sets of API's on the same
     processor under the same OS.  The first section after _API_ is the OS.  The
     second section is the API set.  Unlike TARGET_OS_ and TARGET_CPU_, these
     conditionals are not mutally exclusive. This file will attempt to auto-configure
     all TARGET_API_Å_Å values, but will often need a TARGET_API_Å_Å value predefined
     in order to disambiguate.
-    
+
         TARGET_API_MAC_OS8      - Code is being compiled to run on System 7 through Mac OS 8.x
         TARGET_API_MAC_CARBON   - Code is being compiled to run on Mac OS 8 and Mac OS X via CarbonLib
         TARGET_API_MAC_OSX      - Code is being compiled to run on Mac OS X
@@ -84,7 +85,7 @@
 
     PRAGMA_Å
     These conditionals specify whether the compiler supports particular #pragma's
-    
+
         PRAGMA_IMPORT           - Compiler supports: #pragma import on/off/reset
         PRAGMA_ONCE             - Compiler supports: #pragma once
         PRAGMA_STRUCT_ALIGN     - Compiler supports: #pragma options align=mac68k/power/reset
@@ -128,8 +129,9 @@
  #define TARGET_CPU_PPC              1
   #define TARGET_CPU_68K              0
   #define TARGET_CPU_X86              0
+  #define TARGET_CPU_X86_64           0
   #define TARGET_CPU_MIPS             0
-  #define TARGET_CPU_SPARC            0       
+  #define TARGET_CPU_SPARC            0
    #define TARGET_CPU_ALPHA            0
   #define TARGET_OS_MAC               1
   #define TARGET_OS_WIN32             0
@@ -152,7 +154,7 @@
   #define PRAGMA_ENUM_ALWAYSINT       0
   #define PRAGMA_ENUM_OPTIONS         0
   #define FOUR_CHAR_CODE(x)           (x)
-        
+
    #if (__MRC__  > 0x0300) && (__MRC__ < 0x0700)
       #if __option(longlong)
 
@@ -178,11 +180,11 @@
   #endif
  #define TYPE_EXTENDED               0
   #define TYPE_LONGDOUBLE_IS_DOUBLE   0
-  
+
    #define FUNCTION_PASCAL             1
   #define FUNCTION_DECLSPEC           0
   #define FUNCTION_WIN32CC            0
-  
+
 
 
 #elif defined(__SC__) && (defined(MPW_CPLUS) || defined(MPW_C))
@@ -192,8 +194,9 @@
  #define TARGET_CPU_PPC              0
   #define TARGET_CPU_68K              1
   #define TARGET_CPU_X86              0
+  #define TARGET_CPU_X86_64           0
   #define TARGET_CPU_MIPS             0
-  #define TARGET_CPU_SPARC            0       
+  #define TARGET_CPU_SPARC            0
    #define TARGET_CPU_ALPHA            0
   #define TARGET_OS_MAC               1
   #define TARGET_OS_WIN32             0
@@ -211,7 +214,7 @@
   #else
       #define TARGET_RT_MAC_68881     0
   #endif
- #if TARGET_RT_MAC_CFM 
+ #if TARGET_RT_MAC_CFM
      #define PRAGMA_IMPORT           1
       #if (__SC__ <= 0x0810)
          /* old versions of SC don't support Ò#pragma import resetÓ */
@@ -232,7 +235,7 @@
   #define PRAGMA_ENUM_ALWAYSINT       0
   #define PRAGMA_ENUM_OPTIONS         0
   #define FOUR_CHAR_CODE(x)           (x)
-    
+
    #define TYPE_LONGLONG               0
   #define TYPE_EXTENDED               1
   #define TYPE_LONGDOUBLE_IS_DOUBLE   0
@@ -251,7 +254,7 @@
       #define FUNCTION_PASCAL         1
   #endif
  #define FUNCTION_DECLSPEC           0
-  #define FUNCTION_WIN32CC            0       
+  #define FUNCTION_WIN32CC            0
    #define SLASH_INCLUDES_UNSUPPORTED  !__option(unix_includes)
 
 
@@ -264,8 +267,9 @@
       #define TARGET_OS_WIN32             0
       #define TARGET_OS_UNIX              0
       #define TARGET_CPU_X86              0
+      #define TARGET_CPU_X86_64           0
       #define TARGET_CPU_MIPS             0
-      #define TARGET_CPU_SPARC            0       
+      #define TARGET_CPU_SPARC            0
        #define TARGET_CPU_ALPHA            0
       #define TARGET_RT_LITTLE_ENDIAN     0
       #define TARGET_RT_BIG_ENDIAN        1
@@ -323,15 +327,16 @@
       #else
           #define FUNCTION_DECLSPEC       0
       #endif
-     #define FUNCTION_WIN32CC            0       
+     #define FUNCTION_WIN32CC            0
 
-    
+
    #elif (__MWERKS__ >= 0x0900) && __INTEL__
       #define TARGET_CPU_PPC              0
       #define TARGET_CPU_68K              0
       #define TARGET_CPU_X86              1
+      #define TARGET_CPU_X86_64           0
       #define TARGET_CPU_MIPS             0
-      #define TARGET_CPU_SPARC            0       
+      #define TARGET_CPU_SPARC            0
        #define TARGET_CPU_ALPHA            0
       #define TARGET_OS_MAC               0
       #define TARGET_OS_WIN32             1
@@ -353,7 +358,7 @@
          #define FUNCTION_DECLSPEC       0       /* QuickTime for Windows cannot use dllimport */
        #endif
      #ifndef FUNCTION_WIN32CC                    /* allow calling convention to be overriddden */
-           #define FUNCTION_WIN32CC        1   
+           #define FUNCTION_WIN32CC        1
        #endif
      #define TYPE_LONGDOUBLE_IS_DOUBLE   1
 
@@ -362,8 +367,9 @@
        #define TARGET_CPU_PPC              0
       #define TARGET_CPU_68K              0
       #define TARGET_CPU_X86              0
+      #define TARGET_CPU_X86_64           0
       #define TARGET_CPU_MIPS             1
-      #define TARGET_CPU_SPARC            0       
+      #define TARGET_CPU_SPARC            0
        #define TARGET_CPU_ALPHA            0
       #define TARGET_OS_MAC               0
       #define TARGET_OS_WIN32             0
@@ -386,7 +392,7 @@
       #define FOUR_CHAR_CODE(x)           (x)
         #define FUNCTION_PASCAL             0
       #define FUNCTION_DECLSPEC           0
-      #define FUNCTION_WIN32CC            0           
+      #define FUNCTION_WIN32CC            0
        #define TYPE_LONGDOUBLE_IS_DOUBLE   1
 
 
@@ -394,10 +400,11 @@
        #define TARGET_CPU_PPC              1
       #define TARGET_CPU_68K              0
       #define TARGET_CPU_X86              0
+      #define TARGET_CPU_X86_64           0
       #define TARGET_CPU_MIPS             0
-      #define TARGET_CPU_SPARC            0       
+      #define TARGET_CPU_SPARC            0
        #define TARGET_CPU_ALPHA            0
-      #define TARGET_OS_MAC               1   
+      #define TARGET_OS_MAC               1
        #define TARGET_OS_WIN32             0
       #define TARGET_OS_UNIX              0
       #if __option(little_endian)
@@ -421,9 +428,9 @@
       #define FOUR_CHAR_CODE(x)           (x)
         #define FUNCTION_PASCAL             1
       #define FUNCTION_DECLSPEC           1
-      #define FUNCTION_WIN32CC            0           
+      #define FUNCTION_WIN32CC            0
        #define TYPE_LONGDOUBLE_IS_DOUBLE   1
-  #else   
+  #else
        #error unknown Metrowerks compiler
  #endif
 
@@ -458,8 +465,9 @@
   #define TARGET_OS_WIN32             0
   #define TARGET_OS_UNIX              0
   #define TARGET_CPU_X86              0
+  #define TARGET_CPU_X86_64           0
   #define TARGET_CPU_MIPS             0
-  #define TARGET_CPU_SPARC            0       
+  #define TARGET_CPU_SPARC            0
    #define TARGET_CPU_ALPHA            0
   #define TARGET_RT_LITTLE_ENDIAN     0
   #define TARGET_RT_BIG_ENDIAN        1
@@ -493,7 +501,7 @@
   #define PRAGMA_ENUM_ALWAYSINT       0
   #define PRAGMA_ENUM_OPTIONS         0
   #define FOUR_CHAR_CODE(x)           (x)
-    
+
    #if __useAppleExts__
        #define TYPE_EXTENDED           1
   #else
@@ -502,10 +510,10 @@
  #define TYPE_LONGLONG               0
   #define TYPE_BOOL                   0
   #define TYPE_LONGDOUBLE_IS_DOUBLE   1
-  
+
    #define FUNCTION_PASCAL             0
   #define FUNCTION_DECLSPEC           0
-  #define FUNCTION_WIN32CC            0           
+  #define FUNCTION_WIN32CC            0
    #define SLASH_INCLUDES_UNSUPPORTED  1
 
 
@@ -516,8 +524,9 @@
  #define TARGET_CPU_PPC              0
   #define TARGET_CPU_68K              1
   #define TARGET_CPU_X86              0
+  #define TARGET_CPU_X86_64           0
   #define TARGET_CPU_MIPS             0
-  #define TARGET_CPU_SPARC            0       
+  #define TARGET_CPU_SPARC            0
    #define TARGET_CPU_ALPHA            0
   #define TARGET_OS_MAC               1
   #define TARGET_OS_WIN32             0
@@ -540,12 +549,12 @@
   #define PRAGMA_ENUM_ALWAYSINT       0
   #define PRAGMA_ENUM_OPTIONS         0
   #define FOUR_CHAR_CODE(x)           (x)
-    
+
    #define TYPE_EXTENDED               1
   #define TYPE_LONGLONG               0
   #define TYPE_BOOL                   0
   #define TYPE_LONGDOUBLE_IS_DOUBLE   1
-  
+
    #define FUNCTION_PASCAL             1
   #define FUNCTION_DECLSPEC           0
   #define FUNCTION_WIN32CC            0
@@ -559,8 +568,9 @@
  #define TARGET_CPU_PPC              1
   #define TARGET_CPU_68K              0
   #define TARGET_CPU_X86              0
+  #define TARGET_CPU_X86_64           0
   #define TARGET_CPU_MIPS             0
-  #define TARGET_CPU_SPARC            0       
+  #define TARGET_CPU_SPARC            0
    #define TARGET_CPU_ALPHA            0
   #define TARGET_OS_MAC               1
   #define TARGET_OS_WIN32             0
@@ -579,15 +589,15 @@
   #define PRAGMA_ENUM_ALWAYSINT       0
   #define PRAGMA_ENUM_OPTIONS         0
   #define FOUR_CHAR_CODE(x)           (x)
-    
+
    #define TYPE_EXTENDED               0
   #define TYPE_LONGLONG               0
   #define TYPE_BOOL                   0
   #define TYPE_LONGDOUBLE_IS_DOUBLE   1
-  
+
    #define FUNCTION_PASCAL             0
   #define FUNCTION_DECLSPEC           0
-  #define FUNCTION_WIN32CC            0           
+  #define FUNCTION_WIN32CC            0
    #define SLASH_INCLUDES_UNSUPPORTED  1
 
 
@@ -598,8 +608,9 @@
  #define TARGET_CPU_PPC              0
   #define TARGET_CPU_68K              1
   #define TARGET_CPU_X86              0
+  #define TARGET_CPU_X86_64           0
   #define TARGET_CPU_MIPS             0
-  #define TARGET_CPU_SPARC            0       
+  #define TARGET_CPU_SPARC            0
    #define TARGET_CPU_ALPHA            0
   #define TARGET_OS_MAC               1
   #define TARGET_OS_WIN32             0
@@ -622,7 +633,7 @@
   #define PRAGMA_ENUM_ALWAYSINT       0
   #define PRAGMA_ENUM_OPTIONS         0
   /* Note: MPW C 3.2 had a bug where MACRO('xx   ') would cause 'xx  ' to be misevaluated */
- #define FOUR_CHAR_CODE              
+ #define FOUR_CHAR_CODE
 
   #define TYPE_EXTENDED               1
   #define TYPE_LONGLONG               0
@@ -631,7 +642,7 @@
 
  #define FUNCTION_PASCAL             1
   #define FUNCTION_DECLSPEC           0
-  #define FUNCTION_WIN32CC            0           
+  #define FUNCTION_WIN32CC            0
    #define SLASH_INCLUDES_UNSUPPORTED  1
 
 
@@ -643,8 +654,9 @@
        #define TARGET_CPU_PPC          1
       #define TARGET_CPU_68K          0
       #define TARGET_CPU_X86          0
+      #define TARGET_CPU_X86_64       0
       #define TARGET_CPU_MIPS         0
-      #define TARGET_CPU_SPARC        0   
+      #define TARGET_CPU_SPARC        0
        #define TARGET_CPU_ALPHA        0
       #define TARGET_RT_MAC_68881     0
       #define TARGET_RT_LITTLE_ENDIAN 0
@@ -660,8 +672,9 @@
         #define TARGET_CPU_PPC          0
       #define TARGET_CPU_68K          1
       #define TARGET_CPU_X86          0
+      #define TARGET_CPU_X86_64       0
       #define TARGET_CPU_MIPS         0
-      #define TARGET_CPU_SPARC        0   
+      #define TARGET_CPU_SPARC        0
        #define TARGET_CPU_ALPHA        0
       #define TARGET_RT_MAC_CFM       0
       #define TARGET_RT_MAC_MACHO     1
@@ -672,6 +685,7 @@
        #define TARGET_CPU_PPC          0
       #define TARGET_CPU_68K          0
       #define TARGET_CPU_X86          0
+      #define TARGET_CPU_X86_64       0
       #define TARGET_CPU_MIPS         0
       #define TARGET_CPU_SPARC        1
       #define TARGET_CPU_ALPHA        0
@@ -684,6 +698,20 @@
      #define TARGET_CPU_PPC          0
       #define TARGET_CPU_68K          0
       #define TARGET_CPU_X86          1
+      #define TARGET_CPU_X86_64       0
+      #define TARGET_CPU_MIPS         0
+      #define TARGET_CPU_SPARC        0
+      #define TARGET_CPU_ALPHA        0
+      #define TARGET_RT_MAC_CFM       0
+      #define TARGET_RT_MAC_MACHO     1
+      #define TARGET_RT_MAC_68881     0
+      #define TARGET_RT_LITTLE_ENDIAN 1
+      #define TARGET_RT_BIG_ENDIAN    0
+  #elif defined(__x86_64) || defined(__x86_64__)
+     #define TARGET_CPU_PPC          0
+      #define TARGET_CPU_68K          0
+      #define TARGET_CPU_X86          0
+      #define TARGET_CPU_X86_64       1
       #define TARGET_CPU_MIPS         0
       #define TARGET_CPU_SPARC        0
       #define TARGET_CPU_ALPHA        0
@@ -729,10 +757,10 @@
   #else
       #define TYPE_BOOL               0
   #endif
- 
+
    #define FUNCTION_PASCAL             0
   #define FUNCTION_DECLSPEC           0
-  #define FUNCTION_WIN32CC            0           
+  #define FUNCTION_WIN32CC            0
 
 
 #elif defined(__GNUC__) && defined(__linux__)
@@ -743,8 +771,9 @@
       #define TARGET_CPU_PPC          1
       #define TARGET_CPU_68K          0
       #define TARGET_CPU_X86          0
+      #define TARGET_CPU_X86_64       0
       #define TARGET_CPU_MIPS         0
-      #define TARGET_CPU_SPARC        0   
+      #define TARGET_CPU_SPARC        0
        #define TARGET_CPU_ALPHA        0
       #define TARGET_RT_MAC_CFM       1
       #define TARGET_RT_MAC_MACHO     0
@@ -755,8 +784,9 @@
        #define TARGET_CPU_PPC          0
       #define TARGET_CPU_68K          1
       #define TARGET_CPU_X86          0
+      #define TARGET_CPU_X86_64       0
       #define TARGET_CPU_MIPS         0
-      #define TARGET_CPU_SPARC        0   
+      #define TARGET_CPU_SPARC        0
        #define TARGET_CPU_ALPHA        0
       #define TARGET_RT_LITTLE_ENDIAN     0
       #define TARGET_RT_BIG_ENDIAN        1
@@ -767,8 +797,9 @@
       #define TARGET_CPU_PPC              0
       #define TARGET_CPU_68K              0
       #define TARGET_CPU_X86              1
+      #define TARGET_CPU_X86_64           0
       #define TARGET_CPU_MIPS             0
-      #define TARGET_CPU_SPARC            0   
+      #define TARGET_CPU_SPARC            0
       #define TARGET_CPU_ALPHA            0
       #define TARGET_RT_MAC_CFM           0
       #define TARGET_RT_MAC_MACHO         0
@@ -792,11 +823,42 @@
       #define TYPE_LONGDOUBLE_IS_DOUBLE   1
       #define FUNCTION_PASCAL             0
       #define FUNCTION_DECLSPEC           0
-      #define FUNCTION_WIN32CC            0           
+      #define FUNCTION_WIN32CC            0
+  #elif #cpu(x86_64)
+      #define TARGET_CPU_PPC              0
+      #define TARGET_CPU_68K              0
+      #define TARGET_CPU_X86              0
+      #define TARGET_CPU_X86_64           1
+      #define TARGET_CPU_MIPS             0
+      #define TARGET_CPU_SPARC            0
+      #define TARGET_CPU_ALPHA            0
+      #define TARGET_RT_MAC_CFM           0
+      #define TARGET_RT_MAC_MACHO         0
+      #define TARGET_RT_MAC_68881         0
+      #define TARGET_OS_MAC               0
+      #define TARGET_OS_WIN32             0
+      #define TARGET_OS_UNIX              1
+      #define TARGET_RT_LITTLE_ENDIAN     1
+      #define TARGET_RT_BIG_ENDIAN        0
+      #define __COREAUDIO_USE_FLAT_INCLUDES__ 1
+      #define PRAGMA_IMPORT               0
+      #define PRAGMA_STRUCT_ALIGN         0
+      #define PRAGMA_ONCE                 0
+      #define PRAGMA_STRUCT_PACK          1
+      #define PRAGMA_STRUCT_PACKPUSH      0
+      #define PRAGMA_ENUM_PACK            0
+      #define PRAGMA_ENUM_ALWAYSINT       0
+      #define PRAGMA_ENUM_OPTIONS         0
+      #define FOUR_CHAR_CODE(x)           (x)
+      #define TYPE_EXTENDED               0
+      #define TYPE_LONGDOUBLE_IS_DOUBLE   1
+      #define FUNCTION_PASCAL             0
+      #define FUNCTION_DECLSPEC           0
+      #define FUNCTION_WIN32CC            0
   #else
       #error unsupported GNU C compiler
   #endif
- 
+
    #if #system(macos)
      #define TARGET_OS_MAC           1
       #define TARGET_OS_WIN32         0
@@ -827,10 +889,10 @@
       #define TYPE_LONGLONG           0
   #endif
  #define TYPE_BOOL                   0
-  
+
    #define FUNCTION_PASCAL             0
   #define FUNCTION_DECLSPEC           0
-  #define FUNCTION_WIN32CC            0           
+  #define FUNCTION_WIN32CC            0
 
 
 #elif defined(__GNUC__) && defined(__MINGW32__)
@@ -840,8 +902,9 @@
  #define TARGET_CPU_PPC              0
   #define TARGET_CPU_68K              0
   #define TARGET_CPU_X86              1
+  #define TARGET_CPU_X86_64           0
   #define TARGET_CPU_MIPS             0
-  #define TARGET_CPU_SPARC            0   
+  #define TARGET_CPU_SPARC            0
    #define TARGET_CPU_ALPHA            0
   #define TARGET_RT_MAC_CFM           0
   #define TARGET_RT_MAC_MACHO         0
@@ -867,7 +930,7 @@
   #define TYPE_BOOL                   1
   #define FUNCTION_PASCAL             0
   #define FUNCTION_DECLSPEC           0
-  #define FUNCTION_WIN32CC            0           
+  #define FUNCTION_WIN32CC            0
 
 
 #elif defined(__GNUC__)
@@ -878,8 +941,9 @@
       #define TARGET_CPU_PPC          1
       #define TARGET_CPU_68K          0
       #define TARGET_CPU_X86          0
+      #define TARGET_CPU_X86_64       0
       #define TARGET_CPU_MIPS         0
-      #define TARGET_CPU_SPARC        0   
+      #define TARGET_CPU_SPARC        0
        #define TARGET_CPU_ALPHA        0
       #define TARGET_RT_MAC_CFM       1
       #define TARGET_RT_MAC_MACHO     0
@@ -888,8 +952,9 @@
        #define TARGET_CPU_PPC          0
       #define TARGET_CPU_68K          1
       #define TARGET_CPU_X86          0
+      #define TARGET_CPU_X86_64       0
       #define TARGET_CPU_MIPS         0
-      #define TARGET_CPU_SPARC        0   
+      #define TARGET_CPU_SPARC        0
        #define TARGET_CPU_ALPHA        0
       #define TARGET_RT_MAC_CFM       0
       #define TARGET_RT_MAC_MACHO     0
@@ -897,7 +962,7 @@
   #else
       #error unsupported GNU C compiler
   #endif
- 
+
    #if #system(macos)
      #define TARGET_OS_MAC           1
       #define TARGET_OS_WIN32         0
@@ -909,7 +974,7 @@
   #else
       #error unsupported GNU C compiler
   #endif
- 
+
    #define TARGET_RT_LITTLE_ENDIAN     0
   #define TARGET_RT_BIG_ENDIAN        1
   #define PRAGMA_IMPORT               0
@@ -933,7 +998,7 @@
 
  #define FUNCTION_PASCAL             0
   #define FUNCTION_DECLSPEC           0
-  #define FUNCTION_WIN32CC            0           
+  #define FUNCTION_WIN32CC            0
 
 
 #elif defined(__xlc) || defined(__xlC) || defined(__xlC__) || defined(__XLC121__)
@@ -943,8 +1008,9 @@
  #define TARGET_CPU_PPC              1
   #define TARGET_CPU_68K              0
   #define TARGET_CPU_X86              0
+  #define TARGET_CPU_X86_64           0
   #define TARGET_CPU_MIPS             0
-  #define TARGET_CPU_SPARC            0       
+  #define TARGET_CPU_SPARC            0
    #define TARGET_CPU_ALPHA            0
   #if defined(_AIX)
       #define TARGET_OS_MAC           0
@@ -977,13 +1043,13 @@
       #define TYPE_LONGLONG           0
   #endif
  #define TYPE_BOOL                   0
-  
+
    #define FUNCTION_PASCAL             0
   #define FUNCTION_DECLSPEC           0
-  #define FUNCTION_WIN32CC            0           
+  #define FUNCTION_WIN32CC            0
 
 
-#elif defined(_MSC_VER) && !defined(__MWERKS__) 
+#elif defined(_MSC_VER) && !defined(__MWERKS__)
   /*
      Visual Studio C/C++ from Microsoft, Inc.
    */
@@ -991,6 +1057,7 @@
      #define TARGET_CPU_PPC              0
       #define TARGET_CPU_68K              1
       #define TARGET_CPU_X86              0
+      #define TARGET_CPU_X86_64           0
       #define TARGET_CPU_MIPS             0
       #define TARGET_CPU_SPARC            0
       #define TARGET_CPU_ALPHA            0
@@ -1017,12 +1084,13 @@
       #define TYPE_BOOL                   0
       #define FUNCTION_PASCAL             1
       #define FUNCTION_DECLSPEC           0
-      #define FUNCTION_WIN32CC            0           
+      #define FUNCTION_WIN32CC            0
 
     #elif defined(_M_MPPC)  /* Visual C++ with Macintosh PowerPC target */
      #define TARGET_CPU_PPC              1
       #define TARGET_CPU_68K              0
       #define TARGET_CPU_X86              0
+      #define TARGET_CPU_X86_64           0
       #define TARGET_CPU_MIPS             0
       #define TARGET_CPU_SPARC            0
       #define TARGET_CPU_ALPHA            0
@@ -1048,13 +1116,14 @@
       #define TYPE_LONGLONG               0
       #define TYPE_BOOL                   0
       #define FUNCTION_PASCAL             0
-      #define FUNCTION_DECLSPEC           0   
-       #define FUNCTION_WIN32CC            0   
+      #define FUNCTION_DECLSPEC           0
+       #define FUNCTION_WIN32CC            0
 
     #elif defined(_M_IX86)  /* Visual Studio with Intel x86 target */
       #define TARGET_CPU_PPC              0
       #define TARGET_CPU_68K              0
       #define TARGET_CPU_X86              1
+      #define TARGET_CPU_X86_64           0
       #define TARGET_CPU_MIPS             0
       #define TARGET_CPU_SPARC            0
       #define TARGET_CPU_ALPHA            0
@@ -1072,7 +1141,7 @@
       #define PRAGMA_ENUM_PACK            0
       #define PRAGMA_ENUM_ALWAYSINT       0
       #define PRAGMA_ENUM_OPTIONS         0
-      #define FOUR_CHAR_CODE(x)           (x) 
+      #define FOUR_CHAR_CODE(x)           (x)
        #define TYPE_LONGDOUBLE_IS_DOUBLE   1
       #define TYPE_EXTENDED               0
       #define TYPE_LONGLONG               1   /* note: uses __int64 instead of long long */
@@ -1092,7 +1161,7 @@
          #define FUNCTION_DECLSPEC       0   /* QuickTime for Windows cannot use dllimport */
        #endif
      #ifndef FUNCTION_WIN32CC                /* allow calling convention to be overriddden */
-           #define FUNCTION_WIN32CC        1   
+           #define FUNCTION_WIN32CC        1
        #endif
      /* Warning:  This macros away the pascal word in source code. */
        /* Very useful for code that needs to compile on Mac 68k and Windows */
@@ -1104,6 +1173,7 @@
      #define TARGET_CPU_PPC              0
       #define TARGET_CPU_68K              0
       #define TARGET_CPU_X86              0
+      #define TARGET_CPU_X86_64           0
       #define TARGET_CPU_MIPS             0
       #define TARGET_CPU_SPARC            0
       #define TARGET_CPU_ALPHA            1
@@ -1130,13 +1200,14 @@
       #define TYPE_LONGLONG               0
       #define TYPE_BOOL                   0
       #define FUNCTION_PASCAL             0
-      #define FUNCTION_DECLSPEC           0   
-       #define FUNCTION_WIN32CC            0   
+      #define FUNCTION_DECLSPEC           0
+       #define FUNCTION_WIN32CC            0
 
     #elif defined(_M_PPC)   /* Visual C++ for Windows NT on PowerPC target */
       #define TARGET_CPU_PPC              1
       #define TARGET_CPU_68K              0
       #define TARGET_CPU_X86              0
+      #define TARGET_CPU_X86_64           0
       #define TARGET_CPU_MIPS             0
       #define TARGET_CPU_SPARC            0
       #define TARGET_CPU_ALPHA            0
@@ -1162,13 +1233,14 @@
       #define TYPE_LONGLONG               0
       #define TYPE_BOOL                   0
       #define FUNCTION_PASCAL             0
-      #define FUNCTION_DECLSPEC           0   
-       #define FUNCTION_WIN32CC            0   
+      #define FUNCTION_DECLSPEC           0
+       #define FUNCTION_WIN32CC            0
 
         #elif defined(_M_MRX000)    /* Visual C++ for Windows NT on MIPS target */
      #define TARGET_CPU_PPC              0
       #define TARGET_CPU_68K              0
       #define TARGET_CPU_X86              0
+      #define TARGET_CPU_X86_64           0
       #define TARGET_CPU_MIPS             1
       #define TARGET_CPU_SPARC            0
       #define TARGET_CPU_ALPHA            0
@@ -1195,20 +1267,21 @@
       #define TYPE_LONGLONG               0
       #define TYPE_BOOL                   0
       #define FUNCTION_PASCAL             0
-      #define FUNCTION_DECLSPEC           0   
-       #define FUNCTION_WIN32CC            0   
+      #define FUNCTION_DECLSPEC           0
+       #define FUNCTION_WIN32CC            0
    #endif
 
 
 #elif defined(__MOTO__)
    /*
-     mcc from Motorola, Inc. 
+     mcc from Motorola, Inc.
    */
  #define TARGET_CPU_PPC              1
   #define TARGET_CPU_68K              0
   #define TARGET_CPU_X86              0
+  #define TARGET_CPU_X86_64           0
   #define TARGET_CPU_MIPS             0
-  #define TARGET_CPU_SPARC            0       
+  #define TARGET_CPU_SPARC            0
    #define TARGET_CPU_ALPHA            0
   #define TARGET_OS_MAC               1
   #define TARGET_OS_WIN32             0
@@ -1233,15 +1306,15 @@
   #define FOUR_CHAR_CODE(x)           (x)
     #define TYPE_LONGLONG               0           /* how is this detected ?? */
   #ifdef _BOOL
-       #define TYPE_BOOL               1           
+       #define TYPE_BOOL               1
    #else
-      #define TYPE_BOOL               0           
+      #define TYPE_BOOL               0
    #endif
  #define TYPE_EXTENDED               0
   #define TYPE_LONGDOUBLE_IS_DOUBLE   1
   #define FUNCTION_PASCAL             0
-  #define FUNCTION_DECLSPEC           0   
-   #define FUNCTION_WIN32CC            0   
+  #define FUNCTION_DECLSPEC           0
+   #define FUNCTION_WIN32CC            0
 
 
 
@@ -1252,8 +1325,9 @@
  #define TARGET_CPU_PPC              0
   #define TARGET_CPU_68K              0
   #define TARGET_CPU_X86              0
+  #define TARGET_CPU_X86_64           0
   #define TARGET_CPU_MIPS             1
-  #define TARGET_CPU_SPARC            0       
+  #define TARGET_CPU_SPARC            0
    #define TARGET_CPU_ALPHA            0
   #define TARGET_OS_MAC               0
   #define TARGET_OS_WIN32             0
@@ -1274,8 +1348,8 @@
   #define TYPE_LONGLONG               0
   #define TYPE_BOOL                   0
   #define FUNCTION_PASCAL             0
-  #define FUNCTION_DECLSPEC           0   
-   #define FUNCTION_WIN32CC            0   
+  #define FUNCTION_DECLSPEC           0
+   #define FUNCTION_WIN32CC            0
 
 
 #elif defined(__sparc)
@@ -1285,8 +1359,9 @@
  #define TARGET_CPU_PPC              0
   #define TARGET_CPU_68K              0
   #define TARGET_CPU_X86              0
+  #define TARGET_CPU_X86_64           0
   #define TARGET_CPU_MIPS             0
-  #define TARGET_CPU_SPARC            1       
+  #define TARGET_CPU_SPARC            1
    #define TARGET_CPU_ALPHA            0
   #define TARGET_OS_MAC               0
   #define TARGET_OS_WIN32             0
@@ -1310,8 +1385,8 @@
   #define TYPE_LONGLONG               0
   #define TYPE_BOOL                   0
   #define FUNCTION_PASCAL             0
-  #define FUNCTION_DECLSPEC           0   
-   #define FUNCTION_WIN32CC            0   
+  #define FUNCTION_DECLSPEC           0
+   #define FUNCTION_WIN32CC            0
 
 
 #else
@@ -1321,18 +1396,28 @@
  #if defined(TARGET_CPU_PPC) && TARGET_CPU_PPC
       #define TARGET_CPU_68K   0
      #define TARGET_CPU_X86   0
+     #define TARGET_CPU_X86_64 0
      #define TARGET_CPU_MIPS  0
      #define TARGET_CPU_SPARC 0
      #define TARGET_CPU_ALPHA 0
  #elif defined(TARGET_CPU_68K) && TARGET_CPU_68K
         #define TARGET_CPU_PPC   0
      #define TARGET_CPU_X86   0
+     #define TARGET_CPU_X86_64 0
      #define TARGET_CPU_MIPS  0
      #define TARGET_CPU_SPARC 0
      #define TARGET_CPU_ALPHA 0
  #elif defined(TARGET_CPU_X86) && TARGET_CPU_X86
         #define TARGET_CPU_PPC   0
      #define TARGET_CPU_68K   0
+     #define TARGET_CPU_X86_64 0
+     #define TARGET_CPU_MIPS  0
+     #define TARGET_CPU_SPARC 0
+     #define TARGET_CPU_ALPHA 0
+ #elif defined(TARGET_CPU_X86_64) && TARGET_CPU_X86_64
+        #define TARGET_CPU_PPC   0
+     #define TARGET_CPU_68K   0
+     #define TARGET_CPU_X86   0
      #define TARGET_CPU_MIPS  0
      #define TARGET_CPU_SPARC 0
      #define TARGET_CPU_ALPHA 0
@@ -1340,34 +1425,37 @@
       #define TARGET_CPU_PPC   0
      #define TARGET_CPU_68K   0
      #define TARGET_CPU_X86   0
+     #define TARGET_CPU_X86_64 0
      #define TARGET_CPU_SPARC 0
      #define TARGET_CPU_ALPHA 0
  #elif defined(TARGET_CPU_SPARC) && TARGET_CPU_SPARC
         #define TARGET_CPU_PPC   0
      #define TARGET_CPU_68K   0
      #define TARGET_CPU_X86   0
+     #define TARGET_CPU_X86_64 0
      #define TARGET_CPU_MIPS  0
      #define TARGET_CPU_ALPHA 0
  #elif defined(TARGET_CPU_ALPHA) && TARGET_CPU_ALPHA
         #define TARGET_CPU_PPC   0
      #define TARGET_CPU_68K   0
      #define TARGET_CPU_X86   0
+     #define TARGET_CPU_X86_64 0
      #define TARGET_CPU_MIPS  0
      #define TARGET_CPU_SPARC 0
 
-        
+
    #else
       /*
-         NOTE:   If your compiler errors out here then support for your compiler 
-                   has not yet been added to ConditionalMacros.h.  
-                   
+         NOTE:   If your compiler errors out here then support for your compiler
+                   has not yet been added to ConditionalMacros.h.
+
                    ConditionalMacros.h is designed to be plug-and-play.  It auto detects
                   which compiler is being run and configures the TARGET_ conditionals
-                    appropriately.  
-                   
+                    appropriately.
+
                    The short term work around is to set the TARGET_CPU_ and TARGET_OS_
                     on the command line to the compiler (e.g. d TARGET_CPU_MIPS -d TARGET_OS_UNIX)
-                 
+
                    The long term solution is to add a new case to this file which
                  auto detects your compiler and sets up the TARGET_ conditionals.
                    If you do this, send the changes you made to devsupport@apple.com
@@ -1377,11 +1465,12 @@
        #define TARGET_CPU_PPC   0
      #define TARGET_CPU_68K   0
      #define TARGET_CPU_X86   0
+     #define TARGET_CPU_X86_64 0
      #define TARGET_CPU_MIPS  0
      #define TARGET_CPU_SPARC 0
      #define TARGET_CPU_ALPHA 0
  #endif
- 
+
 
 
    #if defined(TARGET_OS_MAC) && TARGET_OS_MAC
@@ -1410,13 +1499,13 @@
           #define TARGET_RT_BIG_ENDIAN        0
       #endif
  #endif
-     
+
    #if defined(TARGET_RT_BIG_ENDIAN) && !defined(TARGET_RT_LITTLE_ENDIAN)
      #define TARGET_RT_LITTLE_ENDIAN     !TARGET_RT_BIG_ENDIAN
   #elif !defined(TARGET_RT_BIG_ENDIAN) && defined(TARGET_RT_LITTLE_ENDIAN)
        #define TARGET_RT_BIG_ENDIAN        !TARGET_RT_LITTLE_ENDIAN
    #endif
- 
+
    #if !defined(TARGET_RT_BIG_ENDIAN) && !defined(TARGET_RT_LITTLE_ENDIAN)
         #error unknown endianess of target processor
    #endif
@@ -1430,11 +1519,11 @@
   #endif
      #ifndef TARGET_RT_MAC_MACHO
         #define TARGET_RT_MAC_MACHO         !TARGET_RT_MAC_CFM
-     #endif      
+     #endif
    #endif
 
 
-        
+
    #ifndef PRAGMA_IMPORT
   #define PRAGMA_IMPORT               0
   #endif
@@ -1495,7 +1584,7 @@
     Headers and implementation files can use the following macros to make their
     source more portable by hiding the calling convention details:
 
-    EXTERN_APIÅ 
+    EXTERN_APIÅ
     These macros are used to specify the calling convention on a function prototype.
 
         EXTERN_API              - Classic 68k: pascal, Win32: __cdecl
@@ -1504,7 +1593,7 @@
         EXTERN_API_C_STDCALL    - Classic 68k: C,      Win32: __stdcall
 
 
-    DEFINE_APIÅ 
+    DEFINE_APIÅ
     These macros are used to specify the calling convention on a function definition.
 
         DEFINE_API              - Classic 68k: pascal, Win32: __cdecl
@@ -1513,7 +1602,7 @@
         DEFINE_API_C_STDCALL    - Classic 68k: C,      Win32: __stdcall
 
 
-    CALLBACK_APIÅ   
+    CALLBACK_APIÅ
     These macros are used to specify the calling convention of a function pointer.
 
         CALLBACK_API            - Classic 68k: pascal, Win32: __stdcall
@@ -1529,12 +1618,12 @@
     #define EXTERN_API_C(_type)                     extern        _type
     #define EXTERN_API_STDCALL(_type)               extern pascal _type
     #define EXTERN_API_C_STDCALL(_type)             extern        _type
-    
+
     #define DEFINE_API(_type)                       pascal _type
     #define DEFINE_API_C(_type)                            _type
     #define DEFINE_API_STDCALL(_type)               pascal _type
     #define DEFINE_API_C_STDCALL(_type)                    _type
-    
+
     #define CALLBACK_API(_type, _name)              pascal _type (*_name)
     #define CALLBACK_API_C(_type, _name)                   _type (*_name)
     #define CALLBACK_API_STDCALL(_type, _name)      pascal _type (*_name)
@@ -1546,7 +1635,7 @@
     #define EXTERN_API_C(_type)                     extern        __declspec(dllimport) _type
     #define EXTERN_API_STDCALL(_type)               extern pascal __declspec(dllimport) _type
     #define EXTERN_API_C_STDCALL(_type)             extern        __declspec(dllimport) _type
-    
+
     #define DEFINE_API(_type)                       pascal __declspec(dllexport) _type
     #define DEFINE_API_C(_type)                            __declspec(dllexport) _type
     #define DEFINE_API_STDCALL(_type)               pascal __declspec(dllexport) _type
@@ -1563,8 +1652,8 @@
     #define EXTERN_API_C(_type)                     extern __declspec(dllimport) _type
     #define EXTERN_API_STDCALL(_type)               extern __declspec(dllimport) _type
     #define EXTERN_API_C_STDCALL(_type)             extern __declspec(dllimport) _type
-    
-    #define DEFINE_API(_type)                       __declspec(dllexport) _type 
+
+    #define DEFINE_API(_type)                       __declspec(dllexport) _type
     #define DEFINE_API_C(_type)                     __declspec(dllexport) _type
     #define DEFINE_API_STDCALL(_type)               __declspec(dllexport) _type
     #define DEFINE_API_C_STDCALL(_type)             __declspec(dllexport) _type
@@ -1580,12 +1669,12 @@
     #define EXTERN_API_C(_type)                     __declspec(dllimport) _type __cdecl
     #define EXTERN_API_STDCALL(_type)               __declspec(dllimport) _type __stdcall
     #define EXTERN_API_C_STDCALL(_type)             __declspec(dllimport) _type __stdcall
-    
+
     #define DEFINE_API(_type)                       __declspec(dllexport) _type __cdecl
     #define DEFINE_API_C(_type)                     __declspec(dllexport) _type __cdecl
     #define DEFINE_API_STDCALL(_type)               __declspec(dllexport) _type __stdcall
     #define DEFINE_API_C_STDCALL(_type)             __declspec(dllexport) _type __stdcall
-    
+
     #define CALLBACK_API(_type, _name)              _type (__cdecl * _name)
     #define CALLBACK_API_C(_type, _name)            _type (__cdecl * _name)
     #define CALLBACK_API_STDCALL(_type, _name)      _type (__stdcall * _name)
@@ -1597,24 +1686,24 @@
     #define EXTERN_API_C(_type)                     _type __cdecl
     #define EXTERN_API_STDCALL(_type)               _type __stdcall
     #define EXTERN_API_C_STDCALL(_type)             _type __stdcall
-    
+
     #define DEFINE_API(_type)                       _type __cdecl
     #define DEFINE_API_C(_type)                     _type __cdecl
     #define DEFINE_API_STDCALL(_type)               _type __stdcall
     #define DEFINE_API_C_STDCALL(_type)             _type __stdcall
-    
+
     #define CALLBACK_API(_type, _name)              _type (__cdecl * _name)
     #define CALLBACK_API_C(_type, _name)            _type (__cdecl * _name)
     #define CALLBACK_API_STDCALL(_type, _name)      _type (__stdcall * _name)
     #define CALLBACK_API_C_STDCALL(_type, _name)    _type (__stdcall * _name)
 
-#else 
+#else
     /* compiler supports no extensions */
     #define EXTERN_API(_type)                       extern _type
     #define EXTERN_API_C(_type)                     extern _type
     #define EXTERN_API_STDCALL(_type)               extern _type
     #define EXTERN_API_C_STDCALL(_type)             extern _type
-    
+
     #define DEFINE_API(_type)                       _type
     #define DEFINE_API_C(_type)                     _type
     #define DEFINE_API_STDCALL(_type)               _type
@@ -1637,7 +1726,7 @@
     #define CALLBACK_API_REGISTER68K(_type, _name, _params) CALLBACK_API(_type, _name)_params
 #endif
 /****************************************************************************************************
-    
+
     Set up TARGET_API_Å_Å values
 
 ****************************************************************************************************/
@@ -1755,15 +1844,15 @@
 
     OLDROUTINENAMES         - "Old" names for Macintosh system calls are allowed in source code.
                               (e.g. DisposPtr instead of DisposePtr). The names of system routine
-                              are now more sensitive to change because CFM binds by name.  In the 
-                              past, system routine names were compiled out to just an A-Trap.  
-                              Macros have been added that each map an old name to its new name.  
+                              are now more sensitive to change because CFM binds by name.  In the
+                              past, system routine names were compiled out to just an A-Trap.
+                              Macros have been added that each map an old name to its new name.
                               This allows old routine names to be used in existing source files,
                               but the macros only work if OLDROUTINENAMES is true.  This support
-                              will be removed in the near future.  Thus, all source code should 
+                              will be removed in the near future.  Thus, all source code should
                               be changed to use the new names! You can set OLDROUTINENAMES to false
                               to see if your code has any old names left in it.
-    
+
 ****************************************************************************************************/
 #ifndef OLDROUTINENAMES
 #define OLDROUTINENAMES 0
@@ -1778,10 +1867,10 @@
  of a JSR.  Under Classic 68K on the Mac OS, this macro will put the opcodes
     in the right syntax.  For all other OS's and runtimes the macro suppress the opcodes.
   Example:
-   
+
        EXTERN_P void DrawPicture(PicHandle myPicture, const Rect *dstRect)
             ONEWORDINLINE(0xA8F6);
- 
+
 ****************************************************************************************************/
 
 #if TARGET_OS_MAC && TARGET_CPU_68K && !TARGET_RT_MAC_CFM
@@ -1825,12 +1914,12 @@
     OPAQUE_UPP_TYPES                - default: false. True for Carbon builds, UPP types are unique and opaque.
     ACCESSOR_CALLS_ARE_FUNCTIONS    - default: false. True for Carbon builds, enables accessor functions.
     CALL_NOT_IN_CARBON              - default: true.  False for Carbon builds, hides calls not supported in Carbon.
-    
+
     Specifically, if you are building a non-Carbon application (one that links against InterfaceLib)
     but you wish to use some of the accessor functions, you can set ACCESSOR_CALLS_ARE_FUNCTIONS to 1
     and link with CarbonAccessors.o, which implements just the accessor functions. This will help you
     preserve source compatibility between your Carbon and non-Carbon application targets.
-    
+
     MIXEDMODE_CALLS_ARE_FUNCTIONS   - deprecated.
 
 ****************************************************************************************************/
@@ -1890,7 +1979,7 @@
 /****************************************************************************************************
  The following macros fix weirdness with the way some compilers deal with the ## operator.
   As well, there are some warning macros to flush out the misuse of older macro names.
-   
+
 ****************************************************************************************************/
 
 #define GLUE(a,b)   a##b
@@ -1902,12 +1991,12 @@
 
 /****************************************************************************************************
  The following macros resolve namespace conflicts with non-mac targets.
- 
+
 ****************************************************************************************************/
 
 
 #if TARGET_OS_MAC
-/* Routines */ 
+/* Routines */
 #define MacOpenDriver        OpenDriver
 #define MacCloseDriver       CloseDriver
 //#define MacDriverType     DriverType
@@ -1962,7 +2051,7 @@
 
 #if TARGET_RT_MAC_MACHO && TARGET_RT_LITTLE_ENDIAN
 #define OLD_COMPONENT_GLUE 1
-#endif 
+#endif
 
 
 

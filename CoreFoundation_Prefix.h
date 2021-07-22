@@ -135,9 +135,13 @@ typedef int		boolean_t;
 #define strncasecmp_l(a, b, c, d) strncasecmp(a, b, c)
 
 #define fprintf_l(a,locale,b,...) fprintf(a, b, __VA_ARGS__)
-    
+
+#ifndef strlcat
 #define strlcat(a,b,c) strncat(a,b,c)
+#endif
+#ifndef strlcpy
 #define strlcpy(a,b,c) strncpy(a,b,c)
+#endif
 
 #define issetugid() 0
     

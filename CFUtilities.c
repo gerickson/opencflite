@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008-2012 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
- * Copyright (c) 2009 Grant Erickson <gerickson@nuovations.com>. All rights reserved.
+ * Copyright (c) 2009-2021 Grant Erickson <gerickson@nuovations.com>. All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -88,8 +88,15 @@
 #include <Block.h>
 #endif
 #if DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-#include <string.h>
-#include <pthread.h>
+    #include <string.h>
+    #include <pthread.h>
+    #include <dlfcn.h>
+    #include <unistd.h>
+#if DEPLOYMENT_TARGET_LINUX
+    #if HAVE_SYS_AUXV_H
+        #include <sys/auxv.h>
+    #endif
+#endif
 #endif
 
 /* Comparator is passed the address of the values. */
@@ -380,30 +387,52 @@ __private_extern__ void *__CFLookupCoreServicesInternalFunction(const char *name
 }
 #endif
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX
+static Boolean
+__CFIsCurrentProcessTainted(void) {
+	Boolean ret = true;
+#if DEPLOYMENT_TARGET_MACOSX
+	ret = issetugid();
+#elif DEPLOYMENT_TARGET_LINUX
+# if HAVE_GETAUXVAL
+    ret = !(getauxval(AT_SECURE));
+# elif HAVE_GETUID && HAVE_GETEUID && HAVE_GETGID && HAVE_GETEGID
+    ret = ((getuid() != geteuid()) || (getgid() != getegid()));
+# else
+#  warning "Linux portability issue!"
+# endif /* HAVE_GETAUXVAL */
+#else
+# warning "Platform portability issue!"
+#endif
+	return ret;
+}
+
 __private_extern__ void *__CFLookupCFNetworkFunction(const char *name) {
     static void *image = NULL;
     if (NULL == image) {
-	const char *path = NULL;
-	if (!issetugid()) {
-	    path = __CFgetenv("CFNETWORK_LIBRARY_PATH");
-	}
-	if (!path) {
-#if DEPLOYMENT_TARGET_MACOSX
-	    path = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/CFNetwork.framework/Versions/A/CFNetwork";
+		const char *path = NULL;
+		if (!__CFIsCurrentProcessTainted()) {
+			path = __CFgetenv("CFNETWORK_LIBRARY_PATH");
+		}
+		if (!path) {
+#if DEPLOYMENT_TARGET_MACOS
+			path = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/CFNetwork.framework/Versions/A/CFNetwork";
+#elif DEPLOYMENT_TARGET_LINUX
+			path = CFNETWORK_LIBRARY_PATH;
 #else
-	    path = "/System/Library/Frameworks/CFNetwork.framework/CFNetwork";
+			path = "/System/Library/Frameworks/CFNetwork.framework/CFNetwork";
 #endif
-	}
-	image = dlopen(path, RTLD_LAZY | RTLD_LOCAL);
+		}
+		image = dlopen(path, RTLD_LAZY | RTLD_LOCAL);
+		if (!image) CFLog(__kCFLogAssertion, CFSTR("CoreFoundation: failed to dynamically load CFNetwork: %s"), dlerror());
     }
     void *dyfunc = NULL;
     if (image) {
-	dyfunc = dlsym(image, name);
+		dyfunc = dlsym(image, name);
     }
     return dyfunc;
 }
-#endif
+#endif /*  DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX */
 
 
 #ifndef __CFGetSessionID_defined

@@ -529,10 +529,10 @@ am__DIST_COMMON = $(srcdir)/CoreFoundation.pc.in $(srcdir)/Makefile.in \
 	$(top_srcdir)/config/config.sub $(top_srcdir)/config/depcomp \
 	$(top_srcdir)/config/install-sh $(top_srcdir)/config/ltmain.sh \
 	$(top_srcdir)/config/missing \
-	$(top_srcdir)/config/mkinstalldirs INSTALL README TODO \
-	config/compile config/config.guess config/config.sub \
-	config/depcomp config/install-sh config/ltmain.sh \
-	config/missing config/mkinstalldirs
+	$(top_srcdir)/config/mkinstalldirs INSTALL config/compile \
+	config/config.guess config/config.sub config/depcomp \
+	config/install-sh config/ltmain.sh config/missing \
+	config/mkinstalldirs
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -763,6 +763,7 @@ CF_COMMON_CPPFLAGS = $(AM_CPPFLAGS)			\
 				  -DU_SHOW_DRAFT_API=1			\
 				  -DCF_BUILDING_CF=1			\
 				  -D__kCFCharacterSetDir=\"${libCoreFoundation_la_datadir}\" \
+				  -DCFNETWORK_LIBRARY_PATH=\"${libdir}/libCFNetwork.so\" \
 				  -DMAC_OS_X_VERSION_MAX_ALLOWED=MAC_OS_X_VERSION_10_7	\
 				  -DTARGET_OS_LINUX			\
 				  -DDEPLOYMENT_TARGET_LINUX		\
@@ -937,8 +938,8 @@ EXTRA_DIST = APPLE_LICENSE	\
 				  CONTRIBUTORS \
 				  INSTALL \
 				  LICENSE \
-				  README \
-				  TODO \
+				  README.md \
+				  TODO.md \
 				  BuildCFLite \
 				  BuildCFLite.windows \
 				  macosx/CFLite.xcodeproj/project.pbxproj \

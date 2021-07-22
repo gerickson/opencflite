@@ -3361,8 +3361,9 @@ ps-am:
 uninstall-am: uninstall-CF_includeHEADERS \
 	uninstall-libCoreFoundation_la_dataDATA \
 	uninstall-libLTLIBRARIES uninstall-pkgconfigDATA
-
-.MAKE: $(am__recursive_targets) install-am install-strip
+	@$(NORMAL_INSTALL)
+	$(MAKE) $(AM_MAKEFLAGS) uninstall-hook
+.MAKE: $(am__recursive_targets) install-am install-strip uninstall-am
 
 .PHONY: $(am__recursive_targets) CTAGS GTAGS TAGS all all-am \
 	am--refresh check check-am clean clean-cscope clean-generic \
@@ -3382,7 +3383,7 @@ uninstall-am: uninstall-CF_includeHEADERS \
 	maintainer-clean maintainer-clean-generic mostlyclean \
 	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
 	pdf pdf-am ps ps-am tags tags-am uninstall \
-	uninstall-CF_includeHEADERS uninstall-am \
+	uninstall-CF_includeHEADERS uninstall-am uninstall-hook \
 	uninstall-libCoreFoundation_la_dataDATA \
 	uninstall-libLTLIBRARIES uninstall-pkgconfigDATA
 
@@ -3390,6 +3391,16 @@ uninstall-am: uninstall-CF_includeHEADERS \
 
 libtool: $(LIBTOOL_DEPS)
 	$(SHELL) ./config.status libtool
+
+# A hook for the 'uninstall' target to ensure that directories this
+# package creates or that this package populates during the 'install'
+# target are removed, if empty (that is, this package is the "last one
+# out").
+
+uninstall-hook:
+	-rmdir ${DESTDIR}${pkgconfigdir}
+	-rmdir ${DESTDIR}${libCoreFoundation_la_datadir}
+	-rmdir ${DESTDIR}${CF_includedir}
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

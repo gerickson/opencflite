@@ -708,6 +708,13 @@ AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
 AC_STRUCT_TIMEZONE
 
+AC_CHECK_MEMBERS(
+        [struct sockaddr_in.sin_len],
+        [],
+        [],
+        [[#include <netinet/in.h>]]
+    )
+
 #
 # Checks for library functions
 #

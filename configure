@@ -20981,6 +20981,19 @@ $as_echo "#define HAVE_TZNAME 1" >>confdefs.h
 fi
 
 
+ac_fn_c_check_member "$LINENO" "struct sockaddr_in" "sin_len" "ac_cv_member_struct_sockaddr_in_sin_len" "#include <netinet/in.h>
+
+"
+if test "x$ac_cv_member_struct_sockaddr_in_sin_len" = xyes; then :
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_STRUCT_SOCKADDR_IN_SIN_LEN 1
+_ACEOF
+
+
+fi
+
+
 #
 # Checks for library functions
 #

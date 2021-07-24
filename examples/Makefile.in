@@ -368,7 +368,7 @@ SUBDIRS = ReadPListExample	  \
 			  CFLocalServer		  \
 			  SimpleWebServer	  \
 			  CFRunLoopTimerExample	  \
-                          CFFileDescriptorExample \
+			  CFFileDescriptorExample \
 			  CFTest                  \
 			  $(NULL)
 

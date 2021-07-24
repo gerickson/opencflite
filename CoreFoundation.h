@@ -81,6 +81,7 @@
 #include <CoreFoundation/CFDateFormatter.h>
 #include <CoreFoundation/CFDictionary.h>
 #include <CoreFoundation/CFError.h>
+#include <CoreFoundation/CFFileDescriptor.h>
 #include <CoreFoundation/CFLocale.h>
 #include <CoreFoundation/CFNumber.h>
 #include <CoreFoundation/CFNumberFormatter.h>
@@ -108,7 +109,6 @@
 #endif
 
 #if (TARGET_OS_MAC && !(TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)) || (TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)
-#include <CoreFoundation/CFFileDescriptor.h>
 #include <CoreFoundation/CFMachPort.h>
 #endif
 

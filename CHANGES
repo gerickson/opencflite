@@ -1,6 +1,12 @@
                       Changes and What's New in OpenCFLite
                       ------------------------------------
 
+2021-07-24 v476.19.5
+
+  * Addressed an issue in which the 'closeOnInvalidate'
+    flag was not honored through the CFFileDescriptorCreate
+    to CFFileDescriptorInvalidate lifecycle.
+
 2021-07-19 v476.19.4
 
   * Addressed an issue in which back-to-back CFFileDescriptor

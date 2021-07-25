@@ -43,7 +43,7 @@
 #include "CFStreamInternal.h"
 #include "CFStreamPriv.h"
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX
 // On Mach these live in CF for historical reasons, even though they are declared in CFNetwork
 
 const int kCFStreamErrorDomainSSL = 3;

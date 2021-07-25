@@ -1948,11 +1948,13 @@ __attribute__ ((noreturn))	// mostly interesting for shutting up a warning
 #endif /* __GNUC__ */
 static void __CFSocketManager(void * arg)
 {
-#if DEPLOYMENT_TARGET_LINUX
+#if HAVE_PTHREAD_SETNAME_NP
+#if (PTHREAD_SETNAME_NP_ARGS == 2)
     pthread_setname_np(pthread_self(), "com.apple.CFSocket.private");
-#else
+#elif (PTHREAD_SETNAME_NP_ARGS == 1)
     pthread_setname_np("com.apple.CFSocket.private");
-#endif
+#endif // (PTHREAD_SETNAME_NP_ARGS == 2)
+#endif // HAVE_PTHREAD_SETNAME_NP
     if (objc_collectingEnabled()) objc_registerThreadWithCollector();
     SInt32 nrfds, maxnrfds, fdentries = 1;
     SInt32 rfds, wfds;

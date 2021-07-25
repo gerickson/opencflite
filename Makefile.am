@@ -47,6 +47,7 @@ CF_COMMON_CPPFLAGS		= $(AM_CPPFLAGS)			\
 				  -DU_SHOW_DRAFT_API=1			\
 				  -DCF_BUILDING_CF=1			\
 				  -D__kCFCharacterSetDir=\"${libCoreFoundation_la_datadir}\" \
+				  -DCFNETWORK_LIBRARY_PATH=\"${libdir}/libCFNetwork.so\" \
 				  -DMAC_OS_X_VERSION_MAX_ALLOWED=MAC_OS_X_VERSION_10_7	\
 				  -DTARGET_OS_LINUX			\
 				  -DDEPLOYMENT_TARGET_LINUX		\
@@ -246,8 +247,8 @@ EXTRA_DIST			= APPLE_LICENSE	\
 				  CONTRIBUTORS \
 				  INSTALL \
 				  LICENSE \
-				  README \
-				  TODO \
+				  README.md \
+				  TODO.md \
 				  BuildCFLite \
 				  BuildCFLite.windows \
 				  macosx/CFLite.xcodeproj/project.pbxproj \
@@ -394,3 +395,12 @@ EXTRA_DIST			= APPLE_LICENSE	\
 				  XCode_Configs/ConfigRelease.xcconfig \
 				  ${libCoreFoundation_la_data_DATA}
 
+# A hook for the 'uninstall' target to ensure that directories this
+# package creates or that this package populates during the 'install'
+# target are removed, if empty (that is, this package is the "last one
+# out").
+
+uninstall-hook:
+	-rmdir ${DESTDIR}${pkgconfigdir}
+	-rmdir ${DESTDIR}${libCoreFoundation_la_datadir}
+	-rmdir ${DESTDIR}${CF_includedir}

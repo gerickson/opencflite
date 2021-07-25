@@ -13,6 +13,31 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
+
+#
+#    Copyright (c) 2021 OpenCFLite Authors. All Rights Reserved.
+#
+#    This file contains Original Code and/or Modifications of Original Code
+#    as defined in and that are subject to the Apple Public Source License
+#    Version 2.0 (the 'License'). You may not use this file except in
+#    compliance with the License. Please obtain a copy of the License at
+#    http://www.opensource.apple.com/apsl/ and read it before using this
+#    file.
+#
+#    The Original Code and all software distributed under the License are
+#    distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+#    EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+#    INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+#    FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+#    Please see the License for the specific language governing rights and
+#    limitations under the License.
+#
+
+#
+#    Description:
+#      This file is the GNU autoconf input source file for
+#      a CFFileDescriptor example.
+#
 VPATH = @srcdir@
 am__is_gnu_make = { \
   if test -z '$(MAKELEVEL)'; then \
@@ -88,8 +113,9 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
-@CF_BUILD_TESTS_TRUE@check_PROGRAMS = CFRunLoopTimerExample$(EXEEXT)
-subdir = examples/CFRunLoopTimerExample
+@CF_BUILD_TESTS_TRUE@check_PROGRAMS =  \
+@CF_BUILD_TESTS_TRUE@	CFFileDescriptorExample$(EXEEXT)
+subdir = examples/CFFileDescriptorExample
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acinclude.m4 \
 	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/ltoptions.m4 \
@@ -102,9 +128,11 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/config/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/include/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-am_CFRunLoopTimerExample_OBJECTS = CFRunLoopTimerExample.$(OBJEXT)
-CFRunLoopTimerExample_OBJECTS = $(am_CFRunLoopTimerExample_OBJECTS)
-CFRunLoopTimerExample_DEPENDENCIES =  \
+am_CFFileDescriptorExample_OBJECTS =  \
+	CFFileDescriptorExample.$(OBJEXT)
+CFFileDescriptorExample_OBJECTS =  \
+	$(am_CFFileDescriptorExample_OBJECTS)
+CFFileDescriptorExample_DEPENDENCIES =  \
 	${top_builddir}/libCoreFoundation.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -144,8 +172,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(CFRunLoopTimerExample_SOURCES)
-DIST_SOURCES = $(CFRunLoopTimerExample_SOURCES)
+SOURCES = $(CFFileDescriptorExample_SOURCES)
+DIST_SOURCES = $(CFFileDescriptorExample_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -322,9 +350,8 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CFLAGS = -I${top_srcdir}/include
-EXTRA_DIST = CFRunLoopTimerExample.vcproj
-CFRunLoopTimerExample_LDADD = ${top_builddir}/libCoreFoundation.la
-CFRunLoopTimerExample_SOURCES = CFRunLoopTimerExample.c
+CFFileDescriptorExample_LDADD = ${top_builddir}/libCoreFoundation.la
+CFFileDescriptorExample_SOURCES = CFFileDescriptorExample.c
 all: all-am
 
 .SUFFIXES:
@@ -338,9 +365,9 @@ $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__confi
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign examples/CFRunLoopTimerExample/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign examples/CFFileDescriptorExample/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign examples/CFRunLoopTimerExample/Makefile
+	  $(AUTOMAKE) --foreign examples/CFFileDescriptorExample/Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
 	  *config.status*) \
@@ -368,9 +395,9 @@ clean-checkPROGRAMS:
 	echo " rm -f" $$list; \
 	rm -f $$list
 
-CFRunLoopTimerExample$(EXEEXT): $(CFRunLoopTimerExample_OBJECTS) $(CFRunLoopTimerExample_DEPENDENCIES) $(EXTRA_CFRunLoopTimerExample_DEPENDENCIES) 
-	@rm -f CFRunLoopTimerExample$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(CFRunLoopTimerExample_OBJECTS) $(CFRunLoopTimerExample_LDADD) $(LIBS)
+CFFileDescriptorExample$(EXEEXT): $(CFFileDescriptorExample_OBJECTS) $(CFFileDescriptorExample_DEPENDENCIES) $(EXTRA_CFFileDescriptorExample_DEPENDENCIES) 
+	@rm -f CFFileDescriptorExample$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(CFFileDescriptorExample_OBJECTS) $(CFFileDescriptorExample_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -378,7 +405,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CFRunLoopTimerExample.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CFFileDescriptorExample.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -618,22 +645,13 @@ uninstall-am:
 
 
 @CF_BUILD_TESTS_TRUE@check:
-@CF_BUILD_TESTS_TRUE@	${LIBTOOL} --mode execute ./CFRunLoopTimerExample 0.25  5.00
-@CF_BUILD_TESTS_TRUE@	${LIBTOOL} --mode execute ./CFRunLoopTimerExample 0.40  2.30
-@CF_BUILD_TESTS_TRUE@	${LIBTOOL} --mode execute ./CFRunLoopTimerExample 1.00  1.00
-@CF_BUILD_TESTS_TRUE@	${LIBTOOL} --mode execute ./CFRunLoopTimerExample 1.00  0.50
-@CF_BUILD_TESTS_TRUE@	${LIBTOOL} --mode execute ./CFRunLoopTimerExample 0.10  1.00
-@CF_BUILD_TESTS_TRUE@	${LIBTOOL} --mode execute ./CFRunLoopTimerExample 1.00  2.00
-@CF_BUILD_TESTS_TRUE@	${LIBTOOL} --mode execute ./CFRunLoopTimerExample 1.00 10.00
-@CF_BUILD_TESTS_TRUE@	${LIBTOOL} --mode execute ./CFRunLoopTimerExample 0.33  1.00
-@CF_BUILD_TESTS_TRUE@	${LIBTOOL} --mode execute ./CFRunLoopTimerExample 0.50  0.33 4.00
-@CF_BUILD_TESTS_TRUE@	${LIBTOOL} --mode execute ./CFRunLoopTimerExample 0.50  1.00 2.00 8.00
+@CF_BUILD_TESTS_TRUE@	${LIBTOOL} --mode execute ./CFFileDescriptorExample 100
 
-@CF_BUILD_TESTS_TRUE@ddd gdb:
-@CF_BUILD_TESTS_TRUE@	${LIBTOOL} --mode execute ${@} ./CFRunLoopTimerExample
+@CF_BUILD_TESTS_TRUE@ddd gdb lldb:
+@CF_BUILD_TESTS_TRUE@	${LIBTOOL} --mode execute ${@} ./CFFileDescriptorExample
 
 @CF_BUILD_TESTS_TRUE@valgrind:
-@CF_BUILD_TESTS_TRUE@	${LIBTOOL} --mode execute ${@} ${VALGRINDFLAGS} ./CFRunLoopTimerExample
+@CF_BUILD_TESTS_TRUE@	${LIBTOOL} --mode execute ${@} ${VALGRINDFLAGS} ./CFFileDescriptorExample
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

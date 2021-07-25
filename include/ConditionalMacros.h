@@ -767,7 +767,7 @@
  /*
      gcc (egcs, really) for MkLinux.             << WARNING: Unsupported Compiler >>
     */
- #if #cpu(powerpc)
+ #if defined(__ppc__) || defined(powerpc) || defined(ppc)
       #define TARGET_CPU_PPC          1
       #define TARGET_CPU_68K          0
       #define TARGET_CPU_X86          0
@@ -780,7 +780,7 @@
       #define TARGET_RT_MAC_68881     0
       #define TARGET_RT_LITTLE_ENDIAN     0
       #define TARGET_RT_BIG_ENDIAN        1
- #elif #cpu(m68k)
+ #elif defined(m68k)
        #define TARGET_CPU_PPC          0
       #define TARGET_CPU_68K          1
       #define TARGET_CPU_X86          0
@@ -793,7 +793,7 @@
       #define TARGET_RT_MAC_CFM       0
       #define TARGET_RT_MAC_MACHO     0
       #define TARGET_RT_MAC_68881     0
-  #elif #cpu(i386)
+  #elif defined(__i386__) || defined(i386)
       #define TARGET_CPU_PPC              0
       #define TARGET_CPU_68K              0
       #define TARGET_CPU_X86              1
@@ -824,7 +824,7 @@
       #define FUNCTION_PASCAL             0
       #define FUNCTION_DECLSPEC           0
       #define FUNCTION_WIN32CC            0
-  #elif #cpu(x86_64)
+  #elif defined(__x86_64) || defined(__x86_64__)
       #define TARGET_CPU_PPC              0
       #define TARGET_CPU_68K              0
       #define TARGET_CPU_X86              0
@@ -859,11 +859,11 @@
       #error unsupported GNU C compiler
   #endif
 
-   #if #system(macos)
+   #if defined(__MACH__)
      #define TARGET_OS_MAC           1
       #define TARGET_OS_WIN32         0
       #define TARGET_OS_UNIX          0
-  #elif #system(unix)
+  #elif defined(unix) || defined(__unix) || defined(__unix__)
         #define TARGET_OS_MAC           0
       #define TARGET_OS_WIN32         0
       #define TARGET_OS_UNIX          1
@@ -937,7 +937,7 @@
    /*
      gC for MPW from Free Software Foundation, Inc.
  */
- #if #cpu(powerpc)
+ #if defined(__ppc__) || defined(powerpc) || defined(ppc)
       #define TARGET_CPU_PPC          1
       #define TARGET_CPU_68K          0
       #define TARGET_CPU_X86          0
@@ -948,7 +948,7 @@
       #define TARGET_RT_MAC_CFM       1
       #define TARGET_RT_MAC_MACHO     0
       #define TARGET_RT_MAC_68881     0
-  #elif #cpu(m68k)
+  #elif defined(m68k)
        #define TARGET_CPU_PPC          0
       #define TARGET_CPU_68K          1
       #define TARGET_CPU_X86          0
@@ -963,11 +963,11 @@
       #error unsupported GNU C compiler
   #endif
 
-   #if #system(macos)
+   #if defined(__MACH__)
      #define TARGET_OS_MAC           1
       #define TARGET_OS_WIN32         0
       #define TARGET_OS_UNIX          0
-  #elif #system(unix)
+   #elif defined(unix) || defined(__unix) || defined(__unix__)
         #define TARGET_OS_MAC           0
       #define TARGET_OS_WIN32         0
       #define TARGET_OS_UNIX          1

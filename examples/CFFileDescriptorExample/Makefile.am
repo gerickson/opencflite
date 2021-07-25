@@ -1,5 +1,5 @@
 #
-#    Copyright (c) 2010-2021 OpenCFLite Authors. All Rights Reserved.
+#    Copyright (c) 2021 OpenCFLite Authors. All Rights Reserved.
 #
 #    This file contains Original Code and/or Modifications of Original Code
 #    as defined in and that are subject to the Apple Public Source License
@@ -19,21 +19,27 @@
 
 #
 #    Description:
-#      This file is the GNU automake input source file for
-#      OpenCFLite example programs.
+#      This file is the GNU autoconf input source file for
+#      a CFFileDescriptor example.
 #
 
-SUBDIRS			= ReadPListExample	  \
-			  WritePListExample	  \
-			  StringExample		  \
-			  Allocator		  \
-			  BundleExample		  \
-			  CFMessagePort		  \
-			  DisplayURL		  \
-			  DNSServiceMetaQuery	  \
-			  CFLocalServer		  \
-			  SimpleWebServer	  \
-			  CFRunLoopTimerExample	  \
-			  CFFileDescriptorExample \
-			  CFTest                  \
-			  $(NULL)
+AM_CFLAGS			= -I${top_srcdir}/include
+
+if CF_BUILD_TESTS
+check_PROGRAMS			= CFFileDescriptorExample
+endif
+
+CFFileDescriptorExample_LDADD	= ${top_builddir}/libCoreFoundation.la
+
+CFFileDescriptorExample_SOURCES	= CFFileDescriptorExample.c
+
+if CF_BUILD_TESTS
+check:
+	${LIBTOOL} --mode execute ./CFFileDescriptorExample 100
+
+ddd gdb lldb:
+	${LIBTOOL} --mode execute ${@} ./CFFileDescriptorExample
+
+valgrind:
+	${LIBTOOL} --mode execute ${@} ${VALGRINDFLAGS} ./CFFileDescriptorExample
+endif

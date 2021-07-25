@@ -11,6 +11,19 @@ AC_BEFORE([$0], [AC_RUN_IFELSE])dnl
 AC_DEFINE([_BSD_SOURCE])
 ])
 
+# CF_DEFAULT_SOURCE
+# --------------
+AC_DEFUN([CF_DEFAULT_SOURCE],
+[AH_VERBATIM([_DEFAULT_SOURCE],
+[/* Enable BSD or SVID extensions on systems that have them.  */
+#ifndef _DEFAULT_SOURCE
+# undef _DEFAULT_SOURCE
+#endif])dnl
+AC_BEFORE([$0], [AC_COMPILE_IFELSE])dnl
+AC_BEFORE([$0], [AC_RUN_IFELSE])dnl
+AC_DEFINE([_DEFAULT_SOURCE])
+])
+
 # CF_REPLACE_STRLN_FUNC(SUFFIX...)
 #
 # Determine whether one or both of strl<suffix> and strn<suffix> exist

@@ -2,9 +2,34 @@
 # Process this file with autoconf to produce a configure script.
 
 #
+#    Copyright (c) 2021 OpenCFLite Authors. All Rights Reserved.
+#
+#    This file contains Original Code and/or Modifications of Original Code
+#    as defined in and that are subject to the Apple Public Source License
+#    Version 2.0 (the 'License'). You may not use this file except in
+#    compliance with the License. Please obtain a copy of the License at
+#    http://www.opensource.apple.com/apsl/ and read it before using this
+#    file.
+#
+#    The Original Code and all software distributed under the License are
+#    distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+#    EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+#    INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+#    FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+#    Please see the License for the specific language governing rights and
+#    limitations under the License.
+#
+
+#
+#    Description:
+#      This file is the GNU autoconf input source file for
+#      OpenCFLite.
+#
+
+#
 # Declare autoconf version requirements
 #
-AC_PREREQ(2.61)
+AC_PREREQ([2.61])
 
 #
 # Initialize autoconf for the package
@@ -13,13 +38,17 @@ AC_PREREQ(2.61)
 # the Apple CoreFoundation release version and z tracks the OpenCFLite
 # release thereof.
 #
-AC_INIT([CoreFoundation],[635.1.0],[bfulgham@users.sourceforge.net],[opencflite])
+AC_INIT([CoreFoundation],
+        [635.15.0],
+        [bfulgham@users.sourceforge.net],
+        [opencflite],
+        [https://github.com/gerickson/opencflite/])
 
 #
 # Interface number, revision and age of the library interface passed to
 # libtool when the library is linked.
 #
-AC_SUBST(CF_VERSION_INFO, [635:1:0])
+AC_SUBST(CF_VERSION_INFO, [635:15:0])
 
 #
 # Check the sanity of thes source directory by checking for the
@@ -45,17 +74,35 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([include/config.h])
 
 #
+# Figure out what the canonical build, host and target tuples are.
+#
+AC_CANONICAL_BUILD
+AC_CANONICAL_HOST
+AC_CANONICAL_TARGET
+
+#
 # Tell autoconf where to find source files for interfaces that are missing
 # in the target environment (see AC_REPLACE_FUNCS below).
 #
 AC_CONFIG_LIBOBJ_DIR([compat])
 
 #
-# Initialize automake for the package, specifying the minimum automake
-# version allowed and that we are not an official GNU package, but
-# rather a non-GNU package leveraging automake.
+# Configure automake with the desired options, indicating that this is not
+# a native GNU package, that we want "silent" build rules, and that we want
+# objects built in the same subdirectory as their source rather than collapsed
+# together at the top-level directory.
 #
-AM_INIT_AUTOMAKE([1.9 foreign])
+# Disable silent build rules by either passing --disable-silent-rules to
+# configure or passing V=1 to make
+#
+AM_INIT_AUTOMAKE([1.14 foreign silent-rules subdir-objects tar-pax])
+
+#
+# Silent build rules requires at least automake-1.11. Employ
+# techniques for not breaking earlier versions of automake.
+#
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+AM_SILENT_RULES([yes])
 
 #
 # Enable maintainer mode to prevent the package from constantly trying
@@ -63,11 +110,6 @@ AM_INIT_AUTOMAKE([1.9 foreign])
 # if ever, needs to be done "in the field".
 #
 AM_MAINTAINER_MODE
-
-#
-# Figure out what the canonical build, host and target tuples are.
-#
-AC_CANONICAL_HOST
 
 AC_MSG_CHECKING([for supported deployment target])
 
@@ -101,27 +143,44 @@ esac
 AC_MSG_RESULT(${deployment_target})
 
 #
-# Checks for programs
+# Checks for build host programs
 #
+
+# Check for compilers.
+#
+# These should be checked BEFORE we check for and, implicitly,
+# initialize libtool such that libtool knows what languages it has to
+# work with.
+
 AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_OBJC
 CF_BSD_SOURCE
+CF_DEFAULT_SOURCE
 AC_GNU_SOURCE
 AM_PROG_CC_C_O
 AC_PROG_CPP
+
+# Check for other compiler toolchain tools.
+
+AC_CHECK_TOOL(AR, ar)
+AC_CHECK_TOOL(OBJCOPY, objcopy)
+AC_CHECK_TOOL(RANLIB, ranlib)
+AC_CHECK_TOOL(STRIP, strip)
+
+# Check for other host tools.
+
 AC_PROG_INSTALL
 AC_PROG_LN_S
-AC_PROG_RANLIB
+
 AC_PATH_PROG(CMP, cmp)
-
-LT_PREREQ([2.2])
-LT_INIT
-AC_SUBST([LIBTOOL_DEPS])
-
 
 # Support building DLLs on Windows
 AC_LIBTOOL_WIN32_DLL
+
+# Check for and initialize libtool
+
+LT_INIT
 
 #
 # Checks for language qualifiers and semantics
@@ -139,15 +198,17 @@ AC_C_VOLATILE
 # If using GCC specify some additional parameters
 
 test_gcc_flag() {
-    AC_LANG_CONFTEST([int main() {}])
-    $CC -c conftest.c $CFLAGS $@ > /dev/null 2> /dev/null
-    ret=$?
+    AC_LANG(C)
+    AC_LANG_CONFTEST(
+        [AC_LANG_SOURCE([int main() {}])]
+    )
+    ${CC} -c conftest.c ${CFLAGS} ${@} > /dev/null 2> /dev/null
+    ret=${?}
     rm -f conftest.o
-    return $ret
+    return ${ret}
 }
 
 if test "x$GCC" = "xyes" ; then
-#    DESIRED_CFLAGS="-Wall -Wmost -pipe -Wno-trigraphs -Wno-parentheses -fexceptions -std=gnu99 -xc -mmacosx-version-min=10.5 -fconstant-cfstrings"
     DESIRED_CFLAGS="-Wall -Wmost -pipe -Wno-trigraphs -Wno-parentheses -fexceptions -std=gnu99 -mmacosx-version-min=10.5 -fconstant-cfstrings"
 
     for flag in $DESIRED_CFLAGS ; do
@@ -615,6 +676,7 @@ AC_CHECK_HEADERS([syslog.h])
 AC_CHECK_HEADERS([time.h])
 AC_CHECK_HEADERS([unistd.h])
 AC_CHECK_HEADERS([xlocale.h])
+AC_CHECK_HEADERS([sys/auxv.h])
 AC_CHECK_HEADERS([sys/cdefs.h])
 AC_CHECK_HEADERS([sys/errno.h])
 AC_CHECK_HEADERS([sys/fcntl.h])
@@ -646,6 +708,13 @@ AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
 AC_STRUCT_TIMEZONE
 
+AC_CHECK_MEMBERS(
+        [struct sockaddr_in.sin_len],
+        [],
+        [],
+        [[#include <netinet/in.h>]]
+    )
+
 #
 # Checks for library functions
 #
@@ -657,6 +726,7 @@ AC_FUNC_FORK
 AC_FUNC_MMAP
 AC_FUNC_SELECT_ARGTYPES
 
+AC_CHECK_FUNCS([getauxval])
 AC_CHECK_FUNCS([getcwd])
 AC_CHECK_FUNCS([gethostname])
 AC_CHECK_FUNCS([malloc realloc])
@@ -697,10 +767,35 @@ CF_REPLACE_STRLN_FUNC([cat])
 CF_REPLACE_STRLN_FUNC([cpy])
 
 #
-# Other ibrary functions we might need to provide local compatibility
+# Other library functions we might need to provide local compatibility
 # implementations of.
 #
 AC_REPLACE_FUNCS([gettimeofday])
+
+# Check if the non-portable pthread_setname_np function exists.
+
+AC_SEARCH_LIBS([pthread_setname_np], [pthread])
+AC_CHECK_FUNCS([pthread_setname_np])
+
+# If the non-portable pthread_setname_np exists, determine
+# whether it takes one or two arguments.
+
+AS_IF([test "${ac_cv_func_pthread_setname_np}" = yes], [
+    AC_MSG_CHECKING([number of arguments to pthread_setname_np()])
+    AC_TRY_COMPILE([#include <pthread.h>
+        ],[pthread_t thread = 0;
+        const char *name = "";
+        pthread_setname_np(thread, name);],[
+            AC_MSG_RESULT([2])
+            AC_DEFINE(PTHREAD_SETNAME_NP_ARGS, 2, [Number of arguments to pthread_setname_np()])],[
+                AC_TRY_COMPILE([#include <pthread.h>
+                    ],[const char *name = "";
+                    pthread_setname_np(name);],[
+                        AC_MSG_RESULT([1])
+                        AC_DEFINE(PTHREAD_SETNAME_NP_ARGS, 1, [Number of arguments to pthread_setname_np()])],[
+                        AC_MSG_RESULT([unknown])
+                        AC_MSG_ERROR([unable to determine number of arguments to pthread_setname_np()])])])
+])
 
 #
 # Identify the various makefiles and auto-generated files for the package
@@ -714,6 +809,7 @@ tests/Makefile
 examples/Makefile
 examples/Allocator/Makefile
 examples/BundleExample/Makefile
+examples/CFFileDescriptorExample/Makefile
 examples/CFLocalServer/Makefile
 examples/CFMessagePort/Makefile
 examples/CFRunLoopTimerExample/Makefile
@@ -738,13 +834,21 @@ AC_MSG_NOTICE([
   ---------------------
   Package                     : ${PACKAGE_NAME}
   Version                     : ${PACKAGE_VERSION}
+  Build system                : ${build}
+  Host system                 : ${host}
+  Target system               : ${target}
+  Target architecture         : ${target_cpu}
+  Target OS                   : ${target_os}
+  Cross compiling             : ${cross_compiling}
   Deployment target           : ${deployment_target}
   Build shared library        : ${enable_shared}
   Build static library        : ${enable_static}
   Build debug library         : ${build_debug}
   Build profile library       : ${build_profile}
   Build examples and tests    : ${build_tests}
-  Prefix		      : ${prefix}
+  Prefix                      : ${prefix}
+  Pkg-config                  : ${PKG_CONFIG:--}
+  ICU-config                  : ${ICU_CONFIG:--}
   ICU compile options         : ${ICU_CPPFLAGS}
   ICU link options            : ${ICU_LDFLAGS}
   ICU link libraries          : ${ICU_LIBS}
@@ -756,10 +860,16 @@ AC_MSG_NOTICE([
   Time Zone compile options   : ${TZ_CPPFLAGS}
   Time Zone default file      : ${tz_default_file}
   Time Zone data directory    : ${tz_data_dir}
-  Compiler                    : ${CC}
-  Preprocessor flags          : ${CPPFLAGS}
-  Compile flags               : ${CFLAGS}
-  Link flags                  : ${LDFLAGS}
+  C Preprocessor              : ${CPP}
+  C Compiler                  : ${CC}
+  Objective C Compiler        : ${OBJC:--}
+  Archiver                    : ${AR}
+  Archive Indexer             : ${RANLIB}
+  Symbol Stripper             : ${STRIP}
+  Object Copier               : ${OBJCOPY}
+  C Preprocessor flags        : ${CPPFLAGS:--}
+  C Compile flags             : ${CFLAGS:--}
+  Objective C Compile flags   : ${OBJCFLAGS:--}
+  Link flags                  : ${LDFLAGS:--}
   Link libraries              : ${LIBS}
-
 ])

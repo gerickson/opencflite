@@ -2200,7 +2200,7 @@ static CFStringRef __CFSocketCopyDescription(CFTypeRef cf) {
     result = CFStringCreateMutable(CFGetAllocator(s), 0);
     __CFSocketLock(s);
     void *addr = s->_callout;
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX
     Dl_info info;
     const char *name = (dladdr(addr, &info) && info.dli_saddr == addr && info.dli_sname) ? info.dli_sname : "???";
 #else

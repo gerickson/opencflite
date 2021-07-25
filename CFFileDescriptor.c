@@ -357,18 +357,11 @@ CF_INLINE Boolean __CFFileDescriptorShouldCloseOnInvalidate(CFFileDescriptorRef 
                                          __kCFInfoCFFileDescriptorCloseOnInvalidateFirstBit);
 }
 
-CF_INLINE void __CFFileDescriptorSetCloseOnInvalidate(CFFileDescriptorRef f) {
+CF_INLINE void __CFFileDescriptorSetCloseOnInvalidate(CFFileDescriptorRef f, Boolean closeOnInvalidate) {
     __CFBitfieldSetValue(((CFRuntimeBase *)f)->_cfinfo[CF_INFO_BITS],
                          __kCFInfoCFFileDescriptorCloseOnInvalidateLastBit,
                          __kCFInfoCFFileDescriptorCloseOnInvalidateFirstBit,
-                         1);
-}
-
-CF_INLINE void __CFFileDescriptorClearCloseOnInvalidate(CFFileDescriptorRef f) {
-    __CFBitfieldSetValue(((CFRuntimeBase *)f)->_cfinfo[CF_INFO_BITS],
-                         __kCFInfoCFFileDescriptorCloseOnInvalidateLastBit,
-                         __kCFInfoCFFileDescriptorCloseOnInvalidateFirstBit,
-                         0);
+                         closeOnInvalidate);
 }
 
 CF_INLINE uint8_t __CFFileDescriptorCallBackTypes(CFFileDescriptorRef f) {
@@ -1415,6 +1408,8 @@ __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
 
         __CFFileDescriptorClearWriteSignaled(result);
         __CFFileDescriptorClearReadSignaled(result);
+
+        __CFFileDescriptorSetCloseOnInvalidate(result, closeOnInvalidate);
 
         CF_SPINLOCK_INIT_FOR_STRUCTS(result->_lock);
 

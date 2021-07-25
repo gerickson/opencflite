@@ -589,10 +589,12 @@ enum {
 };
 
 enum {
-    __kWakeupReasonDisable  = 'u',
-    __kWakeupReasonEnable   = 'r',
-    __kWakeupReasonPerform  = 'p',
-    __kWakeupReasonSchedule = 's'
+    __kWakeupReasonDisable       = 'u',
+    __kWakeupReasonEnable        = 'r',
+    __kWakeupReasonPerform       = 'p',
+    __kWakeupReasonSchedule      = 's',
+    __kWakeupReasonSetForWrite   = 'w',
+    __kWakeupReasonClearForWrite = 'x'
 };
 
 /* Function Prototypes */
@@ -641,7 +643,7 @@ static void                __CFFileDescriptorManagerWakeup(char reason);
 // Other Functions
 
 static void                __CFFileDescriptorCalculateMinTimeout_Locked(const void * value, void * context);
-static CFRunLoopRef        __CFFileDescriptorCopyRunLoopToWakeUp(CFFileDescriptorRef f);
+static CFRunLoopRef        __CFFileDescriptorCopyRunLoopToWakeUp(CFRunLoopSourceRef src, CFMutableArrayRef runLoops);
 static CFFileDescriptorRef __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
                                                               CFFileDescriptorNativeDescriptor fd,
                                                               Boolean                          closeOnInvalidate,
@@ -671,6 +673,7 @@ static void                __CFFileDescriptorInvalidate_Retained(CFFileDescripto
 static void                __CFFileDescriptorMaybeLogFileDescriptorList(CFArrayRef descriptors, CFDataRef fdSet, Boolean onlyIfSet);
 #endif
 static const char *        __CFFileDescriptorNameForSymbol(void *address);
+static void                __CFFileDescriptorSignalSourceAndWakeupRunLoops_LockedAndUnlock(CFFileDescriptorRef f);
 static Boolean             __CFNativeFileDescriptorIsValid(CFFileDescriptorNativeDescriptor fd);
 
 /* Global Variables */
@@ -774,18 +777,11 @@ CF_INLINE Boolean __CFFileDescriptorShouldCloseOnInvalidate(CFFileDescriptorRef 
                                          __kCFInfoCFFileDescriptorCloseOnInvalidateFirstBit);
 }
 
-CF_INLINE void __CFFileDescriptorSetCloseOnInvalidate(CFFileDescriptorRef f) {
+CF_INLINE void __CFFileDescriptorSetCloseOnInvalidate(CFFileDescriptorRef f, Boolean closeOnInvalidate) {
     __CFBitfieldSetValue(((CFRuntimeBase *)f)->_cfinfo[CF_INFO_BITS],
                          __kCFInfoCFFileDescriptorCloseOnInvalidateLastBit,
                          __kCFInfoCFFileDescriptorCloseOnInvalidateFirstBit,
-                         1);
-}
-
-CF_INLINE void __CFFileDescriptorClearCloseOnInvalidate(CFFileDescriptorRef f) {
-    __CFBitfieldSetValue(((CFRuntimeBase *)f)->_cfinfo[CF_INFO_BITS],
-                         __kCFInfoCFFileDescriptorCloseOnInvalidateLastBit,
-                         __kCFInfoCFFileDescriptorCloseOnInvalidateFirstBit,
-                         0);
+                         closeOnInvalidate);
 }
 
 CF_INLINE uint8_t __CFFileDescriptorCallBackTypes(CFFileDescriptorRef f) {
@@ -936,12 +932,25 @@ CF_INLINE SInt32 __CFFileDescriptorManagerLastError(void) {
 #endif
 }
 
+CF_INLINE Boolean __CFFileDescriptorManagerCanWakeup(void) {
+    const Boolean result = (__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeWriterIndex] != __CFFILEDESCRIPTOR_INVALID_DESCRIPTOR);
+
+    return result;
+}
+
 CF_INLINE Boolean __CFFileDescriptorManagerNativeDescriptorSetForRead_Locked(CFFileDescriptorRef f) {
 	CFMutableDataRef set = __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors;
+    Boolean          result;
 
     __sCFFileDescriptorManager.mReadFileDescriptorsTimeoutInvalid = true;
 
-    return __CFFileDescriptorNativeDescriptorSet(f->_descriptor, set);
+    result =  __CFFileDescriptorNativeDescriptorSet(f->_descriptor, set);
+
+    if (result && __CFFileDescriptorManagerCanWakeup()) {
+        __CFFileDescriptorManagerWakeup(__kWakeupReasonEnable);
+    }
+
+    return result;
 }
 
 CF_INLINE Boolean __CFFileDescriptorManagerNativeDescriptorSetForRead(CFFileDescriptorRef f) {
@@ -958,22 +967,39 @@ CF_INLINE Boolean __CFFileDescriptorManagerNativeDescriptorSetForRead(CFFileDesc
 
 CF_INLINE Boolean __CFFileDescriptorManagerNativeDescriptorClearForRead_Locked(CFFileDescriptorRef f) {
 	CFMutableDataRef set = __sCFFileDescriptorManager.mReadFileDescriptorsNativeDescriptors;
+    Boolean          result;
 
     __sCFFileDescriptorManager.mReadFileDescriptorsTimeoutInvalid = true;
 
-    return __CFFileDescriptorNativeDescriptorClear(f->_descriptor, set);
+    result = __CFFileDescriptorNativeDescriptorClear(f->_descriptor, set);
+
+    if (result && __CFFileDescriptorManagerCanWakeup()) {
+        __CFFileDescriptorManagerWakeup(__kWakeupReasonSchedule);
+    }
+
+    return result;
 }
 
 CF_INLINE Boolean __CFFileDescriptorManagerNativeDescriptorSetForWrite_Locked(CFFileDescriptorRef f) {
-	CFMutableDataRef set = __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors;
+	CFMutableDataRef set    = __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors;
+    Boolean          result = __CFFileDescriptorNativeDescriptorSet(f->_descriptor, set);
 
-    return __CFFileDescriptorNativeDescriptorSet(f->_descriptor, set);
+    if (result && __CFFileDescriptorManagerCanWakeup()) {
+        __CFFileDescriptorManagerWakeup(__kWakeupReasonSetForWrite);
+    }
+
+    return result;
 }
 
 CF_INLINE Boolean __CFFileDescriptorManagerNativeDescriptorClearForWrite_Locked(CFFileDescriptorRef f) {
-	CFMutableDataRef set = __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors;
+	CFMutableDataRef set    = __sCFFileDescriptorManager.mWriteFileDescriptorsNativeDescriptors;
+    Boolean          result = __CFFileDescriptorNativeDescriptorClear(f->_descriptor, set);
 
-    return __CFFileDescriptorNativeDescriptorClear(f->_descriptor, set);
+    if (result && __CFFileDescriptorManagerCanWakeup()) {
+        __CFFileDescriptorManagerWakeup(__kWakeupReasonClearForWrite);
+    }
+
+    return result;
 }
 
 CF_INLINE CFIndex __CFFileDescriptorManagerNativeDescriptorCalculateMaxSize_Locked(void)
@@ -1002,9 +1028,17 @@ __CFFileDescriptorManager(void * arg) {
 
     __CFFileDescriptorTraceEnter();
 
-#if defined(__OBJC__)
-    if (objc_collecting_enabled()) auto_zone_register_thread(auto_zone());
-#endif
+#if HAVE_PTHREAD_SETNAME_NP
+#if (PTHREAD_SETNAME_NP_ARGS == 2)
+    pthread_setname_np(pthread_self(), "com.apple.CFFileDescriptor.private");
+#elif (PTHREAD_SETNAME_NP_ARGS == 1)
+    pthread_setname_np("com.apple.CFFileDescriptor.private");
+#endif // (PTHREAD_SETNAME_NP_ARGS == 2)
+#endif // HAVE_PTHREAD_SETNAME_NP
+
+    if (objc_collectingEnabled()) {
+        objc_registerThreadWithCollector();
+    }
 
 	result = __CFFileDescriptorManagerAllocateSelectState(&state, fdentries);
 	__Verify_Action(result != NULL, abort());
@@ -1030,10 +1064,6 @@ __CFFileDescriptorManager(void * arg) {
 
 		__CFFileDescriptorManagerProcessState(&state, nrfds, maxnrfds, &timeElapsed);
     }
-
-#if defined(__OBJC__)
-    if (objc_collecting_enabled()) auto_zone_unregister_thread(auto_zone());
-#endif
 
     __CFFileDescriptorTraceExit();
 }
@@ -1353,11 +1383,6 @@ __CFFileDescriptorManagerMaybeAdd_Locked(CFFileDescriptorRef f,
 		}
 	}
 
-	if (result && __sCFFileDescriptorManager.mThread == NULL) {
-		__CFFileDescriptorMaybeLog("Starting manager thread...\n");
-		__sCFFileDescriptorManager.mThread = __CFStartSimpleThread((void*)__CFFileDescriptorManager, 0);
-	}
-
 	__CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
 
     __CFFileDescriptorTraceExit();
@@ -1656,17 +1681,20 @@ __CFFileDescriptorManagerWakeup(char reason)
 // MARK: Other Functions
 
 /* static */ CFRunLoopRef
-__CFFileDescriptorCopyRunLoopToWakeUp(CFFileDescriptorRef f) {
-	const CFIndex count  = CFArrayGetCount(f->_rloops);
+__CFFileDescriptorCopyRunLoopToWakeUp(CFRunLoopSourceRef src, CFMutableArrayRef runLoops) {
+	CFIndex       count;
 	CFIndex       index  = 0;
     CFRunLoopRef  result = NULL;
 
+	__Require(src != NULL, done);
+
+    count  = CFArrayGetCount(runLoops);
 	__Require_Quiet(count > 0, done);
 
-	result = (CFRunLoopRef)CFArrayGetValueAtIndex(f->_rloops, index);
+	result = (CFRunLoopRef)CFArrayGetValueAtIndex(runLoops, index);
 
 	for (index = 1; result != NULL && index < count; index++) {
-		CFRunLoopRef value = (CFRunLoopRef)CFArrayGetValueAtIndex(f->_rloops, index);
+		CFRunLoopRef value = (CFRunLoopRef)CFArrayGetValueAtIndex(runLoops, index);
 		if (value != result) {
 			result = NULL;
 		}
@@ -1675,9 +1703,9 @@ __CFFileDescriptorCopyRunLoopToWakeUp(CFFileDescriptorRef f) {
 	// There is more than one different runloop, so we must pick one.
 
 	if (result == NULL) {
-		Boolean foundIt = false;
+		Boolean foundIt     = false;
 		Boolean foundBackup = false;
-		CFIndex foundIndex = 0;
+		CFIndex foundIndex  = 0;
 
 		/* ideally, this would be a run loop which isn't also in a
 		 * signaled state for this or another source, but that's tricky;
@@ -1687,10 +1715,10 @@ __CFFileDescriptorCopyRunLoopToWakeUp(CFFileDescriptorRef f) {
 		 * a bit, and always search from the front */
 
 		for (index = 0; !foundIt && index < count; index++) {
-			CFRunLoopRef value = (CFRunLoopRef)CFArrayGetValueAtIndex(f->_rloops, index);
+			CFRunLoopRef value = (CFRunLoopRef)CFArrayGetValueAtIndex(runLoops, index);
 			CFStringRef currentMode = CFRunLoopCopyCurrentMode(value);
 			if (NULL != currentMode) {
-				if (CFRunLoopContainsSource(value, f->_rlsource, currentMode)) {
+				if (CFRunLoopContainsSource(value, src, currentMode)) {
 					if (CFRunLoopIsWaiting(value)) {
 						foundIndex = index;
 						foundIt = true;
@@ -1704,12 +1732,12 @@ __CFFileDescriptorCopyRunLoopToWakeUp(CFFileDescriptorRef f) {
 			}
 		}
 
-		result = (CFRunLoopRef)CFArrayGetValueAtIndex(f->_rloops, foundIndex);
+		result = (CFRunLoopRef)CFArrayGetValueAtIndex(runLoops, foundIndex);
 
 		CFRetain(result);
 
-		CFArrayRemoveValueAtIndex(f->_rloops, foundIndex);
-		CFArrayAppendValue(f->_rloops, result);
+		CFArrayRemoveValueAtIndex(runLoops, foundIndex);
+		CFArrayAppendValue(runLoops, result);
 
 	} else {
 		CFRetain(result);
@@ -1833,12 +1861,14 @@ __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
         __CFFileDescriptorClearWriteSignaled(result);
         __CFFileDescriptorClearReadSignaled(result);
 
+        __CFFileDescriptorSetCloseOnInvalidate(result, closeOnInvalidate);
+
         CF_SPINLOCK_INIT_FOR_STRUCTS(result->_lock);
 
         result->_descriptor              = fd;
         result->_fileDescriptorSetCount  = 0;
         result->_rlsource                = NULL;
-        result->_rloops                  = CFArrayCreateMutable(allocator, 0, NULL);
+        result->_rloops                  = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, NULL);
         result->_callout                 = callout;
 
         result->_context.info            = NULL;
@@ -1852,6 +1882,13 @@ __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
         CFDictionaryAddValue(__sCFFileDescriptorManager.mAllFileDescriptorsMap,
                              (void *)(uintptr_t)fd,
                              result);
+
+        // Start the manager thread if it is not already running.
+
+        if (__sCFFileDescriptorManager.mThread == NULL) {
+            __CFFileDescriptorMaybeLog("Starting manager thread...\n");
+            __sCFFileDescriptorManager.mThread = __CFStartSimpleThread((void*)__CFFileDescriptorManager, 0);
+        }
 
         __CFSpinUnlock(&__sCFFileDescriptorManager.mAllFileDescriptorsLock);
 
@@ -2099,10 +2136,6 @@ __CFFileDescriptorEnableCallBacks_LockedAndUnlock(CFFileDescriptorRef f,
  unlock:
     __CFFileDescriptorUnlock(f);
 
-    if (wakeup) {
-        __CFFileDescriptorManagerWakeup(wakeupReason);
-    }
-
     __CFFileDescriptorTraceExit();
 
     return;
@@ -2133,12 +2166,11 @@ __CFFileDescriptorHandleRead(CFFileDescriptorRef f,
 							 Boolean causedByTimeout) {
 	Boolean       valid;
     CFOptionFlags readCallBacksAvailable;
-	CFRunLoopRef  rl = NULL;
 
     __CFFileDescriptorTraceEnter();
 
 	valid = CFFileDescriptorIsValid(f);
-	__Require(valid, done);
+	__Require(valid, exit);
 
 	__CFFileDescriptorLock(f);
 
@@ -2150,7 +2182,7 @@ __CFFileDescriptorHandleRead(CFFileDescriptorRef f,
 		__CFFileDescriptorMaybeLog("%s: valid %u descriptor read callbacks 0x%lx\n",
 								   __func__, valid, readCallBacksAvailable);
 
-		goto done;
+		goto unlock;
     }
 
 	if (causedByTimeout) {
@@ -2158,25 +2190,19 @@ __CFFileDescriptorHandleRead(CFFileDescriptorRef f,
 
 		__CFFileDescriptorManagerNativeDescriptorSetForRead(f);
 
-		goto done;
+		goto unlock;
 	}
 
 	__CFFileDescriptorSetReadSignaled(f);
 
     __CFFileDescriptorMaybeLog("read signaling source for descriptor %d\n", f->_descriptor);
 
-    CFRunLoopSourceSignal(f->_rlsource);
+    __CFFileDescriptorSignalSourceAndWakeupRunLoops_LockedAndUnlock(f);
 
-    rl = __CFFileDescriptorCopyRunLoopToWakeUp(f);
-
- done:
+ unlock:
     __CFFileDescriptorUnlock(f);
 
-    if (rl != NULL) {
-        CFRunLoopWakeUp(rl);
-        CFRelease(rl);
-    }
-
+ exit:
     __CFFileDescriptorTraceExit();
 }
 
@@ -2241,18 +2267,7 @@ __CFFileDescriptorHandleWrite(CFFileDescriptorRef f,
     if (callBackNow) {
         __CFFileDescriptorDoCallBack_LockedAndUnlock(f);
     } else {
-        CFRunLoopRef rl;
-
-        CFRunLoopSourceSignal(f->_rlsource);
-
-        rl = __CFFileDescriptorCopyRunLoopToWakeUp(f);
-
-        __CFFileDescriptorUnlock(f);
-
-        if (rl != NULL) {
-            CFRunLoopWakeUp(rl);
-            CFRelease(rl);
-        }
+        __CFFileDescriptorSignalSourceAndWakeupRunLoops_LockedAndUnlock(f);
     }
 
  done:
@@ -2367,6 +2382,57 @@ __CFFileDescriptorNameForSymbol(void *address) {
 	return result;
 }
 
+/* static */ void
+__CFFileDescriptorSignalSourceAndWakeupRunLoops_LockedAndUnlock(CFFileDescriptorRef f) {
+    CFMutableArrayRef  runLoopsOrig  = NULL;
+    CFMutableArrayRef  runLoopsCopy  = NULL;
+    CFRunLoopSourceRef runLoopSource = NULL;
+    CFRunLoopRef       runLoop            = NULL;
+
+    CFRunLoopSourceSignal(f->_rlsource);
+
+    runLoopsOrig  = (CFMutableArrayRef)CFRetain(f->_rloops);
+    runLoopsCopy  = CFArrayCreateMutableCopy(kCFAllocatorSystemDefault, 0, f->_rloops);
+    runLoopSource = f->_rlsource;
+
+    if ((runLoopSource != NULL) && !CFRunLoopSourceIsValid(runLoopSource)) {
+        runLoopSource = NULL;
+    }
+
+    if (runLoopSource) {
+        CFRetain(runLoopSource);
+    }
+
+    __CFFileDescriptorUnlock(f);
+
+    runLoop = __CFFileDescriptorCopyRunLoopToWakeUp(runLoopSource, runLoopsCopy);
+
+    if (runLoopSource) {
+        CFRelease(runLoopSource);
+    }
+
+    if (runLoop != NULL) {
+        CFRunLoopWakeUp(runLoop);
+        CFRelease(runLoop);
+    }
+
+    __CFFileDescriptorLock(f);
+
+    if (runLoopsOrig == f->_rloops) {
+        f->_rloops = runLoopsCopy;
+        runLoopsCopy = NULL;
+        CFRelease(runLoopsOrig);
+    }
+
+    __CFFileDescriptorUnlock(f);
+
+    CFRelease(runLoopsOrig);
+
+    if (runLoopsCopy) {
+        CFRelease(runLoopsCopy);
+    }
+}
+
 /* static */ Boolean
 __CFNativeFileDescriptorIsValid(CFFileDescriptorNativeDescriptor fd) {
 #if DEPLOYMENT_TARGET_WINDOWS
@@ -2461,7 +2527,13 @@ __CFFileDescriptorRunLoopSchedule(void *info, CFRunLoopRef rl, CFStringRef mode)
     valid = __CFFileDescriptorIsValid(f);
 
     if (valid) {
+        CFMutableArrayRef runLoopsOrig = f->_rloops;
+        CFMutableArrayRef runLoopsCopy = CFArrayCreateMutableCopy(kCFAllocatorSystemDefault, 0, f->_rloops);
+
         CFArrayAppendValue(f->_rloops, rl);
+
+        f->_rloops = runLoopsCopy;
+        CFRelease(runLoopsOrig);
 
         f->_fileDescriptorSetCount++;
 
@@ -2494,8 +2566,14 @@ __CFFileDescriptorRunLoopCancel(void *info, CFRunLoopRef rl, CFStringRef mode) {
     }
 
     if (f->_rloops != NULL) {
+        CFMutableArrayRef runLoopsOrig = f->_rloops;
+        CFMutableArrayRef runLoopsCopy = CFArrayCreateMutableCopy(kCFAllocatorSystemDefault, 0, f->_rloops);
+
         index = CFArrayGetFirstIndexOfValue(f->_rloops, CFRangeMake(0, CFArrayGetCount(f->_rloops)), rl);
         if (0 <= index) CFArrayRemoveValueAtIndex(f->_rloops, index);
+
+        f->_rloops = runLoopsCopy;
+        CFRelease(runLoopsOrig);
     }
 
     __CFFileDescriptorUnlock(f);
@@ -2699,10 +2777,6 @@ CFFileDescriptorDisableCallBacks(CFFileDescriptorRef f, CFOptionFlags callBackTy
 
     __CFFileDescriptorUnlock(f);
 
-    if (wakeup && __sCFFileDescriptorManager.mThread != NULL) {
-        __CFFileDescriptorManagerWakeup(__kWakeupReasonDisable);
-    }
-
  done:
     __CFFileDescriptorTraceExit();
 
@@ -2810,6 +2884,11 @@ CFFileDescriptorCreateRunLoopSource(CFAllocatorRef allocator, CFFileDescriptorRe
     valid = __CFFileDescriptorIsValid(f);
     __Require(valid, unlock);
 
+    if (f->_rlsource != NULL && !CFRunLoopSourceIsValid(f->_rlsource)) {
+        CFRelease(f->_rlsource);
+        f->_rlsource = NULL;
+    }
+
     // If this descriptor does not have a runloop source, create and
     // attach one. Otherwise, we will just use and return the one
     // already attached with the retain count concommitantly
@@ -2847,6 +2926,4 @@ CFFileDescriptorCreateRunLoopSource(CFAllocatorRef allocator, CFFileDescriptorRe
 
     return result;
 }
-
-
 #endif // _CFFILEDESCRIPTOR_USE_POSIX_DESCRIPTOR_MANAGER

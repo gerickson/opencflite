@@ -767,10 +767,35 @@ CF_REPLACE_STRLN_FUNC([cat])
 CF_REPLACE_STRLN_FUNC([cpy])
 
 #
-# Other ibrary functions we might need to provide local compatibility
+# Other library functions we might need to provide local compatibility
 # implementations of.
 #
 AC_REPLACE_FUNCS([gettimeofday])
+
+# Check if the non-portable pthread_setname_np function exists.
+
+AC_SEARCH_LIBS([pthread_setname_np], [pthread])
+AC_CHECK_FUNCS([pthread_setname_np])
+
+# If the non-portable pthread_setname_np exists, determine
+# whether it takes one or two arguments.
+
+AS_IF([test "${ac_cv_func_pthread_setname_np}" = yes], [
+    AC_MSG_CHECKING([number of arguments to pthread_setname_np()])
+    AC_TRY_COMPILE([#include <pthread.h>
+        ],[pthread_t thread = 0;
+        const char *name = "";
+        pthread_setname_np(thread, name);],[
+            AC_MSG_RESULT([2])
+            AC_DEFINE(PTHREAD_SETNAME_NP_ARGS, 2, [Number of arguments to pthread_setname_np()])],[
+                AC_TRY_COMPILE([#include <pthread.h>
+                    ],[const char *name = "";
+                    pthread_setname_np(name);],[
+                        AC_MSG_RESULT([1])
+                        AC_DEFINE(PTHREAD_SETNAME_NP_ARGS, 1, [Number of arguments to pthread_setname_np()])],[
+                        AC_MSG_RESULT([unknown])
+                        AC_MSG_ERROR([unable to determine number of arguments to pthread_setname_np()])])])
+])
 
 #
 # Identify the various makefiles and auto-generated files for the package

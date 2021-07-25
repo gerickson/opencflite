@@ -161,6 +161,9 @@
 /* Have PTHREAD_PRIO_INHERIT. */
 #undef HAVE_PTHREAD_PRIO_INHERIT
 
+/* Define to 1 if you have the `pthread_setname_np' function. */
+#undef HAVE_PTHREAD_SETNAME_NP
+
 /* Define to 1 if you have the <pwd.h> header file. */
 #undef HAVE_PWD_H
 
@@ -433,6 +436,9 @@
 /* Define to necessary symbol if this constant uses a non-standard name on
    your system. */
 #undef PTHREAD_CREATE_JOINABLE
+
+/* Number of arguments to pthread_setname_np() */
+#undef PTHREAD_SETNAME_NP_ARGS
 
 /* Define to the type of arg 1 for `select'. */
 #undef SELECT_TYPE_ARG1

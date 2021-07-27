@@ -1,8 +1,8 @@
 [![Build Status][opencflite-github-action-svg]][opencflite-github-action]
 
 [opencflite-github]: https://github.com/gerickson/opencflite
-[opencflite-github-action]: https://github.com/gerickson/opencflite/actions?query=workflow%3ABuild+branch%3Amain+event%3Apush
-[opencflite-github-action-svg]: https://github.com/gerickson/opencflite/actions/workflows/build.yml/badge.svg?branch=main&event=push
+[opencflite-github-action]: https://github.com/gerickson/opencflite/actions?query=workflow%3ABuild+branch%3Aopencflite-635+event%3Apush
+[opencflite-github-action-svg]: https://github.com/gerickson/opencflite/actions/workflows/build.yml/badge.svg?branch=opencflite-635&event=push
 
 Open CF-lite
 ============

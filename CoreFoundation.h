@@ -96,7 +96,7 @@
 #include <CoreFoundation/CFURLAccess.h>
 #include <CoreFoundation/CFUUID.h>
 
-#if (TARGET_OS_MAC && !(TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)) || (TARGET_OS_EMBEDDED || TARGET_OS_IPHONE) || TARGET_OS_WIN32 || TARGET_OS_LINUX
+#if (TARGET_OS_MAC && !(TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)) || (TARGET_OS_EMBEDDED || TARGET_OS_IPHONE) || TARGET_OS_WIN32 || TARGET_OS_UNIX
 #include <CoreFoundation/CFBundle.h>
 #include <CoreFoundation/CFMessagePort.h>
 #include <CoreFoundation/CFPlugIn.h>

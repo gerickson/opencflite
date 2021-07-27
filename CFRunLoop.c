@@ -2737,7 +2737,7 @@ void CFRunLoopRemoveSource(CFRunLoopRef rl, CFRunLoopSourceRef rls, CFStringRef 
             }
             __CFRunLoopSourceUnlock(rls);
 	    if (0 == rls->_context.version0.version) {
-	        if (NULL != rls->_context.version0.schedule) {
+	        if (NULL != rls->_context.version0.cancel) {
 	            doVer0Callout = true;
 	        }
 	    }

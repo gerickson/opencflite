@@ -1,6 +1,106 @@
                       Changes and What's New in OpenCFLite
                       ------------------------------------
 
+2021-07-27 v635.15.1
+
+  * Addressed a warning/error about the unknown type name of
+    'CFStreamError' when compiling against the project on Linux.
+
+  * Address a warning/error about the redefinition of 'struct
+    timespec' when compiling against the project on Linux.
+
+  * Addressed an issue in which an allowably-NULL 'cancel'
+    CFRunLoopSourceContext callout pointer causes a crash in
+    CFRunLoopSourceRemove.
+
+  * Integrated improvements from the 476 branch, including: CFNetwork
+    support; autotools improvements, including silent-rules,
+    subdir-objects, and -DDEFAULT_SOURCE; GitHub Actions continuous
+    integration, and CFFileDescriptor.
+
+  * Added support for x86_64 targets.
+
+2021-07-24 v476.19.5
+
+  * Addressed an issue in which the 'closeOnInvalidate'
+    flag was not honored through the CFFileDescriptorCreate
+    to CFFileDescriptorInvalidate lifecycle.
+
+2021-07-19 v476.19.4
+
+  * Addressed an issue in which back-to-back CFFileDescriptor
+    objects created in sequence result in the second and
+    subsequent such descriptor objects fulfilled from the
+    stale manager cache with an invalid native descriptor
+    value.
+
+2021-07-14 v476.19.3
+
+  * Enabled dynamic CFNetwork support on Linux.
+
+2021-07-07 v476.19.2
+
+  * Addressed an issue with an uninitialized read of the
+    timeout value passed to select in __CFFileDescriptorManager.
+
+2021-07-02 v476.19.1
+
+  * Added CFFileDescriptor support.
+
+2021-06-10 v476.19.0
+
+  * Forked and migrated the package to GitHub.
+
+  * Enabled continuous integration (CI) with GitHub actions against
+    Linux with both GCC and clang/LLVM.
+
+  * Migrated the README content to Markdown and added a GitHub CI
+    build badge.
+
+  * Modernized configure.ac, including by utilizing 'subdir-objects'
+    and by making the build less chatty by default by leveraging
+    'silent-rules'.
+
+2011-09-07 v476.19.0
+
+  * Address a bug in CFSetApplyFunction that can result in it
+    accessing and modifying deallocated key memory when iterating over
+    a mutable set while simultaneously mutating it where those
+    mutations might lead to the growth or shrinkage of the set.
+
+  * Remove support, on Linux, for using the malloc_usable_size
+    introspection method when instantiating CoreFoundation runtime
+    instances.
+
+  * Add support for performing debug consistency checks in Linux on
+    memory deallocated by the system allocator.
+
+  * Upgrade the AssertMacros.h from CarbonHeaders-8A428 to that from
+    CarbonHeaders-18.1 to address rdar://problem/4822326 where
+    executing verify*action with break or continue ends up failing to
+    actually work as expected or intended.
+
+  * Added ARM support.
+
+  * Only define __kCFCharacterSetDir if it is not already defined.
+
+  * Address a number of compiler warnings and errors.
+
+  * Fixed run loop symbol visibility under Linux.
+
+  * Use strtoul rathern than strtoul_l when passing NULL as the
+    extended locale.
+
+  * Limited symbol and function visiblity based on appropriate
+    preprocessor definitions.
+
+  * Merged change to ensure that the right LDFLAGS are passed when
+    testing for the existing of uuid_compare in libuuid with using
+    --with-uuid and friends from trunk.
+
+  * Reconfigured following update to configure.ac for pushing/popping
+    UUID_LDFLAGS when testing uuid_compare in -luuid.
+
 2009-06-02 v476.18.0
 
   * Synchronized against Apple's CoreFoundation-478.18.

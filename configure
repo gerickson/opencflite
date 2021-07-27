@@ -2776,7 +2776,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 # Interface number, revision and age of the library interface passed to
 # libtool when the library is linked.
 #
-CF_VERSION_INFO=635:15:0
+CF_VERSION_INFO=635:0:15
 
 
 #

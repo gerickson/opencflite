@@ -1,6 +1,16 @@
                       Changes and What's New in OpenCFLite
                       ------------------------------------
 
+2021-07-28 v635.21.3
+
+  * Addressed an issue in which 'CFPropertyList{CreateWithStream,
+    Write}' were not available when building against the pacakge on
+    Linux since these symbols are guarded by TARGET_OS_LINUX rather
+    than TARGET_OS_UNIX.
+
+  * Addressed an implicit conversion warning/error for _CFHashDouble
+    in ForFoundation.h.
+
 2021-07-28 v635.21.2
 
   * Pulled a change from the 476 branch which addresses an issue in

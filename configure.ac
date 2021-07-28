@@ -48,7 +48,7 @@ AC_INIT([CoreFoundation],
 # Interface number, revision and age of the library interface passed to
 # libtool when the library is linked.
 #
-AC_SUBST(CF_VERSION_INFO, [635:1:19])
+AC_SUBST(CF_VERSION_INFO, [635:0:0])
 
 #
 # Check the sanity of thes source directory by checking for the

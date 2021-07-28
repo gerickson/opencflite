@@ -69,3 +69,7 @@ jobs:
     - name: Build
       run: |
         make -j
+
+    - name: Test
+      run: |
+        make -j check

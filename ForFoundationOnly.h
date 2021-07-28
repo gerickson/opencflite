@@ -496,7 +496,7 @@ CF_INLINE CFHashCode _CFHashDouble(double d) {
     if (d < 0) d = -d;
     dInt = floor(d+0.5);
     CFHashCode integralHash = HASHFACTOR * (CFHashCode)fmod(dInt, (double)ULONG_MAX);
-    return (CFHashCode)(integralHash + (CFHashCode)((d - dInt) * ULONG_MAX));
+    return (CFHashCode)(integralHash + (CFHashCode)((d - dInt) * (double)ULONG_MAX));
 }
 
 

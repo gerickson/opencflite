@@ -1,6 +1,10 @@
                       Changes and What's New in OpenCFLite
                       ------------------------------------
 
+2021-07-27 v635.21.1
+
+  * Applied upstream Apple patches from CF-635.19 to CF-635.21.
+
 2021-07-27 v635.19.1
 
   * Applied upstream Apple patches from CF-635.15 to CF-635.19.

@@ -1,6 +1,12 @@
                       Changes and What's New in OpenCFLite
                       ------------------------------------
 
+2021-07-28 v635.21.2
+
+  * Pulled a change from the 476 branch which addresses an issue in
+    which ICU no longer uses icu-config or pkg-config that results in
+    pkg-config for CoreFoundation failing.
+
 2021-07-27 v635.21.1
 
   * Applied upstream Apple patches from CF-635.19 to CF-635.21.

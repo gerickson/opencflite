@@ -19,8 +19,8 @@ reflect the open source, community-based and -driven nature of this
 project.
 
 This release of Open CF-lite corresponds to the CoreFoundation
-framework found in Mac OS X 10.7.2,
-[CF-635.15](https://opensource.apple.com/source/CF/CF-635.15/).
+framework found in Mac OS X 10.7.4,
+[CF-635.21](https://opensource.apple.com/source/CF/CF-635.21/).
 
 This distribution differs from the official Apple, Inc. release of
 CF-lite in that it is known to build and run on Mac OS X, Windows, and

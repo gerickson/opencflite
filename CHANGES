@@ -1,6 +1,13 @@
                       Changes and What's New in OpenCFLite
                       ------------------------------------
 
+2021-07-29 v635.21.4
+
+  * Addressed an issue in which continuous integration failed against
+    the 'BundleExample' example program by ensuring that the example
+    works when the package is not installed or is not installed in a
+    default location.
+
 2021-07-28 v635.21.3
 
   * Addressed an issue in which 'CFPropertyList{CreateWithStream,

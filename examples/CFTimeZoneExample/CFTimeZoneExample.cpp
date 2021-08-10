@@ -268,9 +268,6 @@ _CFTimeZoneExampleDisplayKnownNames(void) {
 /* static */ int
 _CFTimeZoneExampleDisplayAbbreviations(void) {
     CFDictionaryRef abbrevDict = NULL;
-    CFIndex         dictCount;
-    CFStringRef *   keys = NULL;
-    CFStringRef *   values = NULL;
     int             retval = 0;
 
     abbrevDict = CFTimeZoneCopyAbbreviationDictionary();
@@ -526,11 +523,8 @@ _CFTimeZoneExampleResetSystem(CFDictionaryRef testDict) {
     double          testZoneOffset;
     double          testZoneDSTOffset;
     CFStringRef     curZoneName = NULL;
-    CFStringRef     curDisplayName = NULL;
     CFStringRef     curZoneAbbrev = NULL;
-    CFStringRef     curZoneDSTAbbrev = NULL;
     CFStringRef     curLocalizedName = NULL;
-    CFStringRef     curLocalizedDSTName = NULL;
     double          curZoneOffset;
     double          curZoneDSTOffset;
     CFBooleanRef    boolRef = NULL;

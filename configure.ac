@@ -814,6 +814,7 @@ examples/CFLocalServer/Makefile
 examples/CFMessagePort/Makefile
 examples/CFRunLoopTimerExample/Makefile
 examples/CFTest/Makefile
+examples/CFTimeZoneExample/Makefile
 examples/DisplayURL/Makefile
 examples/DNSServiceMetaQuery/Makefile
 examples/PLConvertExample/Makefile

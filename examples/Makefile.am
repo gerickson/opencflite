@@ -35,5 +35,6 @@ SUBDIRS			= ReadPListExample	  \
 			  SimpleWebServer	  \
 			  CFRunLoopTimerExample	  \
 			  CFFileDescriptorExample \
+			  CFTimeZoneExample       \
 			  CFTest                  \
 			  $(NULL)

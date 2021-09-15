@@ -54,7 +54,7 @@
 #include <string.h>
 #include <CoreFoundation/CoreFoundation_Prefix.h>
 #include "CFInternal.h"
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #include <CoreFoundation/CFStream.h>
 #endif
 
@@ -180,7 +180,7 @@ static void writeBytes(__CFBinaryPlistWriteBuffer *buf, const UInt8 *bytes, CFIn
         CFDataAppendBytes((CFMutableDataRef)buf->stream, bytes, length);
         buf->written += length;
     } else {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 	while (0 < length) {
 	    CFIndex ret = CFWriteStreamWrite((CFWriteStreamRef)buf->stream, bytes, length);
             if (ret == 0) {

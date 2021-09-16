@@ -1,6 +1,13 @@
                       Changes and What's New in OpenCFLite
                       ------------------------------------
 
+2021-09-15 v635.21.5
+
+  * Addressed an issue in which attempting to write a Property List
+    with the format 'kCFPropertyListBinaryFormat_v1_0' via
+    'CFPropertyListWrite' failed silently on Linux (and ostensibly
+    FreeBSD as well).
+
 2021-07-29 v635.21.4
 
   * Addressed an issue in which continuous integration failed against

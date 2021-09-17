@@ -148,6 +148,10 @@ void writePropertyListToFile (CFDataRef data) {
         CFIndex bytesWritten = CFPropertyListWriteToStream (propertyList, stream, kCFPropertyListXMLFormat_v1_0, NULL);
 
         CFWriteStreamClose (stream);
+
+        CFRelease(stream);
+        CFRelease(fileURL);
+        CFRelease(urlString);
     }
     else {
         CFShow (errorString);

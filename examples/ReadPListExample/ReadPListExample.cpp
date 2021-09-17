@@ -75,6 +75,7 @@ static void readPropertyListFromFile (const char *path) {
         show (CFSTR ("Property list (as read from file):\n%@"), propertyList);
 
 		CFRelease(data);
+		CFRelease(propertyList);
     }
 }
 

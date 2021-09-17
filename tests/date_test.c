@@ -28,6 +28,8 @@ bool check_date_constructors ()
    CFShow(aCFDate);
    
    printf("\n");
+
+   CFRelease(aCFDate);
    
    return true;
 }
@@ -61,6 +63,9 @@ bool check_date_comparison ()
    }
    
    printf("\n");
+
+   CFRelease(date1);
+   CFRelease(date2);
 
    return true;
 }

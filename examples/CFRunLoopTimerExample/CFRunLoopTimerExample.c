@@ -92,7 +92,7 @@ TimerCallback(CFRunLoopTimerRef timer, void *info)
 	(void)timer;
 
 	tz = CFTimeZoneCopySystem();
-	require(tz != NULL, done);
+	__Require(tz != NULL, done);
 
 	theDate = CFAbsoluteTimeGetGregorianDate(CFAbsoluteTimeGetCurrent(), tz);
 
@@ -296,7 +296,7 @@ TimerDataCreate(CFIndex inIndex, double inLimit, const char *inInterval)
 	/* Parse and validate the timer interval. */
 
 	timerInterval = strtod(inInterval, &end);
-	verify(errno != ERANGE);
+	__Verify(errno != ERANGE);
 
 	if (errno == ERANGE || timerInterval <= 0) {
 		fprintf(stderr, "Timer %lu interval must be greater than zero.\n",
@@ -313,7 +313,7 @@ TimerDataCreate(CFIndex inIndex, double inLimit, const char *inInterval)
 	theData = (TimerData*)CFAllocatorAllocate(kCFAllocatorSystemDefault,
 											  sizeof (TimerData),
 											  0);
-	require(theData != NULL, done);
+	__Require(theData != NULL, done);
 
 	theContext.info = theData;
 
@@ -326,7 +326,7 @@ TimerDataCreate(CFIndex inIndex, double inLimit, const char *inInterval)
 									0,
 									TimerCallback,
 									&theContext);
-	require(theTimer != NULL, fail);
+	__Require(theTimer != NULL, fail);
 
 	printf("Will fire timer %lu every %g seconds for %g seconds, "
 		   "up to %lu time%s.\n",
@@ -370,7 +370,7 @@ TimerDataCreate(CFIndex inIndex, double inLimit, const char *inInterval)
 static void
 TimerDataDestroy(TimerData *inData)
 {
-	verify_action(inData != NULL, return);
+	__Verify_Action(inData != NULL, return);
 
 	if (inData->mRef != NULL) {
 		CFRunLoopTimerInvalidate(inData->mRef);
@@ -404,7 +404,7 @@ main(int argc, const char * const argv[])
 	/* Convert and check the specified limit value. */
 
 	timerLimit = strtod(argv[argc - 1], &end);
-	verify(errno != ERANGE);
+	__Verify(errno != ERANGE);
 
 	if (errno == ERANGE || timerLimit <= 0) {
 		fprintf(stderr, "Timer limit must be greater than zero.\n");
@@ -427,7 +427,7 @@ main(int argc, const char * const argv[])
 
 	for (i = 0; i < timerCount; i++) {
 		theTimer = TimerDataCreate(i, timerLimit, argv[i + 1]);
-		require(theTimer != NULL, finish);
+		__Require(theTimer != NULL, finish);
 
 		TimerContainerSet(timerContainer, i, theTimer);
 

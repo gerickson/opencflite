@@ -2251,7 +2251,60 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
 #error Unknown deployment target - CFRunLoop not functional
 #endif
 
-/* rl, rlm are locked on entrance and exit */
+/**
+ *  @brief
+ *    Runs the specified CFRunLoop object in the specified mode...
+ *
+ *  The specfied run loop runs in the specified mode until the run
+ *  loop is stopped with CFRunLoopStop, until all the sources and
+ *  timers are removed from the run loop mode, until the specified
+ *  time has passed, or until one pass has been made through the run
+ *  loop, if @a stopAfterHandle was asserted.
+ *
+ *  Run loops can be run recursively. You can call CFRunLoopRun from
+ *  within any run loop callout and create nested run loop activations
+ *  on the current thread's call stack.
+ *
+ *  @note
+ *    rl and rlm are locked on entrace and exit.
+ *
+ *  @param[in]  rl               The run loop to run.
+ *  @param[in]  rlm              The run loop mode to run. The mode
+ *                               can be any arbitrary CFString. You do
+ *                               not need to explicitly create a run
+ *                               loop mode, although a run loop mode
+ *                               needs to contain at least one source
+ *                               or timer to run.
+ *  @param[in]  seconds          The length of time to run the run loop.
+ *                               If 0, only one pass is made through
+ *                               the run loop before returning; if
+ *                               multiple sources or timers are ready
+ *                               to fire immediately, only one
+ *                               (possibly two if one is a version 0
+ *                               source) will be fired, regardless of
+ *                               the value of @a stopAfterHandle.
+ *  @param[in]  stopAfterHandle  A flag indicating whether the run loop
+ *                               should exit after processing one
+ *                               source. If false, the run loop
+ *                               continues processing events until
+ *                               seconds has passed.
+ *  @param[in]  previousMode     ???
+ *
+ *  @retval  kCFRunLoopRunFinished       The running run loop mode
+ *                                       has no sources or timers to
+ *                                       process.
+ *  @retval  kCFRunLoopRunStopped        @a CFRunLoopStop was called
+ *                                       on the run loop.
+ *  @retval  kCFRunLoopRunTimedOut       The specified time interval
+ *                                       for running the run loop has
+ *                                       passed.
+ *  @retval  kCFRunLoopRunHandledSource  A source has been processed.
+ *                                       This value is returned only
+ *                                       if the run loop was told to
+ *                                       run only until a source was
+ *                                       processed.
+ *
+ */
 static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInterval seconds, Boolean stopAfterHandle, CFRunLoopModeRef previousMode) {
     int64_t startTSR = (int64_t)mach_absolute_time();
 

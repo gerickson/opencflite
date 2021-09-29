@@ -331,6 +331,7 @@ AM_CONDITIONAL([CF_BUILD_TESTS], [test "x${build_tests}" = "xyes"])
 #
 # and, maybe:
 #
+#   * (lib)kqueue
 #   * rt
 #
 
@@ -558,6 +559,110 @@ LDFLAGS="${UUID_LDFLAGS} ${LDFLAGS}"
 LIBS="${UUID_LIBS} ${LIBS}"
 
 AC_CHECK_HEADERS([uuid/uuid.h])
+
+#
+# Check for kqueue/kevent support, either in kernel (*BSD) or in library
+# (Linux).
+#
+
+AC_ARG_WITH(kqueue,
+	AS_HELP_STRING([--with-kqueue=DIR],
+		       [Specify location of the Kqueue headers and libraries.]),
+	[
+		if test "x${withval}" = "xno"; then
+			AC_MSG_ERROR([${PACKAGE_NAME} requires the Kqueue facility or package])
+		else
+			kqueue_dir=${withval}
+		fi
+	],
+	[kqueue_dir=])
+AC_ARG_WITH(kqueue-includes,
+	AS_HELP_STRING([--with-kqueue-includes=DIR],
+		       [Specify location of Kqueue headers.]),
+	[kqueue_header_dir=${withval}],
+	[kqueue_header_dir=])
+AC_ARG_WITH(kqueue-libs,
+	AS_HELP_STRING([--with-kqueue-libs=DIR],
+		       [Specify location of Kqueue libraries, if any.]),
+	[kqueue_library_dir=${withval}],
+	[kqueue_library_dir=])
+
+# We always prefer checking the values of the various '--with-kqueue-...'
+# options first to using pkg-config because the former might be used
+# in a cross-compilation environment on a system that also contains
+# pkg-config. In such a case, the user wants what he/she specified
+# rather than what pkg-config indicates.
+
+if test "x${kqueue_dir}" != "x" -o "x${kqueue_header_dir}" != "x" -o "x${kqueue_library_dir}" != "x"; then
+	if test "x${kqueue_dir}" != "x"; then
+		if test -d "${kqueue_dir}"; then
+			if test -d "${kqueue_dir}/include/kqueue"; then
+				KQUEUE_CPPFLAGS="-I${kqueue_dir}/include/kqueue"
+			elif test -d "${kqueue_dir}/include"; then
+				KQUEUE_CPPFLAGS="-I${kqueue_dir}/include"
+			else
+				KQUEUE_CPPFLAGS="-I${kqueue_dir}"
+			fi
+
+			if test -d "${kqueue_dir}/lib"; then
+				KQUEUE_LDFLAGS="-L${kqueue_dir}/lib"
+			else
+				KQUEUE_LDFLAGS="-L${kqueue_dir}"
+			fi
+		else
+			AC_MSG_ERROR([No such directory ${kqueue_dir}])
+		fi
+	fi
+
+	if test "x${kqueue_header_dir}" != "x"; then
+		if test -d "${kqueue_header_dir}"; then
+			KQUEUE_CPPFLAGS="-I${kqueue_header_dir}"
+		else
+			AC_MSG_ERROR([No such directory ${kqueue_header_dir}])
+		fi
+	fi
+
+	if test "x${kqueue_library_dir}" != "x"; then
+		if test -d "${kqueue_library_dir}"; then
+			KQUEUE_LDFLAGS="-L${kqueue_library_dir}"
+		else
+			AC_MSG_ERROR([No such directory ${kqueue_library_dir}])
+		fi
+	fi
+
+	KQUEUE_saved_libs="${LIBS}"
+	KQUEUE_saved_ldflags="${LDFLAGS}"
+	LDFLAGS="${KQUEUE_LDFLAGS} ${LDFLAGS}"
+	LIBS=""
+
+		AC_CHECK_LIB(kqueue, kqueue)
+
+        KQUEUE_LIBS="${KQUEUE_LDFLAGS} ${LIBS}"
+	LDFLAGS="${KQUEUE_saved_ldflags}"
+        LIBS="${KQUEUE_saved_libs}"
+        unset KQUEUE_saved_libs
+	unset KQUEUE_saved_ldflags
+
+elif test "x${PKG_CONFIG}" != "x" -a "${PKG_CONFIG} --exists libkqueue"; then
+	KQUEUE_CPPFLAGS="`${PKG_CONFIG} --cflags libkqueue`"
+	KQUEUE_LDFLAGS="`${PKG_CONFIG} --libs-only-L libkqueue`"
+	KQUEUE_LIBS="`${PKG_CONFIG} --libs-only-l libkqueue`"
+
+else
+	AC_MSG_ERROR([Cannot find the Kqueue facility or package.])
+fi
+
+AC_SUBST(KQUEUE_CPPFLAGS)
+AC_SUBST(KQUEUE_LDFLAGS)
+AC_SUBST(KQUEUE_LIBS)
+
+CPPFLAGS="${KQUEUE_CPPFLAGS} ${CPPFLAGS}"
+LDFLAGS="${KQUEUE_LDFLAGS} ${LDFLAGS}"
+LIBS="${KQUEUE_LIBS} ${LIBS}"
+
+AC_CHECK_HEADERS([sys/event.h])
+
+AC_CHECK_FUNCS([kevent kqueue])
 
 #
 # Check for POSIX thread support.
@@ -852,6 +957,9 @@ AC_MSG_NOTICE([
   ICU compile options         : ${ICU_CPPFLAGS}
   ICU link options            : ${ICU_LDFLAGS}
   ICU link libraries          : ${ICU_LIBS}
+  Kqueue compile options      : ${KQUEUE_CPPFLAGS:--}
+  Kqueue link options         : ${KQUEUE_LDFLAGS:--}
+  Kqueue link libraries       : ${KQUEUE_LIBS:--}
   POSIX thread compile options: ${PTHREAD_CFLAGS}
   POSIX thread link options   : ${PTHREAD_LIBS}
   UUID compile options        : ${UUID_CPPFLAGS}

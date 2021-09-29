@@ -318,7 +318,7 @@ CF_INLINE void __CFPortFree(__CFPort port) {
 	CFAllocatorDeallocate(kCFAllocatorSystemDefault, port);
 }
 
-#endif /* DEPLOYMENT_TARGET_MACOSX */
+#endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 
 #if !DEPLOYMENT_TARGET_MACOSX
 
@@ -400,7 +400,7 @@ static Boolean __CFPortSetRemove(__CFPort port, __CFPortSet portSet) {
     return false;
 }
 
-#endif
+#endif // !DEPLOYMENT_TARGET_MACOSX
 
 #if !defined(__MACTYPES__) && !defined(_OS_OSTYPES_H)
 #if defined(__BIG_ENDIAN__)
@@ -478,7 +478,7 @@ struct __CFRunLoopMode {
     HANDLE _timerPort;
     DWORD _msgQMask;
     void (*_msgPump)(void);
-#endif
+#endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 };
 
 CF_INLINE void __CFRunLoopModeLock(CFRunLoopModeRef rlm) {
@@ -531,7 +531,7 @@ static void __CFRunLoopModeDeallocate(CFTypeRef cf) {
     if (NULL != rlm->_timerPort) CloseHandle(rlm->_timerPort);
 #elif DEPLOYMENT_TARGET_LINUX
     if (NULL != rlm->_timerPort) timer_delete(rlm->_timerPort);
-#endif
+#endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
     pthread_mutex_destroy(&rlm->_lock);
     memset((char *)cf + sizeof(CFRuntimeBase), 0x7C, sizeof(struct __CFRunLoopMode) - sizeof(CFRuntimeBase));
 }
@@ -1011,7 +1011,7 @@ static CFArrayRef __CFRunLoopTimersToFire(CFRunLoopRef rl, CFRunLoopModeRef rlm)
     return ctxt.results;
 }
 
-#endif
+#endif // DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
 
 /* CFRunLoop */
 
@@ -1469,7 +1469,7 @@ void _CFRunLoopSetCurrent(CFRunLoopRef rl) {
         _CFSetTSD(__CFTSDKeyRunLoopCntr, 0, (void (*)(void *))__CFFinalizeRunLoop);
     }
 }
-#endif
+#endif // DEPLOYMENT_TARGET_MACOSX
 
 CFRunLoopRef CFRunLoopGetMain(void) {
     CHECK_FOR_FORK();
@@ -1923,7 +1923,7 @@ static void __CFArmNextTimerInMode(CFRunLoopModeRef rlm) {
         LARGE_INTEGER dueTime;
         dueTime.QuadPart = __CFTSRToFiletime(fireTSR);
         SetWaitableTimer(rlm->_timerPort, &dueTime, 0, NULL, NULL, FALSE);
-#endif
+#endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
     }
 }
 
@@ -2195,7 +2195,7 @@ static Boolean __CFRunLoopWaitForMultipleObjects(__CFPortSet portSet, HANDLE *on
     return result;
 }
 
-#endif
+#endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 
 struct __timeout_context {
     dispatch_source_t ds;
@@ -2253,7 +2253,7 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
 #if __DISPATCH__
     Boolean libdispatchQSafe = pthread_main_np() && ((HANDLE_DISPATCH_ON_BASE_INVOCATION_ONLY && NULL == previousMode) || (!HANDLE_DISPATCH_ON_BASE_INVOCATION_ONLY && 0 == _CFGetTSD(__CFTSDKeyIsInGCDMainQ)));
     if (libdispatchQSafe && (CFRunLoopGetMain() == rl) && CFSetContainsValue(rl->_commonModes, rlm->_name)) dispatchPort = _dispatch_get_main_queue_port_4CF();
-#endif
+#endif // __DISPATCH__
 
     dispatch_source_t timeout_timer = NULL;
     struct __timeout_context *timeout_context = (struct __timeout_context *)malloc(sizeof(*timeout_context));
@@ -2268,7 +2268,7 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
 	    timeout_context->ds = timeout_timer;
 #else
 	    timeout_context->ds = 0;
-#endif
+#endif // __DISPATCH__
 	    timeout_context->rl = (CFRunLoopRef)CFRetain(rl);
 	    timeout_context->termTSR = startTSR + __CFTimeIntervalToTSR(seconds);
 #if __DISPATCH__
@@ -2278,7 +2278,7 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
             uint64_t nanos = (uint64_t)(seconds * 1000 * 1000 + 1) * 1000;
 	    dispatch_source_set_timer(timeout_timer, dispatch_time(DISPATCH_TIME_NOW, nanos), DISPATCH_TIME_FOREVER, 0);
 	    dispatch_resume(timeout_timer);
-#endif
+#endif // __DISPATCH__
     } else { // infinite timeout
         seconds = 9999999999.0;
         timeout_context->termTSR = INT64_MAX;
@@ -2418,8 +2418,8 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
             dueTime.QuadPart = LONG_MIN;
 #if __DISPATCH__
             SetWaitableTimer(rlm->_timerPort, &dueTime, 0, NULL, NULL, FALSE);
-#endif
-#endif
+#endif // __DISPATCH__
+#endif // DEPLOYMENT_TARGET_WINDOWS
 	         __CFRunLoopDoTimers(rl, rlm, mach_absolute_time());
          } else if (livePort == dispatchPort) {
 	    __CFRunLoopModeUnlock(rlm);

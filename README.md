@@ -71,6 +71,7 @@ In addition to depending on the C Standard Libraries, Open
 CF-lite depends on:
 
   * [International Components for Unicode](http://icu-project.org/)
+  * [Kqueue](https://github.com/mheily/libkqueue) (FreeBSD and Linux only)
   * [Time Zone Database](https://www.iana.org/time-zones)
   * [Universally Unique ID Library](http://e2fsprogs.sourceforge.net)
   * [zlib](http://zlib.net/)
@@ -79,7 +80,7 @@ The dependencies can either be satisfied by building them directly
 from source, or on system such as Linux, installing them using a
 package management system. For example, on Debian systems:
 
-    % sudo apt-get install uuid-dev libicu-dev zlib1g-dev
+    % sudo apt-get install uuid-dev libicu-dev libkqueue-dev zlib1g-dev
 
 If you want to modify or otherwise maintain the Open CF-lite build
 system, see "Maintaining Open CF-lite" below for more information.

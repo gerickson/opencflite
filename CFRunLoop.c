@@ -1106,7 +1106,7 @@ struct __CFRunLoopMode {
 #if DEPLOYMENT_TARGET_WINDOWS
     DWORD _msgQMask;
     void (*_msgPump)(void);
-#endif // DEPLOYMENT_TARGET_WINDOWS
+#endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 };
 
 CF_INLINE void __CFRunLoopModeLock(CFRunLoopModeRef rlm) {

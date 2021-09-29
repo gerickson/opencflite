@@ -1811,24 +1811,7 @@ static CFIndex __CFRunLoopInsertionIndexInTimerArray(CFArrayRef array, CFRunLoop
     return lastTestLEQ ? idx + 1 : idx;
 }
 
-// call with rlm and its run loop locked, and the TSRLock locked; rlt not locked; returns with same state
-#if DEPLOYMENT_TARGET_MACOSX
-static void __CFRepositionTimerInMode(CFRunLoopModeRef rlm, CFRunLoopTimerRef rlt, Boolean isInArray) __attribute__((noinline));
-#endif
-static void __CFRepositionTimerInMode(CFRunLoopModeRef rlm, CFRunLoopTimerRef rlt, Boolean isInArray) {
-    if (!rlt || !rlm->_timers) return;
-    Boolean found = false;
-    if (isInArray) {
-	CFIndex idx = CFArrayGetFirstIndexOfValue(rlm->_timers, CFRangeMake(0, CFArrayGetCount(rlm->_timers)), rlt);
-	if (kCFNotFound != idx) {
-	    CFRetain(rlt);
-	    CFArrayRemoveValueAtIndex(rlm->_timers, idx);
-	    found = true;
-	}
-    }
-    if (!found && isInArray) return;
-    CFIndex newIdx = __CFRunLoopInsertionIndexInTimerArray(rlm->_timers, rlt);
-    CFArrayInsertValueAtIndex(rlm->_timers, newIdx, rlt);
+static void __CFArmNextTimerInMode(CFRunLoopModeRef rlm) {
     CFRunLoopTimerRef nextTimer = NULL;
     for (CFIndex idx = 0, cnt = CFArrayGetCount(rlm->_timers); idx < cnt; idx++) {
         CFRunLoopTimerRef t = (CFRunLoopTimerRef)CFArrayGetValueAtIndex(rlm->_timers, idx);
@@ -1854,6 +1837,27 @@ static void __CFRepositionTimerInMode(CFRunLoopModeRef rlm, CFRunLoopTimerRef rl
         SetWaitableTimer(rlm->_timerPort, &dueTime, 0, NULL, NULL, FALSE);
 #endif
     }
+}
+
+// call with rlm and its run loop locked, and the TSRLock locked; rlt not locked; returns with same state
+#if DEPLOYMENT_TARGET_MACOSX
+static void __CFRepositionTimerInMode(CFRunLoopModeRef rlm, CFRunLoopTimerRef rlt, Boolean isInArray) __attribute__((noinline));
+#endif
+static void __CFRepositionTimerInMode(CFRunLoopModeRef rlm, CFRunLoopTimerRef rlt, Boolean isInArray) {
+    if (!rlt || !rlm->_timers) return;
+    Boolean found = false;
+    if (isInArray) {
+	CFIndex idx = CFArrayGetFirstIndexOfValue(rlm->_timers, CFRangeMake(0, CFArrayGetCount(rlm->_timers)), rlt);
+	if (kCFNotFound != idx) {
+	    CFRetain(rlt);
+	    CFArrayRemoveValueAtIndex(rlm->_timers, idx);
+	    found = true;
+	}
+    }
+    if (!found && isInArray) return;
+    CFIndex newIdx = __CFRunLoopInsertionIndexInTimerArray(rlm->_timers, rlt);
+    CFArrayInsertValueAtIndex(rlm->_timers, newIdx, rlt);
+    __CFArmNextTimerInMode(rlm);
     if (isInArray) CFRelease(rlt);
 }
 
@@ -1882,31 +1886,7 @@ static Boolean __CFRunLoopDoTimer(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLo
 	oldFireTSR = rlt->_fireTSR;
 	__CFRunLoopTimerFireTSRUnlock();
 
-        CFRunLoopTimerRef nextTimer = NULL;
-        for (CFIndex idx = 0, cnt = CFArrayGetCount(rlm->_timers); idx < cnt; idx++) {
-            CFRunLoopTimerRef t = (CFRunLoopTimerRef)CFArrayGetValueAtIndex(rlm->_timers, idx);
-            if (!__CFRunLoopTimerIsFiring(t)) {
-                nextTimer = t;
-                break;
-            }
-        }
-        if (nextTimer) {
-            int64_t fireTSR = nextTimer->_fireTSR;
-            fireTSR = (fireTSR / tenus + 1) * tenus;
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-            mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
-#elif DEPLOYMENT_TARGET_LINUX
-            struct itimerspec its;
-            //? (void)signal_no_reset(SIGALRM, alarming);
-            its.it_interval.tv_sec = its.it_value.tv_sec = fireTSR; // __CFUInt64ToAbsoluteTime(fireTSR);
-            its.it_interval.tv_nsec = its.it_value.tv_nsec = 0;
-            timer_settime(rlm->_timerPort, 0, &its, 0); 
-#elif DEPLOYMENT_TARGET_WINDOWS
-            LARGE_INTEGER dueTime;
-            dueTime.QuadPart = __CFTSRToFiletime(fireTSR);
-            SetWaitableTimer(rlm->_timerPort, &dueTime, 0, NULL, NULL, FALSE);
-#endif
-        }
+    __CFArmNextTimerInMode(rlm);
 
 	__CFRunLoopModeUnlock(rlm);
 	__CFRunLoopUnlock(rl);
@@ -1938,31 +1918,7 @@ static Boolean __CFRunLoopDoTimer(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLo
             // skipped because it was firing.  Need to redo the
             // min timer calculation in case rlt should now be that
             // timer instead of whatever was chosen.
-            CFRunLoopTimerRef nextTimer = NULL;
-            for (CFIndex idx = 0, cnt = CFArrayGetCount(rlm->_timers); idx < cnt; idx++) {
-                CFRunLoopTimerRef t = (CFRunLoopTimerRef)CFArrayGetValueAtIndex(rlm->_timers, idx);
-                if (!__CFRunLoopTimerIsFiring(t)) {
-                    nextTimer = t;
-                    break;
-                }
-            }
-            if (nextTimer) {
-                int64_t fireTSR = nextTimer->_fireTSR;
-                fireTSR = (fireTSR / tenus + 1) * tenus;
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-                mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
-#elif DEPLOYMENT_TARGET_LINUX
-                struct itimerspec its;
-                //? (void)signal_no_reset(SIGALRM, alarming);
-                its.it_interval.tv_sec = its.it_value.tv_sec = fireTSR; // __CFUInt64ToAbsoluteTime(fireTSR);
-                its.it_interval.tv_nsec = its.it_value.tv_nsec = 0;
-                timer_settime(rlm->_timerPort, 0, &its, 0); 
-#else
-                LARGE_INTEGER dueTime;
-                dueTime.QuadPart = __CFTSRToFiletime(fireTSR);
-                SetWaitableTimer(rlm->_timerPort, &dueTime, 0, NULL, NULL, FALSE);
-#endif
-		}
+            __CFArmNextTimerInMode(rlm);
 	    } else {
 	    int64_t nextFireTSR = 0LL;
             int64_t intervalTSR = 0LL;
@@ -3024,31 +2980,7 @@ void CFRunLoopRemoveTimer(CFRunLoopRef rl, CFRunLoopTimerRef rlt, CFStringRef mo
                 timer_settime(rlm->_timerPort, 0, &disarm, 0); 
 #endif
             } else if (0 == idx) {
-                CFRunLoopTimerRef nextTimer = NULL;
-                for (CFIndex idx = 0, cnt = CFArrayGetCount(rlm->_timers); idx < cnt; idx++) {
-                    CFRunLoopTimerRef t = (CFRunLoopTimerRef)CFArrayGetValueAtIndex(rlm->_timers, idx);
-                    if (!__CFRunLoopTimerIsFiring(t)) {
-                        nextTimer = t;
-                        break;
-                    }
-                }
-                if (nextTimer) {
-		    int64_t fireTSR = nextTimer->_fireTSR;
-		    fireTSR = (fireTSR / tenus + 1) * tenus;
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-		    mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
-#elif DEPLOYMENT_TARGET_LINUX
-                    struct itimerspec its;
-                    //? (void)signal_no_reset(SIGALRM, alarming);
-                    its.it_interval.tv_sec = its.it_value.tv_sec = fireTSR; // __CFUInt64ToAbsoluteTime(fireTSR);
-                    its.it_interval.tv_nsec = its.it_value.tv_nsec = 0;
-                    timer_settime(rlm->_timerPort, TIMER_ABSTIME, &its, 0); 
-#elif DEPLOYMENT_TARGET_WINDOWS
-                    LARGE_INTEGER dueTime;
-                    dueTime.QuadPart = __CFTSRToFiletime(fireTSR);
-                    SetWaitableTimer(rlm->_timerPort, &dueTime, 0, NULL, NULL, FALSE);
-#endif
-                }
+                __CFArmNextTimerInMode(rlm);
             }
         }
         if (NULL != rlm) {

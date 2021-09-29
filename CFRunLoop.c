@@ -1899,6 +1899,20 @@ static CFIndex __CFRunLoopInsertionIndexInTimerArray(CFArrayRef array, CFRunLoop
     return lastTestLEQ ? idx + 1 : idx;
 }
 
+static void __CFDisarmTimerInMode(CFRunLoopModeRef rlm) {
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+    AbsoluteTime dummy;
+    mk_timer_cancel(rlm->_timerPort, &dummy);
+#elif DEPLOYMENT_TARGET_WINDOWS
+    CancelWaitableTimer(rlm->_timerPort);
+#elif DEPLOYMENT_TARGET_LINUX
+    struct itimerspec disarm;
+    disarm.it_interval.tv_sec = disarm.it_value.tv_sec = 0;
+    disarm.it_interval.tv_nsec = disarm.it_value.tv_nsec = 0;
+    timer_settime(rlm->_timerPort, 0, &disarm, 0);
+#endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+}
+
 static void __CFArmNextTimerInMode(CFRunLoopModeRef rlm) {
     CFRunLoopTimerRef nextTimer = NULL;
     for (CFIndex idx = 0, cnt = CFArrayGetCount(rlm->_timers); idx < cnt; idx++) {
@@ -3056,17 +3070,7 @@ void CFRunLoopRemoveTimer(CFRunLoopRef rl, CFRunLoopTimerRef rlt, CFStringRef mo
             __CFRunLoopTimerUnlock(rlt);
             CFArrayRemoveValueAtIndex(rlm->_timers, idx);
             if (0 == CFArrayGetCount(rlm->_timers)) {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-                AbsoluteTime dummy;
-                mk_timer_cancel(rlm->_timerPort, &dummy);
-#elif DEPLOYMENT_TARGET_WINDOWS
-                CancelWaitableTimer(rlm->_timerPort);
-#elif DEPLOYMENT_TARGET_LINUX
-                struct itimerspec disarm;
-                disarm.it_interval.tv_sec = disarm.it_value.tv_sec = 0;
-                disarm.it_interval.tv_nsec = disarm.it_value.tv_nsec = 0;
-                timer_settime(rlm->_timerPort, 0, &disarm, 0); 
-#endif
+                __CFDisarmTimerInMode(rlm);
             } else if (0 == idx) {
                 __CFArmNextTimerInMode(rlm);
             }

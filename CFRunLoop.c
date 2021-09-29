@@ -1269,21 +1269,21 @@ CF_EXPORT CFRunLoopRef _CFRunLoopGet0(pthread_t t) {
         __CFSpinUnlock(&loopsLock);
 	CFMutableDictionaryRef dict = CFDictionaryCreateMutable(kCFAllocatorSystemDefault, 0, NULL, &kCFTypeDictionaryValueCallBacks);
 	CFRunLoopRef mainLoop = __CFRunLoopCreate(_CFMainPThread);
-	CFDictionarySetValue(dict, pthreadPointer(_CFMainPThread), mainLoop);
+	CFDictionarySetValue(dict, (const void *)pthreadPointer(_CFMainPThread), mainLoop);
 	if (!OSAtomicCompareAndSwapPtrBarrier(NULL, dict, (void * volatile *)&__CFRunLoops)) {
 	    CFRelease(dict);
 	}
 	CFRelease(mainLoop);
         __CFSpinLock(&loopsLock);
     }
-    CFRunLoopRef loop = (CFRunLoopRef)CFDictionaryGetValue(__CFRunLoops, pthreadPointer(t));
+    CFRunLoopRef loop = (CFRunLoopRef)CFDictionaryGetValue(__CFRunLoops, (const void *)pthreadPointer(t));
     if (!loop) {
         __CFSpinUnlock(&loopsLock);
 	CFRunLoopRef newLoop = __CFRunLoopCreate(t);
         __CFSpinLock(&loopsLock);
-	loop = (CFRunLoopRef)CFDictionaryGetValue(__CFRunLoops, pthreadPointer(t));
+        loop = (CFRunLoopRef)CFDictionaryGetValue(__CFRunLoops, (const void *)pthreadPointer(t));
 	if (!loop) {
-	    CFDictionarySetValue(__CFRunLoops, pthreadPointer(t), newLoop);
+	    CFDictionarySetValue(__CFRunLoops, (const void *)pthreadPointer(t), newLoop);
 	    loop = newLoop;
 	}
 	CFRelease(newLoop);
@@ -1306,7 +1306,7 @@ CFRunLoopRef _CFRunLoopGet0b(pthread_t t) {
     __CFSpinLock(&loopsLock);
     CFRunLoopRef loop = NULL;
     if (__CFRunLoops) {
-        loop = (CFRunLoopRef)CFDictionaryGetValue(__CFRunLoops, pthreadPointer(t));
+        loop = (CFRunLoopRef)CFDictionaryGetValue(__CFRunLoops, (const void *)pthreadPointer(t));
     }
     __CFSpinUnlock(&loopsLock);
     return loop;
@@ -1320,9 +1320,9 @@ __private_extern__ void __CFFinalizeRunLoop(uintptr_t data) {
     if (data <= 1) {
 	__CFSpinLock(&loopsLock);
 	if (__CFRunLoops) {
-	    rl = (CFRunLoopRef)CFDictionaryGetValue(__CFRunLoops, pthreadPointer(pthread_self()));
+	    rl = (CFRunLoopRef)CFDictionaryGetValue(__CFRunLoops, (const void *)pthreadPointer(pthread_self()));
 	    if (rl) CFRetain(rl);
-	    CFDictionaryRemoveValue(__CFRunLoops, pthreadPointer(pthread_self()));
+	    CFDictionaryRemoveValue(__CFRunLoops, (const void *)pthreadPointer(pthread_self()));
 	}
 	__CFSpinUnlock(&loopsLock);
     } else {

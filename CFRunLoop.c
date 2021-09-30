@@ -1242,6 +1242,7 @@ static CFRunLoopModeRef __CFRunLoopFindMode(CFRunLoopRef rl, CFStringRef modeNam
     rlm->_observerMask = 0;
 
     rlm->_portSet = __CFPortSetAllocate();
+    if (__kCFPortSetNull == rlm->_portSet) HALT;
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
     rlm->_timerPort = mk_timer_create();
@@ -1252,6 +1253,8 @@ static CFRunLoopModeRef __CFRunLoopFindMode(CFRunLoopRef rl, CFStringRef modeNam
     rlm->_timerPort = __CFPortAllocate();
     EV_SET(rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, EV_ADD, 0, 0, NULL);
 #endif
+    if (__CFPortEqual(__kCFPortNull, rlm->_timerPort)) HALT;
+
     if (!__CFPortSetInsert(rlm->_timerPort, rlm->_portSet)) HALT;
     if (!__CFPortSetInsert(rl->_wakeUpPort, rlm->_portSet)) HALT;
 #if DEPLOYMENT_TARGET_WINDOWS    

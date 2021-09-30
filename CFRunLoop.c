@@ -806,10 +806,15 @@ typedef struct ___CFPortSet {
 
 static __CFPortSet __CFPortSetAllocate(void) {
     __CFPortSet result = (__CFPortSet)CFAllocatorAllocate(kCFAllocatorSystemDefault, sizeof(struct ___CFPortSet), 0);
-    result->used = 0;
-    result->size = __kCFPortSetSizeDefault;
-    result->ports = (__CFPortPointer)CFAllocatorAllocate(kCFAllocatorSystemDefault, result->size * __kCFPortSize, 0);
-    CF_SPINLOCK_INIT_FOR_STRUCTS(result->lock);
+
+    if (result != __kCFPortSetNull) {
+        result->used  = 0;
+        result->size  = __kCFPortSetSizeDefault;
+        result->ports = (__CFPortPointer)CFAllocatorAllocate(kCFAllocatorSystemDefault, result->size * __kCFPortSize, 0);
+
+        CF_SPINLOCK_INIT_FOR_STRUCTS(result->lock);
+    }
+
     return result;
 }
 

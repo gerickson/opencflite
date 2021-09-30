@@ -1332,7 +1332,7 @@ static CFRunLoopModeRef __CFRunLoopFindMode(CFRunLoopRef rl, CFStringRef modeNam
     if (__CFPortEqual(__kCFPortNull, rlm->_timerPort)) HALT;
 
     if (!__CFPortSetInsert(rlm->_timerPort, rlm->_portSet)) HALT;
-    if (!__CFPortSetInsert(rl->_wakeUpPort, rlm->_portSet)) HALT;
+    //if (!__CFPortSetInsert(rl->_wakeUpPort, rlm->_portSet)) HALT;
 #if DEPLOYMENT_TARGET_WINDOWS    
     rlm->_msgQMask = 0;
     rlm->_msgPump = NULL;

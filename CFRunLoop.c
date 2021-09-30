@@ -817,23 +817,43 @@ static void __CFPortSetFree(__CFPortSet portSet) {
     CFAllocatorDeallocate(kCFAllocatorSystemDefault, portSet);
 }
 
+/**
+ *  @brief
+ *    Potentially rotate the ports if the number in use is greater
+ *    than one (1).
+ *
+ *  This is done to effect a pseudo-round robin scheme that ensures
+ *  fairness in the platform-specific wait mechanism to ensure that
+ *  the first port that is triggered on one wait is not always the
+ *  first to be dispatched on subsequent waits.
+ *
+ *  @param[in]  portSet  The #__CFPortSet for which to rotate the
+ *                       #__CFPort objects in the port set.
+ *
+ */
+static void __CFPortSetMaybeRotatePortsLocked(__CFPortSet portSet) {
+    if (portSet->used > 1) {
+        const uint16_t    lastPort     = portSet->used - 1;
+        const size_t      amountToMove = lastPort * __kCFPortSize;
+        __CFPortTemporary temporaryPort;
+
+        __CFPortCopy(&temporaryPort, &portSet->ports[0]);
+
+        memmove(&portSet->ports[0], &portSet->ports[1], amountToMove);
+
+        __CFPortCopy(&portSet->ports[lastPort], &temporaryPort);
+    }
+}
+
 // Returns portBuf if ports fit in that space, else returns another ptr that must be freed
-static __CFPortPointer __CFPortSetGetPorts(__CFPortSet portSet, __CFPortPointer portBuf, uint32_t bufSize, uint32_t *portsUsed) {
+static __CFPortPointer __CFPortSetGetOrCopyPorts(__CFPortSet portSet, __CFPortPointer portBuf, uint32_t bufSize, uint32_t *portsUsed) {
     __CFSpinLock(&(portSet->lock));
     __CFPortPointer result = portBuf;
     if (bufSize < portSet->used)
-	result = (__CFPortPointer)CFAllocatorAllocate(kCFAllocatorSystemDefault, portSet->used * sizeof(__CFPort), 0);
-    if (portSet->used > 1) {
-	    // rotate the ports to vaguely simulate round-robin behaviour
-	    const uint16_t    lastPort = portSet->used - 1;
-        const size_t      amountToMove = lastPort * __kCFPortSize;
-        __CFPortTemporary swapPort;
+            result = (__CFPortPointer)CFAllocatorAllocate(kCFAllocatorSystemDefault, portSet->used * __kCFPortSize, 0);
 
-        __CFPortCopy(&swapPort, &portSet->ports[0]);
+    __CFPortSetMaybeRotatePorts(portSet);
 
-	    memmove(&portSet->ports[0], &portSet->ports[1], amountToMove);
-        __CFPortCopy(&portSet->ports[lastPort], &swapPort);
-    }
     memmove(result, portSet->ports, portSet->used * __kCFPortSize);
     *portsUsed = portSet->used;
     __CFSpinUnlock(&(portSet->lock));
@@ -2618,7 +2638,7 @@ static Boolean __CFRunLoopWaitForMultipleObjects(__CFPortSet portSet, HANDLE *on
     
     if (portSet) {
 	// copy out the handles to be safe from other threads at work
-	handles = __CFPortSetGetPorts(portSet, handleBuf, MAXIMUM_WAIT_OBJECTS, &handleCount);
+	handles = __CFPortSetGetOrCopyPorts(portSet, handleBuf, MAXIMUM_WAIT_OBJECTS, &handleCount);
 	freeHandles = (handles != handleBuf);
     } else {
 	handles = onePort;

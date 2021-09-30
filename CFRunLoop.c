@@ -2611,12 +2611,11 @@ struct __timeout_context {
     int64_t termTSR;
 };
 
+#if __DISPATCH__
 static void __CFRunLoopTimeoutCancel(void *arg) {
     struct __timeout_context *context = (struct __timeout_context *)arg;
     CFRelease(context->rl);
-#if __DISPATCH__
     dispatch_release(context->ds);
-#endif
     free(context);
 }
 
@@ -2626,6 +2625,7 @@ static void __CFRunLoopTimeout(void *arg) {
     CFRunLoopWakeUp(context->rl);
     // The interval is DISPATCH_TIME_FOREVER, so this won't fire again
 }
+#endif // __DISPATCH__
 
 #if !DEPLOYMENT_TARGET_WINDOWS
 static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInterval seconds, Boolean stopAfterHandle, CFRunLoopModeRef previousMode) __attribute__((noinline));

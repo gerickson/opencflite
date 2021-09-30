@@ -749,10 +749,13 @@ typedef struct ___CFPortSet {
     CFSpinLock_t lock;		// insert and remove must be thread safe, like the Mach calls
 } *__CFPortSet;
 
+#define __kCFPortSetSizeDefault   4
+#define __kCFPortSetSizeIncrement 4
+
 static __CFPortSet __CFPortSetAllocate(void) {
     __CFPortSet result = (__CFPortSet)CFAllocatorAllocate(kCFAllocatorSystemDefault, sizeof(struct ___CFPortSet), 0);
     result->used = 0;
-    result->size = 4;
+    result->size = __kCFPortSetSizeDefault;
     result->ports = (__CFPort *)CFAllocatorAllocate(kCFAllocatorSystemDefault, result->size * sizeof(__CFPort), 0);
     CF_SPINLOCK_INIT_FOR_STRUCTS(result->lock);
     return result;
@@ -788,7 +791,7 @@ static Boolean __CFPortSetInsert(__CFPort port, __CFPortSet portSet) {
     }
     __CFSpinLock(&(portSet->lock));
     if (portSet->used >= portSet->size) {
-        portSet->size += 4;
+        portSet->size += __kCFPortSetSizeIncrement;
         portSet->ports = (__CFPort *)CFAllocatorReallocate(kCFAllocatorSystemDefault, portSet->ports, portSet->size * sizeof(__CFPort), 0);
     }
     if (portSet->used >= MAXIMUM_WAIT_OBJECTS) {

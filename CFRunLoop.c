@@ -2774,8 +2774,8 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
     Boolean didDispatchPortLastTime = true;
 	int32_t retVal = 0;
     do {
-        uint8_t msg_buffer[3 * 1024];
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+        uint8_t             msg_buffer[3 * 1024];
         mach_msg_header_t * msg = NULL;
 #elif DEPLOYMENT_TARGET_WINDOWS
         HANDLE              livePort = NULL;

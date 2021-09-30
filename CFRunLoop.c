@@ -110,8 +110,6 @@ static pthread_t kNilPthreadT = (pthread_t)0;
 
 CF_EXPORT bool CFDictionaryGetKeyIfPresent(CFDictionaryRef dict, const void *key, const void **actualkey);
 
-// In order to reuse most of the code across Mach and Windows v1 RunLoopSources, we define a
-// simple abstraction layer spanning Mach ports and Windows HANDLES
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 
 __private_extern__ uint32_t __CFGetProcessPortCount(void) {
@@ -200,6 +198,422 @@ if (0 != result) {
     }
 }
 
+// In order to reuse most of the code across Mach, Linux, FreeBSD, and
+// Windows v1 RunLoopSources, we define a simple abstraction layer
+// spanning Mach ports, kevents, and Windows HANDLES:
+//
+//   - Types
+//
+//     * __CFPort
+//     * __CFPortPointer
+//     * __CFPortTemporary
+//     * __CFPortSet
+//
+//   - Constants
+//
+//     * __kCFPortSize
+//     * __kCFPortNull
+//     * __kCFPortPointerNull
+//     * __kCFPortSetNull
+//
+//   - __CFPort Object Operations
+//
+//     * __CFPortAllocate
+//     * __CFPortFree
+//     * __CFPortCopy
+//     * __CFPortEqual
+//
+//   - __CFPortSet Object Container Operations
+//
+//     * __CFPortSetAllocate
+//     * __CFPortSetFree
+//     * __CFPortSetGetSize
+//     * __CFPortSetGetPorts
+//     * __CFPortSetGetOrCopyPorts
+//     * __CFPortSetInsert
+//     * __CFPortSetUpdate
+//     * __CFPortSetRemove
+
+/**
+ *  @typedef __CFPort
+ *
+ *  @brief
+ *    An abstract type representing an asynchronous, waitable entity.
+ *
+ *  Such a type can either be waited upon individually or as a
+ *  collection, the latter when part of a #__CFPortSet.
+ *
+ *  Such types are dynamically allocated and managed through
+ *  operations #__CFPortAllocate and #__CFPortFree.
+ *
+ *  @sa __CFPortPointer
+ *  @sa __CFPortTemporary
+ *
+ *  @sa __CFPortAllocate
+ *  @sa __CFPortFree
+ *
+ */
+
+/**
+ *  @typedef __CFPortPointer
+ *
+ *  @brief
+ *    An abstract type representing a pointer to #__CFPort.
+ *
+ *  Depending on the implementation, this may be identical to
+ *  #__CFPort; however, the types should be treated distinctly.
+ *
+ *  @sa __CFPort
+ *  @sa __CFPortTemporary
+ *
+ */
+
+/**
+ *  @typedef __CFPortTemporary
+ *
+ *  @brief
+ *    An abstract type representing an asynchronous, waitable entity.
+ *
+ *  This type is distinct from #__CFPort in that it can be allocated
+ *  on the stack rather than dynamically managed via #__CFPortAllocate
+ *  and #__CFPortFree. While it may be the same underlying type as
+ *  #__CFPort, it should be treated distinctly.
+ *
+ *  To ensure portability, copies between #__CFPort and
+ *  #__CFPortTemporary should be made using #__CFPortCopy even if they
+ *  are trivially copyable using the assignment operator, '='.
+ *
+ *  @sa __CFPort
+ *  @sa __CFPortPointer
+ *
+ *  @sa __CFPortCopy
+ *
+ */
+
+/**
+ *  @def __kCFPortSize
+ *
+ *  @brief
+ *    The size, in bytes, to allocate, copy, or move when manipulating
+ *    a #__CFPort or #__CFPortTemporary object.
+ *
+ *  @note
+ *    Since the underlying types may be different from what's
+ *    expected, portable code should never directly use
+ *    'sizeof(#__CFPort)' but should instead rely on this constant.
+ *
+ */
+
+/**
+ *  @def __kCFPortNull
+ *
+ *  @brief
+ *    A constant sentinel value indicating an invalid or deallocated #__CFPort.
+ *
+ *  This should be returned, for example, if #__CFPortAllocate cannot
+ *  allocate a #__CFPort.
+ *
+ */
+
+/**
+ *  @def __kCFPortPointerNull
+ *
+ *  @brief
+ *    A constant sentinel value indicating an invalid #__CFPortPointer.
+ *
+ */
+
+/**
+ *  @function __CFPortAllocate
+ *
+ *  @brief
+ *    Allocate a waitable __CFPort instance.
+ *
+ *  This attempts to allocate a #__CFPort instance which acts as an
+ *  asynchronous waitable object for a run loop.
+ *
+ *  @returns
+ *    A __CFPort instance on success; otherwise, __kCFPortNull.
+ *
+ *  @sa __CFPortFree
+ *
+ */
+
+/**
+ *  @function __CFPortFree
+ *
+ *  @brief
+ *    Deallocate a waitable #__CFPort instance.
+ *
+ *  This attempts to deallocate the resources associated with a
+ *  __CFPort instance.
+ *
+ *  @param[in,out]  port  The #__CFPort instance to deallocate.
+ *
+ *  @sa __CFPortAllocate
+ *
+ */
+
+/**
+ *  @function __CFPortCopy
+ *
+ *  @brief
+ *    Copy a __CFPort instance.
+ *
+ *  This copies the specified #__CFPort source instance to the
+ *  provided destination instance.
+ *
+ *  @param[out]  dest   The __CFPort instance to copy @a src to.
+ *  @param[in]   src    The __CFPort instance to copy to @a dest.
+ *
+ */
+
+/**
+ *  @function __CFPortEqual
+ *
+ *  @brief
+ *    Compare two #__CFPort instances for equality.
+ *
+ *  This compares the specified #__CFPort instances for equality.
+ *
+ *  The actual determination of equality is platform-dependent.
+ *
+ *  @param[out]  dest   The first #__CFPort instance to compare.
+ *  @param[in]   src    The second #__CFPort instance to compare.
+ *
+ *  @returns
+ *    True if the instances are equal; otherwise, false.
+ *
+ */
+
+/**
+ *  @typedef __CFPortSet
+ *
+ *  @brief
+ *    An abstract type representing a collection of asynchronous,
+ *    waitable #__CFPort entities.
+ *
+ *  @sa __CFPortSetAllocate
+ *  @sa __CFPortSetFree
+ *
+ */
+
+/**
+ *  @def __kCFPortSetNull
+ *
+ *  @brief
+ *    A constant sentinel value indicating an invalid or deallocated
+ *    #__CFPortSet.
+ *
+ *  This should be returned, for example, if #__CFPortSetAllocate cannot
+ *  allocate a __CFPortSet.
+ *
+ */
+
+/**
+ *  @function __CFPortSetAllocate
+ *
+ *  @brief
+ *    Allocate a collection for asynchronous waitable #__CFPort
+ *    objects.
+ *
+ *  This allocates storage for a collection for asynchronous waitable
+ *  #__CFPort objects. Once created, objects may be added with
+ *  #__CFPortSetInsert, updated in place with #__CFPortSetUpdate, or
+ *  removed with #__CFPortSetRemove.
+ *
+ *  @note
+ *    The allocation is guaranteed to be such that
+ *    #__CFPortSetGetPorts returns a contiguous range of #__CFPort
+ *    objects as required by the platform-specfic waitable collection
+ *    interface(s).
+ *
+ *  @returns
+ *    A valid port set if successful; otherwise #__kCFPortSetNull on
+ *    failure.
+ *
+ *  @sa __CFPortSetFree
+ *  @sa __CFPortSetInsert
+ *  @sa __CFPortSetUpdate
+ *  @sa __CFPortSetRemove
+ *  @sa __CFPortSetGetPorts
+ *
+ */
+
+/**
+ *  @function __CFPortSetFree
+ *
+ *  @brief
+ *    Deallocate a #__CFPort collection.
+ *
+ *  @param[in,out]  portSet  The #__CFPortSet instance to deallocate.
+ *
+ */
+
+/**
+ *  @function __CFPortSetGetSize
+ *
+ *  @brief
+ *    Return the number of #__CFPort elements in the port set.
+ *
+ *  @param[in]  portSet  The #__CFPortSet for which to return the
+ *                       number of #__CFPort elements in the set.
+ *
+ *  This returns the number of #__CFPort elements in the port set.
+ *
+ */
+
+/**
+ *  @function __CFPortSetGetPorts
+ *
+ *  @brief
+ *    Return the continguous storage associated with the collection of
+ *    #__CFPort objects in the port set.
+ *
+ *  The returned storage is suitable for by the platform-specfic
+ *  waitable collection interface(s).
+ *
+ *  @note
+ *    This interface allows operation directly on the objects in the
+ *    port set. If there is a desire to work on a copy of those
+ *    objects, #__CFPortSetGetOrCopyPorts should be used instead.
+ *
+ *    In addition, use of this interface should be conditioned with
+ *    #__CFPortSetGetSize. If the returns size is zero (0), then the
+ *    pointer returned by this method is invalid and should not be
+ *    used as a valid #__CFPort.
+ *
+ *    The ports, when there exists more than one (1) in the set, are
+ *    rotated on each call. This is done to effect a pseudo-round
+ *    robin scheme that ensures fairness in the platform-specific
+ *    wait mechanism to ensure that the first port that is triggered
+ *    on one wait is not always the first to be dispatched on
+ *    subsequent waits.
+ *
+ *  @param[in]  portSet  The #__CFPortSet for which to return the
+ *                       contiguous storage associated with the
+ *                       #__CFPort objects in the collection.
+ *
+ *  @returns
+ *    A pointer to the storage for the first #__CFPort in the
+ *    collection.
+ *
+ *  @sa __CFPortSetGetOrCopyPorts
+ *  @sa __CFPortSetGetSize
+ *
+ */
+
+/**
+ *  @function __CFPortSetGetOrCopyPorts
+ *
+ *  @brief
+ *    Copy to caller-provided or allocate-and-copy to
+ *    allocator-provided continguous storage the collection of
+ *    #__CFPort objects in the port set.
+ *
+ *  The returned storage is suitable for by the platform-specfic
+ *  waitable collection interface(s).
+ *
+ *  @note
+ *    If there is a desire to work directly on the #__CFPort objects
+ *    in the port set, #__CFPortSetGetPorts should be used instead.
+ *
+ *    The ports, when there exists more than one (1) in the set, are
+ *    rotated on each call. This is done to effect a pseudo-round
+ *    robin scheme that ensures fairness in the platform-specific
+ *    wait mechanism to ensure that the first port that is triggered
+ *    on one wait is not always the first to be dispatched on
+ *    subsequent waits.
+ *
+ *  @param[in]      portSet          The #__CFPortSet for which to
+ *                                   copy or allocate-and-copy the
+ *                                   collection #__CFPort objects in
+ *                                   the port set.
+ *  @param[in,out]  portBuf          A pointer to contiguous storage
+ *                                   in which to copy the collection
+ *                                   of #__CFPort objects in the port
+ *                                   set, if large enough to hold
+ *                                   them.
+ *  @param[in]      portBufElements  The number of #__CFPort objects
+ *                                   that @a portBuf is capable of
+ *                                   storing.
+ *  @param[in,out]  portsUsed        A pointer to storage for the
+ *                                   number of #__CFPort elements
+ *                                   either copied into @a portBuf or
+ *                                   into the allocator-provided
+ *                                   storage.
+ *
+ *  @returns
+ *    On success, a pointer to the storage for the first #__CFPort in
+ *    the collection is returned. If @a portBuf was sufficiently large
+ *    to contain the port set, @a portBuf will be returned. Otherwise,
+ *    the pointer will be to the allocator-provided storage and must
+ *    be released with @a CFAllocatorDeallocate when no longer needed.
+ *
+ *    On failure, #__kCFPortSetNull will be returned, either because
+ *    @a portSet itself was #__kCFPortSetNull or because no
+ *    allocator-provided storage could be created.
+ *
+ *  @sa __CFPortSetGetPorts
+ *
+ */
+
+/**
+ *  @function __CFPortSetInsert
+ *
+ *  @brief
+ *    Adds the specified #__CFPort object into the port set.
+ *
+ *  @note
+ *    This does NOT handle duplicate detection. Consequently, it is
+ *    possible to insert multiple instances of a #__CFPort into the
+ *    port set.
+ *
+ *  @param[in]  port     The #__CFPort to insert into the port set.
+ *  @param[in]  portSet  The #__CFPortSet for which to insert the
+ *                       #__CFPort object.
+ *
+ *  @returns
+ *    True if the port was successfully added to the port set;
+ *    otherwise, false.
+ *
+ */
+
+/**
+ *  @function __CFPortSetUpdate
+ *
+ *  @brief
+ *    Updates the specified #__CFPort object in the port set.
+ *
+ *  This updates the data associated with the specified port in the
+ *  port set such that the specified port and the port in the set are
+ *  equal on success.
+ *
+ *  @param[in]  port     The #__CFPort to update.
+ *  @param[in]  portSet  The #__CFPortSet for which to update the
+ *                       #__CFPort object.
+ *
+ *  @returns
+ *    True if the port was successfully found and updated; otherwise,
+ *    false.
+ *
+ */
+
+/**
+ *  @function __CFPortSetRemove
+ *
+ *  @brief
+ *    Removes the specified #__CFPort object from the port set.
+ *
+ *  @param[in]  port     The #__CFPort to remove from the port set.
+ *  @param[in]  portSet  The #__CFPortSet for which to remove the
+ *                       #__CFPort object.
+ *
+ *  @returns
+ *    True if the port was successfully removed from the port set;
+ *    otherwise, false.
+ *
+ */
 
 typedef mach_port_t __CFPort;
 #define CFPORT_NULL MACH_PORT_NULL

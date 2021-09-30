@@ -851,18 +851,37 @@ static void __CFPortSetMaybeRotatePortsLocked(__CFPortSet portSet) {
     }
 }
 
-// Returns portBuf if ports fit in that space, else returns another ptr that must be freed
-static __CFPortPointer __CFPortSetGetOrCopyPorts(__CFPortSet portSet, __CFPortPointer portBuf, uint32_t bufSize, uint32_t *portsUsed) {
-    __CFSpinLock(&(portSet->lock));
-    __CFPortPointer result = portBuf;
-    if (bufSize < portSet->used)
+static __CFPortPointer __CFPortSetGetOrCopyPorts(__CFPortSet portSet, __CFPortPointer portBuf, uint16_t portBufElements, uint16_t *portsUsed) {
+    __CFPortPointer result = __kCFPortNull;
+
+    if (portSet != __kCFPortSetNull) {
+        __CFSpinLock(&(portSet->lock));
+
+        // If the caller specified an insufficient number of buffer
+        // elements, allocate space.
+
+        if (portBufElements < portSet->used) {
             result = (__CFPortPointer)CFAllocatorAllocate(kCFAllocatorSystemDefault, portSet->used * __kCFPortSize, 0);
+        } else {
+            result = portBuf;
+        }
 
-    __CFPortSetMaybeRotatePorts(portSet);
+        if (result != __kCFPortNull) {
+            // rotate the ports to vaguely simulate round-robin
+            // behaviour
 
-    memmove(result, portSet->ports, portSet->used * __kCFPortSize);
-    *portsUsed = portSet->used;
-    __CFSpinUnlock(&(portSet->lock));
+            __CFPortSetMaybeRotatePorts(portSet);
+
+            memmove(result, portSet->ports, portSet->used * __kCFPortSize);
+
+            if (portsUsed != NULL) {
+                *portsUsed = portSet->used;
+            }
+        }
+
+        __CFSpinUnlock(&(portSet->lock));
+    }
+
     return result;
 }
 

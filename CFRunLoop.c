@@ -1405,41 +1405,6 @@ CF_INLINE void __CFRunLoopTimerFireTSRUnlock(void) {
     __CFSpinUnlock(&__CFRLTFireTSRLock);
 }
 
-#if DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
-
-struct _collectTimersContext {
-    CFMutableArrayRef results;
-    int64_t cutoffTSR;
-};
-
-static void __CFRunLoopCollectTimers(const void *value, void *ctx) {
-    CFRunLoopTimerRef rlt = (CFRunLoopTimerRef)value;
-    struct _collectTimersContext *context = (struct _collectTimersContext *)ctx;
-    if (rlt->_fireTSR <= context->cutoffTSR) {
-        if (NULL == context->results)
-            context->results = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, &kCFTypeArrayCallBacks);
-        CFArrayAppendValue(context->results, rlt);
-    }
-}
-
-// RunLoop and RunLoopMode must be locked
-static void __CFRunLoopTimersToFireRecursive(CFRunLoopRef rl, CFRunLoopModeRef rlm, struct _collectTimersContext *ctxt) {
-    __CFRunLoopTimerFireTSRLock();
-    if (NULL != rlm->_timers && 0 < CFArrayGetCount(rlm->_timers)) {
-        CFArrayApplyFunction(rlm->_timers, CFRangeMake(0, CFArrayGetCount(rlm->_timers)),  __CFRunLoopCollectTimers, ctxt);
-    }
-    __CFRunLoopTimerFireTSRUnlock();
-}
-
-// RunLoop and RunLoopMode must be locked
-static CFArrayRef __CFRunLoopTimersToFire(CFRunLoopRef rl, CFRunLoopModeRef rlm) {
-    struct _collectTimersContext ctxt = {NULL, mach_absolute_time()};
-    __CFRunLoopTimersToFireRecursive(rl, rlm, &ctxt);
-    return ctxt.results;
-}
-
-#endif // DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
-
 /* CFRunLoop */
 
 CONST_STRING_DECL(kCFRunLoopDefaultMode, "kCFRunLoopDefaultMode")

@@ -862,20 +862,28 @@ static __CFPortPointer __CFPortSetGetOrCopyPorts(__CFPortSet portSet, __CFPortPo
 }
 
 static Boolean __CFPortSetInsert(__CFPort port, __CFPortSet portSet) {
-    if (__CFPortEqual(port, __kCFPortNull)) {
-        return false;
+    Boolean result = false;
+
+    if (!__CFPortEqual(port, __kCFPortNull) && (__kCFPortSetNull != portSet)) {
+        __CFSpinLock(&(portSet->lock));
+
+        if (portSet->used >= portSet->size) {
+            portSet->size += __kCFPortSetSizeIncrement;
+            portSet->ports = (__CFPortPointer)CFAllocatorReallocate(kCFAllocatorSystemDefault, portSet->ports, portSet->size * __kCFPortSize, 0);
+        }
+
+        if (portSet->used >= MAXIMUM_WAIT_OBJECTS) {
+            CFLog(kCFLogLevelWarning, CFSTR("*** More than MAXIMUM_WAIT_OBJECTS (%d) ports add to a port set.  The last ones will be ignored."), MAXIMUM_WAIT_OBJECTS);
+        }
+
+        __CFPortCopy(&portSet->ports[portSet->used++], port);
+
+        result = true;
+
+        __CFSpinUnlock(&(portSet->lock));
     }
-    __CFSpinLock(&(portSet->lock));
-    if (portSet->used >= portSet->size) {
-        portSet->size += __kCFPortSetSizeIncrement;
-        portSet->ports = (__CFPortPointer)CFAllocatorReallocate(kCFAllocatorSystemDefault, portSet->ports, portSet->size * __kCFPortSize, 0);
-    }
-    if (portSet->used >= MAXIMUM_WAIT_OBJECTS) {
-        CFLog(kCFLogLevelWarning, CFSTR("*** More than MAXIMUM_WAIT_OBJECTS (%d) ports add to a port set.  The last ones will be ignored."), MAXIMUM_WAIT_OBJECTS);
-    }
-    __CFPortCopy(&portSet->ports[portSet->used++], port);
-    __CFSpinUnlock(&(portSet->lock));
-    return true;
+
+    return result;
 }
 
 static Boolean __CFPortSetUpdate(__CFPort port, __CFPortSet portSet) {
@@ -900,23 +908,28 @@ static Boolean __CFPortSetUpdate(__CFPort port, __CFPortSet portSet) {
 }
 
 static Boolean __CFPortSetRemove(__CFPort port, __CFPortSet portSet) {
-    int i, j;
-    if (__CFPortEqual(port, __kCFPortNull)) {
-        return false;
-    }
-    __CFSpinLock(&(portSet->lock));
-    for (i = 0; i < portSet->used; i++) {
-        if (__CFPortEqual(&portSet->ports[i], port)) {
-            for (j = i+1; j < portSet->used; j++) {
-                __CFPortCopy(&portSet->ports[j-1], &portSet->ports[j]);
+    int     i, j;
+    Boolean result = false;
+
+    if (!__CFPortEqual(port, __kCFPortNull) && (__kCFPortSetNull != portSet)) {
+        __CFSpinLock(&(portSet->lock));
+
+        for (i = 0; i < portSet->used; i++) {
+            if (__CFPortEqual(&portSet->ports[i], port)) {
+                for (j = i+1; j < portSet->used; j++) {
+                    __CFPortCopy(&portSet->ports[j-1], &portSet->ports[j]);
+                }
+
+                portSet->used--;
+                result = true;
+                break;
             }
-            portSet->used--;
-            __CFSpinUnlock(&(portSet->lock));
-            return true;
         }
+
+        __CFSpinUnlock(&(portSet->lock));
     }
-    __CFSpinUnlock(&(portSet->lock));
-    return false;
+
+    return result;
 }
 
 #endif // !DEPLOYMENT_TARGET_MACOSX

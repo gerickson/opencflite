@@ -1,5 +1,5 @@
 /*
- *    Copyright (c) 2009 Nuovation System Designs, LLC
+ *    Copyright (c) 2009-2021 Nuovation System Designs, LLC
  *    All rights reserved.
  *
  *    Description:
@@ -85,27 +85,36 @@ typedef TimerData ** TimerContainerRef;
 static void
 TimerCallback(CFRunLoopTimerRef timer, void *info)
 {
-	TimerData *theData = (TimerData*)info;
-    CFTimeZoneRef tz = NULL;
-    CFGregorianDate theDate;
+    static const char * const kComponents = "yMdHms";
+    const CFAbsoluteTime      now = CFAbsoluteTimeGetCurrent();
+    TimerData *               theData = (TimerData*)info;
+    CFCalendarRef             cal = NULL;
+    int                       year, month, day;
+    int                       hour, minute, second;
+    int                       seconds, milliseconds;
+    Boolean                   status;
 
-	(void)timer;
+    (void)timer;
 
-	tz = CFTimeZoneCopySystem();
-	__Require(tz != NULL, done);
+    cal = CFCalendarCreateWithIdentifier(kCFAllocatorDefault, kCFCalendarIdentifierGregorian);
+    __Require(cal != NULL, done);
 
-	theDate = CFAbsoluteTimeGetGregorianDate(CFAbsoluteTimeGetCurrent(), tz);
+    status = CFCalendarDecomposeAbsoluteTime(cal, now, kComponents, &year, &month, &day, &hour, &minute, &second);
+    __Require(status != false, done);
 
-	printf("%04d-%02d-%02d %02d:%02d:%06.3f, timer: %lu, iteration: %lu\n",
-		   theDate.year, theDate.month, theDate.day,
-		   theDate.hour, theDate.minute, theDate.second,
-		   theData->mIndex,
-		   theData->mIterations.mDid++);
+    seconds = (int)(now);
+    milliseconds = (now - (double)(seconds)) * 1.0E3;
 
-	CFRelease(tz);
+    printf("%04d-%02d-%02d %02d:%02d:%02d.%03d, timer: %lu, iteration: %lu\n",
+           year, month, day,
+           hour, minute, second, milliseconds,
+           theData->mIndex,
+           theData->mIterations.mDid++);
+
+    CFRelease(cal);
 
  done:
-	return;
+    return;
 }
 
 /*
@@ -389,6 +398,7 @@ main(int argc, const char * const argv[])
 	char *end = NULL;
 	TimerData *theTimer;
 	TimerContainerRef timerContainer;
+    CFRunLoopRef theRunLoop = CFRunLoopGetCurrent();
 	CFStringRef theMode = CFSTR("TimerMode");
 
 	/*
@@ -431,14 +441,12 @@ main(int argc, const char * const argv[])
 
 		TimerContainerSet(timerContainer, i, theTimer);
 
-		CFRunLoopAddTimer(CFRunLoopGetCurrent(), theTimer->mRef, theMode);
-
+		CFRunLoopAddTimer(theRunLoop, theTimer->mRef, theMode);
 	}
 
 	/* Run the timers */
 
 	CFRunLoopRunInMode(theMode, timerLimit, false);
-	CFRunLoopRun();
 
 	/* Determine the run results and deallocate resources. */
 
@@ -459,7 +467,9 @@ main(int argc, const char * const argv[])
 
 		status += result;
 
-		TimerDataDestroy(theTimer);
+        CFRunLoopRemoveTimer(theRunLoop, theTimer->mRef, theMode);
+
+        TimerDataDestroy(theTimer);
 	}
 
 	TimerContainerDestroy(timerContainer);

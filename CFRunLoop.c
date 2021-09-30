@@ -823,6 +823,18 @@ static void __CFPortSetFree(__CFPortSet portSet) {
     CFAllocatorDeallocate(kCFAllocatorSystemDefault, portSet);
 }
 
+static uint16_t __CFPortSetGetSize(__CFPortSet portSet) {
+    uint16_t result;
+
+    __CFSpinLock(&(portSet->lock));
+
+    result = portSet->used;
+
+    __CFSpinUnlock(&(portSet->lock));
+
+    return result;
+}
+
 /**
  *  @brief
  *    Potentially rotate the ports if the number in use is greater
@@ -851,6 +863,20 @@ static void __CFPortSetMaybeRotatePortsLocked(__CFPortSet portSet) {
     }
 }
 
+static __CFPortPointer __CFPortSetGetPorts(__CFPortSet portSet) {
+    __CFPortPointer result;
+
+    __CFSpinLock(&(portSet->lock));
+
+    __CFPortSetMaybeRotatePortsLocked(portSet);
+
+    result = portSet->ports;
+
+    __CFSpinUnlock(&(portSet->lock));
+
+    return result;
+}
+
 static __CFPortPointer __CFPortSetGetOrCopyPorts(__CFPortSet portSet, __CFPortPointer portBuf, uint16_t portBufElements, uint16_t *portsUsed) {
     __CFPortPointer result = __kCFPortNull;
 
@@ -870,7 +896,7 @@ static __CFPortPointer __CFPortSetGetOrCopyPorts(__CFPortSet portSet, __CFPortPo
             // rotate the ports to vaguely simulate round-robin
             // behaviour
 
-            __CFPortSetMaybeRotatePorts(portSet);
+            __CFPortSetMaybeRotatePortsLocked(portSet);
 
             memmove(result, portSet->ports, portSet->used * __kCFPortSize);
 
@@ -1256,7 +1282,7 @@ static CFRunLoopModeRef __CFRunLoopFindMode(CFRunLoopRef rl, CFStringRef modeNam
     if (__CFPortEqual(__kCFPortNull, rlm->_timerPort)) HALT;
 
     if (!__CFPortSetInsert(rlm->_timerPort, rlm->_portSet)) HALT;
-    if (!__CFPortSetInsert(rl->_wakeUpPort, rlm->_portSet)) HALT;
+    //if (!__CFPortSetInsert(rl->_wakeUpPort, rlm->_portSet)) HALT;
 #if DEPLOYMENT_TARGET_WINDOWS    
     rlm->_msgQMask = 0;
     rlm->_msgPump = NULL;
@@ -2758,6 +2784,69 @@ static Boolean __CFRunLoopWaitForMultipleObjects(__CFPortSet portSet, HANDLE *on
     return result;
 }
 
+#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+
+#define TIMEOUT_INFINITY NULL
+
+static Boolean __CFRunLoopWait(CFRunLoopRef rl, CFRunLoopModeRef rlm, __CFPortSet portSet, __CFPort *onePort, const struct timespec *timeout, __CFPort *livePort) {
+    __CFPortPointer    events = NULL;
+    uint16_t           i, eventsUsed = 0;
+    int                status = 0;
+    Boolean            result = false;
+
+    if (portSet != __kCFPortSetNull) {
+        events     = __CFPortSetGetPorts(portSet);
+        eventsUsed = __CFPortSetGetSize(portSet);
+    } else if (onePort != NULL) {
+        events     = *onePort;
+        eventsUsed = 1;
+    }
+
+    if ((events != NULL) && (eventsUsed > 0)) {
+        status = kevent(rl->_waitQueue,
+                        events,
+                        eventsUsed,
+                        events,
+                        eventsUsed,
+                        timeout);
+
+        if (status == 0) {
+            result = false;
+
+        } else if (status < 0) {
+            result = false;
+
+        } else {
+            for (i = 0; i < status; i++) {
+                if (events[i].flags & EV_ERROR) {
+                    events[i].flags &= ~EV_ERROR;
+
+                    result = false;
+                } else {
+                    switch (events[i].filter) {
+
+                    case EVFILT_TIMER:
+                        {
+                            if (events[i].data > 0) {
+                                if (livePort != NULL) {
+                                    *livePort = &events[0];
+                                }
+                                events[i].flags &= ~EV_CLEAR;
+                            }
+
+                            result = true;
+                        }
+                        break;
+
+                    }
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
 #endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 
 struct __timeout_context {
@@ -2855,7 +2944,8 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
  *
  */
 static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInterval seconds, Boolean stopAfterHandle, CFRunLoopModeRef previousMode) {
-    const int64_t    startTSR     = (int64_t)mach_absolute_time();
+    const int64_t startTSR     = (int64_t)mach_absolute_time();
+    __CFPort      dispatchPort = __kCFPortNull;
 
     if (__CFRunLoopIsStopped(rl)) {
         __CFRunLoopUnsetStopped(rl);
@@ -2865,7 +2955,6 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
 	    return kCFRunLoopRunStopped;
     }
 
-    mach_port_name_t dispatchPort = MACH_PORT_NULL;
 #if __DISPATCH__
     Boolean libdispatchQSafe = pthread_main_np() && ((HANDLE_DISPATCH_ON_BASE_INVOCATION_ONLY && NULL == previousMode) || (!HANDLE_DISPATCH_ON_BASE_INVOCATION_ONLY && 0 == _CFGetTSD(__CFTSDKeyIsInGCDMainQ)));
     if (libdispatchQSafe && (CFRunLoopGetMain() == rl) && CFSetContainsValue(rl->_commonModes, rlm->_name)) dispatchPort = _dispatch_get_main_queue_port_4CF();
@@ -2904,14 +2993,17 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
 	int32_t retVal = 0;
     do {
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-        uint8_t             msg_buffer[3 * 1024];
-        mach_msg_header_t * msg = NULL;
+        uint8_t               msg_buffer[3 * 1024];
+        mach_msg_header_t *   msg = NULL;
 #elif DEPLOYMENT_TARGET_WINDOWS
-        Boolean             windowsMessageReceived = false;
+        Boolean               windowsMessageReceived = false;
 #elif DEPLOYMENT_TARGET_LINUX
+        const struct timespec kZeroTimeout = { 0, 0 };
 #endif
-        __CFPort            livePort = __kCFPortNull;
-        __CFPortSet         waitSet = rlm->_portSet;
+        __CFPort              livePort = __kCFPortNull;
+        __CFPortSet           waitSet = rlm->_portSet;
+
+        // MARK: Pre-wait
 
         rl->_ignoreWakeUps = false;
 
@@ -2938,13 +3030,18 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
                 goto handle_msg;
             }
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-            // Implement Me!
+            if (__CFRunLoopWait(rl, rlm, NULL, &dispatchPort, &kZeroTimeout, &livePort)) {
+                goto handle_msg;
+            }
 #endif
         }
 
         didDispatchPortLastTime = false;
 
         if (!poll && (rlm->_observerMask & kCFRunLoopBeforeWaiting)) __CFRunLoopDoObservers(rl, rlm, kCFRunLoopBeforeWaiting);
+
+        // MARK: Wait
+
         __CFRunLoopSetSleeping(rl);
 
         // do not do any user callouts after this point (after notifying of sleeping)
@@ -2971,7 +3068,7 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
         // Note: don't pass 0 for polling, or this thread will never yield the CPU.
         __CFRunLoopWaitForMultipleObjects(waitSet, NULL, poll ? 0 : TIMEOUT_INFINITY, rlm->_msgQMask, &livePort, &windowsMessageReceived);
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-        // XXX - More to fill in here.
+        __CFRunLoopWait(rl, rlm, waitSet, NULL, (poll ? &kZeroTimeout : TIMEOUT_INFINITY), &livePort);
 #endif
         
         __CFRunLoopLock(rl);
@@ -2988,9 +3085,12 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
 
         // user callouts now OK again
         __CFRunLoopUnsetSleeping(rl);
+
+        // MARK: Post-wait
+
         if (!poll && (rlm->_observerMask & kCFRunLoopAfterWaiting)) __CFRunLoopDoObservers(rl, rlm, kCFRunLoopAfterWaiting);
 
-        handle_msg:;
+    handle_msg:;
         rl->_ignoreWakeUps = true;
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
@@ -3023,8 +3123,9 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
         if (__CFPortEqual(livePort, __kCFPortNull)) {
             // handle nothing
         } else if (__CFPortEqual(livePort, rl->_wakeUpPort)) {
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
             // do nothing on Mac OS
-#if DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS
             // Always reset the wake up port, or risk spinning forever
             ResetEvent(rl->_wakeUpPort);
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
@@ -3067,7 +3168,7 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
                     (void)mach_msg(reply, MACH_SEND_MSG, reply->msgh_size, 0, MACH_PORT_NULL, 0, MACH_PORT_NULL);
                     CFAllocatorDeallocate(kCFAllocatorSystemDefault, reply);
                 }
-#elif DEPLOYMENT_TARGET_WINDOWS
+#elif DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
                 sourceHandledThisLoop = __CFRunLoopDoSource1(rl, rlm, rls) || sourceHandledThisLoop;
 #endif
             }

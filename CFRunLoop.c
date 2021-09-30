@@ -105,7 +105,7 @@ static pthread_t kNilPthreadT = { nil, nil };
 static pthread_t kNilPthreadT = (pthread_t)0;
 #define pthreadPointer(a) a
 #define lockCount(a) a
-#endif
+#endif // DEPLOYMENT_TARGET_WINDOWS
 
 
 CF_EXPORT bool CFDictionaryGetKeyIfPresent(CFDictionaryRef dict, const void *key, const void **actualkey);

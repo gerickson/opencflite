@@ -2815,7 +2815,7 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
  *
  */
 static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInterval seconds, Boolean stopAfterHandle, CFRunLoopModeRef previousMode) {
-    int64_t startTSR = (int64_t)mach_absolute_time();
+    const int64_t    startTSR     = (int64_t)mach_absolute_time();
 
     if (__CFRunLoopIsStopped(rl)) {
         __CFRunLoopUnsetStopped(rl);
@@ -2885,7 +2885,7 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
             __CFRunLoopDoBlocks(rl, rlm);
         }
 
-        Boolean poll = sourceHandledThisLoop || (0LL == timeout_context->termTSR);
+        const Boolean poll = (sourceHandledThisLoop || (0LL == timeout_context->termTSR));
 
         if (!__CFPortEqual(dispatchPort, __kCFPortNull) && !didDispatchPortLastTime) {
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED

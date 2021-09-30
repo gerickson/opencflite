@@ -197,6 +197,7 @@ if (0 != result) {
         __CF_last_warned_port_count = pcnt;
     }
 }
+#endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 
 // In order to reuse most of the code across Mach, Linux, FreeBSD, and
 // Windows v1 RunLoopSources, we define a simple abstraction layer
@@ -615,15 +616,17 @@ if (0 != result) {
  *
  */
 
-typedef mach_port_t __CFPort;
-#define CFPORT_NULL MACH_PORT_NULL
-typedef mach_port_t __CFPortSet;
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+typedef mach_port_t           __CFPort;
+#define __kCFPortNull         MACH_PORT_NULL
+typedef mach_port_t           __CFPortSet;
+#define __kCFPortSetNull      MACH_PORT_NULL
 
 static void __THE_SYSTEM_HAS_NO_PORTS_AVAILABLE__(kern_return_t ret) __attribute__((noinline));
 static void __THE_SYSTEM_HAS_NO_PORTS_AVAILABLE__(kern_return_t ret) { HALT; };
 
 static __CFPort __CFPortAllocate(void) {
-    __CFPort result = CFPORT_NULL;
+    __CFPort result = __kCFPortNull;
     kern_return_t ret;
     ret = mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &result);
     if (KERN_SUCCESS == ret) {
@@ -637,7 +640,7 @@ static __CFPort __CFPortAllocate(void) {
         ret = mach_port_set_attributes(mach_task_self(), result, MACH_PORT_LIMITS_INFO, (mach_port_info_t)&limits, MACH_PORT_LIMITS_INFO_COUNT);
     }
     if (KERN_SUCCESS != ret) mach_port_destroy(mach_task_self(), result);
-    return (KERN_SUCCESS == ret) ? result : CFPORT_NULL;
+    return (KERN_SUCCESS == ret) ? result : __kCFPortNull;
 }
 
 CF_INLINE void __CFPortFree(__CFPort port) {
@@ -651,11 +654,11 @@ CF_INLINE __CFPortSet __CFPortSetAllocate(void) {
     __CFPortSet result;
     kern_return_t ret = mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_PORT_SET, &result);
     if (KERN_SUCCESS != ret) { __THE_SYSTEM_HAS_NO_PORT_SETS_AVAILABLE__(ret); }
-    return (KERN_SUCCESS == ret) ? result : CFPORT_NULL;
+    return (KERN_SUCCESS == ret) ? result : __kCFPortNull;
 }
 
 CF_INLINE Boolean __CFPortSetInsert(__CFPort port, __CFPortSet portSet) {
-    if (MACH_PORT_NULL == port) {
+    if (__kCFPortNull == port) {
         return false;
     }
     kern_return_t ret = mach_port_insert_member(mach_task_self(), port, portSet);
@@ -663,7 +666,7 @@ CF_INLINE Boolean __CFPortSetInsert(__CFPort port, __CFPortSet portSet) {
 }
 
 CF_INLINE Boolean __CFPortSetRemove(__CFPort port, __CFPortSet portSet) {
-    if (MACH_PORT_NULL == port) {
+    if (__kCFPortNull == port) {
         return false;
     }
     kern_return_t ret = mach_port_extract_member(mach_task_self(), port, portSet);
@@ -687,10 +690,11 @@ CF_INLINE void __CFPortSetFree(__CFPortSet portSet) {
 
 #elif DEPLOYMENT_TARGET_WINDOWS
 
-typedef HANDLE __CFPort;
-#define CFPORT_NULL NULL
-#define MAX_PORTS MAXIMUM_WAIT_OBJECTS
+typedef HANDLE                __CFPort;
+#define __kCFPortNull         NULL
+#define MAX_PORTS             MAXIMUM_WAIT_OBJECTS
 
+#define __kCFPortSetNull      NULL
 
 CF_INLINE __CFPort __CFPortAllocate(void) {
     return CreateEventA(NULL, true, false, NULL);
@@ -700,22 +704,24 @@ CF_INLINE void __CFPortFree(__CFPort port) {
     CloseHandle(port);
 }
 
-#elif DEPLOYMENT_TARGET_LINUX
+#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 
-typedef sem_t * __CFPort;
-#define CFPORT_NULL NULL
-#define MAX_PORTS 16
-#define MAXIMUM_WAIT_OBJECTS MAX_PORTS
+typedef sem_t *               __CFPort;
+#define __kCFPortNull         NULL
+#define MAX_PORTS             16
+#define MAXIMUM_WAIT_OBJECTS  MAX_PORTS
+
+#define __kCFPortSetNull      NULL
 
 CF_INLINE __CFPort __CFPortAllocate(void) {
-	__CFPort port = CFPORT_NULL;
+	__CFPort port = __kCFPortNull;
 	int status;
 
 	port = (__CFPort)CFAllocatorAllocate(kCFAllocatorSystemDefault,
 										 sizeof(sem_t), 0);
-	CFAssert1(port != CFPORT_NULL, __kCFLogAssertion,
+	CFAssert1(port != __kCFPortNull, __kCFLogAssertion,
 			  "%s(): Could not allocate port memory.", __PRETTY_FUNCTION__);
-	if (port != CFPORT_NULL) {
+	if (port != __kCFPortNull) {
 		status = sem_init(port, false, 0);
 		CFAssert1(status == 0, __kCFLogAssertion,
 				  "%s(): Could not initialize port.", __PRETTY_FUNCTION__);
@@ -726,7 +732,7 @@ CF_INLINE __CFPort __CFPortAllocate(void) {
 
 CF_INLINE void __CFPortFree(__CFPort port) {
 	int status;
-	CFAssert1(port != CFPORT_NULL, __kCFLogAssertion,
+	CFAssert1(port != __kCFPortNull, __kCFLogAssertion,
 			  "%s(): Attemping to free an invalid port.", __PRETTY_FUNCTION__);
 	status = sem_destroy(port);
 	CFAllocatorDeallocate(kCFAllocatorSystemDefault, port);
@@ -777,7 +783,7 @@ static __CFPort *__CFPortSetGetPorts(__CFPortSet portSet, __CFPort *portBuf, uin
 }
 
 static Boolean __CFPortSetInsert(__CFPort port, __CFPortSet portSet) {
-    if (NULL == port) {
+    if (__kCFPortNull == port) {
         return false;
     }
     __CFSpinLock(&(portSet->lock));
@@ -795,7 +801,7 @@ static Boolean __CFPortSetInsert(__CFPort port, __CFPortSet portSet) {
 
 static Boolean __CFPortSetRemove(__CFPort port, __CFPortSet portSet) {
     int i, j;
-    if (NULL == port) {
+    if (__kCFPortNull == port) {
         return false;
     }
     __CFSpinLock(&(portSet->lock));
@@ -1500,7 +1506,7 @@ static void __CFRunLoopDeallocateSources(const void *value, void *context) {
             }
         } else if (1 == rls->_context.version0.version) {
             __CFPort port = rls->_context.version1.getPort(rls->_context.version1.info);	/* CALLOUT */
-            if (CFPORT_NULL != port) {
+            if (__kCFPortNull != port) {
                 __CFPortSetRemove(port, rlm->_portSet);
             }
         }
@@ -1615,7 +1621,7 @@ static void __CFRunLoopDeallocate(CFTypeRef cf) {
 	CFRelease(rl->_modes);
     }
     __CFPortFree(rl->_wakeUpPort);
-    rl->_wakeUpPort = CFPORT_NULL;
+    rl->_wakeUpPort = __kCFPortNull;
     __CFRunLoopUnlock(rl);
     pthread_mutex_destroy(&rl->_lock);
     memset((char *)cf + sizeof(CFRuntimeBase), 0x8C, sizeof(struct __CFRunLoop) - sizeof(CFRuntimeBase));
@@ -1670,7 +1676,7 @@ static CFRunLoopRef __CFRunLoopCreate(pthread_t t) {
     loop->_stopped = NULL;
     __CFRunLoopLockInit(&loop->_lock);
     loop->_wakeUpPort = __CFPortAllocate();
-    if (CFPORT_NULL == loop->_wakeUpPort) HALT;
+    if (__kCFPortNull == loop->_wakeUpPort) HALT;
     loop->_ignoreWakeUps = true;
     loop->_commonModes = CFSetCreateMutable(kCFAllocatorSystemDefault, 0, &kCFTypeSetCallBacks);
     CFSetAddValue(loop->_commonModes, kCFRunLoopDefaultMode);
@@ -3204,7 +3210,7 @@ void CFRunLoopAddSource(CFRunLoopRef rl, CFRunLoopSourceRef rls, CFStringRef mod
 	    } else if (1 == rls->_context.version0.version) {
 	        CFSetAddValue(rlm->_sources1, rls);
 		__CFPort src_port = rls->_context.version1.getPort(rls->_context.version1.info);
-		if (CFPORT_NULL != src_port) {
+		if (__kCFPortNull != src_port) {
 		    CFDictionarySetValue(rlm->_portToV1SourceMap, (const void *)(uintptr_t)src_port, rls);
 		    __CFPortSetInsert(src_port, rlm->_portSet);
 	        }
@@ -3257,7 +3263,7 @@ void CFRunLoopRemoveSource(CFRunLoopRef rl, CFRunLoopSourceRef rls, CFStringRef 
             CFRetain(rls);
             if (1 == rls->_context.version0.version) {
                 __CFPort src_port = rls->_context.version1.getPort(rls->_context.version1.info);
-                if (CFPORT_NULL != src_port) {
+                if (__kCFPortNull != src_port) {
                     CFDictionaryRemoveValue(rlm->_portToV1SourceMap, (const void *)(uintptr_t)src_port);
                     __CFPortSetRemove(src_port, rlm->_portSet);
                 }

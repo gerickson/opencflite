@@ -1143,7 +1143,18 @@ CF_EXPORT CFRunLoopRef _CFRunLoopGet0b(pthread_t t);
 static void __CFRunLoopDeallocate(CFTypeRef cf) {
     CFRunLoopRef rl = (CFRunLoopRef)cf;
 
+#if !(DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD)
+    /* Neither Linux nor FreeBSD (and potentially other platforms) have
+       the magic necessary to automatically clean-up thread / run loop
+       instances on program exit. Consequently, this must be handled
+       manually to avoid triggering resource leak detectors, such as the
+       address or memory sanitizers.
+
+       Do not enforce this check on such platforms since it precludes them
+       from performing the necessary resource clean-up. */
+
     if (_CFRunLoopGet0b(_CFMainPThread) == cf) HALT;
+#endif // !(DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD)
 
     /* We try to keep the run loop in a valid state as long as possible,
        since sources may have non-retained references to the run loop.
@@ -1258,8 +1269,78 @@ static CFRunLoopRef __CFRunLoopCreate(pthread_t t) {
 static CFMutableDictionaryRef __CFRunLoops = NULL;
 static CFSpinLock_t loopsLock = CFSpinLockInit;
 
+#if DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+// Neither Linux nor FreeBSD (and potentially other platforms) have
+// the magic necessary to automatically clean-up thread / run loop
+// instances on program exit. Consequently, this must be handled
+// manually to avoid triggering resource leak detectors, such as the
+// address or memory sanitizers.
+//
+// The following routines perform the necessary post-exit clean-up.
+
+/**
+ *  @brief
+ *    CFDictionaryApplierFunction that deallocates the specified
+ *    thread / run loop key value pair.
+ *
+ *  This deallocates the specified thread / run loop key value pair
+ *  associated with the dictionary to which this function is being
+ *  applied.
+ *
+ *  @param[in]  key      The thread identifier associated with the
+ *                       run loop.
+ *  @param[in]  value    The reference to the run loop to destroy.
+ *  @param[in]  context  A pointer to context supplied to this
+ *                       function which is expected to be NULL for
+ *                       this application.
+ *
+ */
+static void __CFRunLoopDestroyRunLoop(const void *key, const void *value, void *context) {
+    CFRunLoopRef rl = (CFRunLoopRef)(value);
+    __CFRunLoopDeallocate(rl);
+}
+
+/**
+ *  @brief
+ *    Deallocate all thread run loops.
+ *
+ *  This attempts to iterate over all thread identifier / run loop key
+ *  value pairs in the global run loops dictionary, deallocating each
+ *  run loop in the process before deallocating the global dictionary
+ *  in which the pairs were stored.
+ *
+ */
+static void __CFRunLoopDestroyRunLoops(void) {
+    __CFSpinLock(&loopsLock);
+
+    if (__CFRunLoops != NULL) {
+        CFDictionaryApplyFunction(__CFRunLoops, __CFRunLoopDestroyRunLoop, NULL);
+        CFRelease(__CFRunLoops);
+        __CFRunLoops = NULL;
+    }
+
+    __CFSpinUnlock(&loopsLock);
+}
+
+/**
+ *  @brief
+ *   Handle any post-exit deallocation for this CFRunLoop scope.
+ *
+ *  This handles post-exit deallocation by destroying all run loops.
+ *
+ *  @note
+ *    This is intentionally set to the lowest possible destructor
+ *    priority (0) to allow other destructors that might depend on
+ *    the run loops to run prior.
+ *
+ */
+static void __attribute__((destructor(0))) __CFRunLoopDestroy(void) {
+    __CFRunLoopDestroyRunLoops();
+}
+#endif // DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+
 // should only be called by Foundation
-// t==0 is a synonym for "main thread" that always works
+// t == kNilPthreadT is a synonym for "main thread" that always works
 CF_EXPORT CFRunLoopRef _CFRunLoopGet0(pthread_t t) {
     if (pthread_equal(t, kNilPthreadT)) {
 	t = _CFMainPThread;

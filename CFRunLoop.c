@@ -235,6 +235,7 @@ if (0 != result) {
 //     * __CFPortSetGetSize
 //     * __CFPortSetGetPorts
 //     * __CFPortSetGetOrCopyPorts
+//     * __CFPortSetFind
 //     * __CFPortSetInsert
 //     * __CFPortSetUpdate
 //     * __CFPortSetRemove
@@ -560,6 +561,25 @@ if (0 != result) {
  *    allocator-provided storage could be created.
  *
  *  @sa __CFPortSetGetPorts
+ *
+ */
+
+/**
+ *  @function __CFPortSetFind
+ *
+ *  @brief
+ *    Attempt to find an equivalent port, based on #__CFPortEqual, to
+ *    the specified #__CFPort object in the port set.
+ *
+ *  @param[in]  port     The #__CFPort to find in the port set.
+ *  @param[in]  portSet  The #__CFPortSet in which to find the
+ *                       #__CFPort object.
+ *
+ *  @returns
+ *    The equivalent port if a match was found; otherwise,
+ *    #__kCFPortNull.
+ *
+ *  @sa __CFPortEqual
  *
  */
 
@@ -902,6 +922,26 @@ static __CFPortPointer __CFPortSetGetOrCopyPorts(__CFPortSet portSet, __CFPortPo
 
             if (portsUsed != NULL) {
                 *portsUsed = portSet->used;
+            }
+        }
+
+        __CFSpinUnlock(&(portSet->lock));
+    }
+
+    return result;
+}
+
+static __CFPort __CFPortSetFind(__CFPort port, __CFPortSet portSet) {
+    int i;
+    __CFPort result = __kCFPortNull;
+
+    if (!__CFPortEqual(port, __kCFPortNull) && (__kCFPortSetNull != portSet)) {
+        __CFSpinLock(&(portSet->lock));
+
+        for (i = 0; i < portSet->used; i++) {
+            if (__CFPortEqual(&portSet->ports[i], port)) {
+                result = &portSet->ports[i];
+                break;
             }
         }
 
@@ -2829,7 +2869,7 @@ static Boolean __CFRunLoopWait(CFRunLoopRef rl, CFRunLoopModeRef rlm, __CFPortSe
                         {
                             if (events[i].data > 0) {
                                 if (livePort != NULL) {
-                                    *livePort = &events[0];
+                                    *livePort = __CFPortSetFind(&events[0], portSet);
                                 }
                                 events[i].flags &= ~EV_CLEAR;
                             }

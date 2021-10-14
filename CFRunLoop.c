@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008-2012 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
- * Copyright (c) 2009 Grant Erickson <gerickson@nuovations.com>. All rights reserved.
+ * Copyright (c) 2009-2021 Grant Erickson <gerickson@nuovations.com>. All rights reserved.
  *
  * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
  * the terms of the APSL version 2.0 (see below).
@@ -1973,31 +1973,31 @@ static void __attribute__((destructor(0))) __CFRunLoopDestroy(void) {
 // t == kNilPthreadT is a synonym for "main thread" that always works
 CF_EXPORT CFRunLoopRef _CFRunLoopGet0(pthread_t t) {
     if (pthread_equal(t, kNilPthreadT)) {
-	t = _CFMainPThread;
+        t = _CFMainPThread;
     }
     __CFSpinLock(&loopsLock);
     if (!__CFRunLoops) {
         __CFSpinUnlock(&loopsLock);
-	CFMutableDictionaryRef dict = CFDictionaryCreateMutable(kCFAllocatorSystemDefault, 0, NULL, &kCFTypeDictionaryValueCallBacks);
-	CFRunLoopRef mainLoop = __CFRunLoopCreate(_CFMainPThread);
-	CFDictionarySetValue(dict, (const void *)pthreadPointer(_CFMainPThread), mainLoop);
-	if (!OSAtomicCompareAndSwapPtrBarrier(NULL, dict, (void * volatile *)&__CFRunLoops)) {
-	    CFRelease(dict);
-	}
-	CFRelease(mainLoop);
+        CFMutableDictionaryRef dict = CFDictionaryCreateMutable(kCFAllocatorSystemDefault, 0, NULL, &kCFTypeDictionaryValueCallBacks);
+        CFRunLoopRef mainLoop = __CFRunLoopCreate(_CFMainPThread);
+        CFDictionarySetValue(dict, (const void *)pthreadPointer(_CFMainPThread), mainLoop);
+        if (!OSAtomicCompareAndSwapPtrBarrier(NULL, dict, (void * volatile *)&__CFRunLoops)) {
+            CFRelease(dict);
+        }
+        CFRelease(mainLoop);
         __CFSpinLock(&loopsLock);
     }
     CFRunLoopRef loop = (CFRunLoopRef)CFDictionaryGetValue(__CFRunLoops, (const void *)pthreadPointer(t));
     if (!loop) {
         __CFSpinUnlock(&loopsLock);
-	CFRunLoopRef newLoop = __CFRunLoopCreate(t);
+        CFRunLoopRef newLoop = __CFRunLoopCreate(t);
         __CFSpinLock(&loopsLock);
         loop = (CFRunLoopRef)CFDictionaryGetValue(__CFRunLoops, (const void *)pthreadPointer(t));
-	if (!loop) {
-	    CFDictionarySetValue(__CFRunLoops, (const void *)pthreadPointer(t), newLoop);
-	    loop = newLoop;
-	}
-	CFRelease(newLoop);
+        if (!loop) {
+            CFDictionarySetValue(__CFRunLoops, (const void *)pthreadPointer(t), newLoop);
+            loop = newLoop;
+        }
+        CFRelease(newLoop);
     }
     if (pthread_equal(t, pthread_self())) {
         _CFSetTSD(__CFTSDKeyRunLoop, (void *)loop, NULL);
@@ -2005,14 +2005,16 @@ CF_EXPORT CFRunLoopRef _CFRunLoopGet0(pthread_t t) {
             _CFSetTSD(__CFTSDKeyRunLoopCntr, (void *)(PTHREAD_DESTRUCTOR_ITERATIONS-1), (void (*)(void *))__CFFinalizeRunLoop);
         }
     }
+
     __CFSpinUnlock(&loopsLock);
+
     return loop;
 }
 
 // should only be called by Foundation
 CFRunLoopRef _CFRunLoopGet0b(pthread_t t) {
     if (pthread_equal(t, kNilPthreadT)) {
-	t = _CFMainPThread;
+        t = _CFMainPThread;
     }
     __CFSpinLock(&loopsLock);
     CFRunLoopRef loop = NULL;
@@ -2986,6 +2988,58 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
 
 /**
  *  @brief
+ *    Set/raise/signal the __CFPort used for run loop sleep and wake-up.
+ *
+ *  This attempts to set/raise/signal the __CFPOrt used for run loop
+ *  sleep and wake-up such that the run loop thread waiting on it
+ *  wakes up.
+ *
+ *  @param[in]  rl  The run loop whose wake up port is to be set/raised/
+ *                  signaled.
+ *
+ */
+static void __CFWakeUpPortSet(CFRunLoopRef rl) {
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+    kern_return_t ret;
+    /* We unconditionally try to send the message, since we don't want
+     * to lose a wakeup, but the send may fail if there is already a
+     * wakeup pending, since the queue length is 1. */
+    ret = __CFSendTrivialMachMessage(rl->_wakeUpPort, 0, MACH_SEND_TIMEOUT, 0);
+    if (ret != MACH_MSG_SUCCESS && ret != MACH_SEND_TIMED_OUT) {
+	HALT;
+    }
+#elif DEPLOYMENT_TARGET_WINDOWS
+    SetEvent(rl->_wakeUpPort);
+#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+    kqueue_update(rl->_waitQueue, rl->_wakeUpPort, (uintptr_t)rl->_wakeUpPort, EVFILT_USER, 0, NOTE_TRIGGER, 0, NULL);
+#endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+}
+
+/**
+ *  @brief
+ *    Reset/lower the __CFPort used for run loop sleep and wake-up.
+ *
+ *  This attempts to reset/lower the __CFPOrt used for run loop sleep
+ *  and wake-up such that it is ready for the run loop thread that
+ *  will sleep on it to do so such that it may be successfully awoken.
+ *
+ *  @param[in]  rl  The run loop whose wake up port is to be reset/
+ *                  lowered.
+ *
+ */
+CF_INLINE void __CFWakeUpPortReset(CFRunLoopRef rl) {
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+    // do nothing on Mac OS
+#elif DEPLOYMENT_TARGET_WINDOWS
+    // Always reset the wake up port, or risk spinning forever
+    ResetEvent(rl->_wakeUpPort);
+#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+    kqueue_update(rl->_waitQueue, rl->_wakeUpPort, (uintptr_t)rl->_wakeUpPort, EVFILT_USER, (EV_ADD | EV_CLEAR | EV_ONESHOT), NOTE_FFNOP, 0, NULL);
+#endif
+}
+
+/**
+ *  @brief
  *    Runs the specified CFRunLoop object in the specified mode...
  *
  *  The specfied run loop runs in the specified mode until the run
@@ -3218,14 +3272,7 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
         if (__CFPortEqual(livePort, __kCFPortNull)) {
             // handle nothing
         } else if (__CFPortEqual(livePort, rl->_wakeUpPort)) {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-            // do nothing on Mac OS
-#elif DEPLOYMENT_TARGET_WINDOWS
-            // Always reset the wake up port, or risk spinning forever
-            ResetEvent(rl->_wakeUpPort);
-#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-            kqueue_update(rl->_waitQueue, rl->_wakeUpPort, (uintptr_t)rl->_wakeUpPort, EVFILT_USER, (EV_ADD | EV_CLEAR | EV_ONESHOT), NOTE_FFNOP, 0, NULL);
-#endif
+            __CFWakeUpPortReset(rl);
         } else if (__CFPortEqual(livePort, rlm->_timerPort)) {
 #if DEPLOYMENT_TARGET_WINDOWS
             // We use a manual reset timer to ensure that we don't miss timers firing because the run loop did the wakeUpPort this time
@@ -3361,24 +3408,11 @@ void CFRunLoopWakeUp(CFRunLoopRef rl) {
     CHECK_FOR_FORK();
     // This lock is crucial to ignorable wakeups, do not remove it.
     __CFRunLoopLock(rl);
-    if (rl->_ignoreWakeUps) {
-        __CFRunLoopUnlock(rl);
-        return;
+
+    if (!(rl->_ignoreWakeUps)) {
+        __CFWakeUpPortSet(rl);
     }
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-    kern_return_t ret;
-    /* We unconditionally try to send the message, since we don't want
-     * to lose a wakeup, but the send may fail if there is already a
-     * wakeup pending, since the queue length is 1. */
-    ret = __CFSendTrivialMachMessage(rl->_wakeUpPort, 0, MACH_SEND_TIMEOUT, 0);
-    if (ret != MACH_MSG_SUCCESS && ret != MACH_SEND_TIMED_OUT) {
-	HALT;
-    }
-#elif DEPLOYMENT_TARGET_WINDOWS
-    SetEvent(rl->_wakeUpPort);
-#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-    kqueue_update(rl->_waitQueue, rl->_wakeUpPort, (uintptr_t)rl->_wakeUpPort, EVFILT_USER, 0, NOTE_TRIGGER, 0, NULL);
-#endif
+
     __CFRunLoopUnlock(rl);
 }
 
@@ -3820,9 +3854,9 @@ void CFRunLoopAddTimer(CFRunLoopRef rl, CFRunLoopTimerRef rlt, CFStringRef modeN
 		rlt->_runLoop = rl;
   	    } else if (rl != rlt->_runLoop) {
                 __CFRunLoopTimerUnlock(rlt);
-	        __CFRunLoopModeUnlock(rlm);
+                __CFRunLoopModeUnlock(rlm);
                 __CFRunLoopUnlock(rl);
-		return;
+                return;
 	    }
   	    CFSetAddValue(rlt->_rlModes, rlm->_name);
             __CFRunLoopTimerUnlock(rlt);

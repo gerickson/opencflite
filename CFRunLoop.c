@@ -809,6 +809,15 @@ static void __CFPortCopy(__CFPortPointer dest, __CFPortPointer src) {
     memcpy(dest, src, __kCFPortSize);
 }
 
+static void kqueue_update(int             queue,
+                          struct kevent * kev,
+                          uintptr_t       ident,
+                          short           filter,
+                          unsigned short  flags,
+                          unsigned int    fflags,
+                          intptr_t        data,
+                          void *          udata);
+
 #endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 
 #if !DEPLOYMENT_TARGET_MACOSX
@@ -2511,19 +2520,19 @@ static CFIndex __CFRunLoopInsertionIndexInTimerArray(CFArrayRef array, CFRunLoop
     return lastTestLEQ ? idx + 1 : idx;
 }
 
-static void __CFDisarmTimerInMode(CFRunLoopModeRef rlm) {
+static void __CFDisarmTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm) {
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
     AbsoluteTime dummy;
     mk_timer_cancel(rlm->_timerPort, &dummy);
 #elif DEPLOYMENT_TARGET_WINDOWS
     CancelWaitableTimer(rlm->_timerPort);
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-    EV_SET(rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, EV_DISABLE, 0, 0, NULL);
+    kqueue_update(rl->_waitQueue, rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, EV_DISABLE, 0, 0, NULL);
     __CFPortSetUpdate(rlm->_timerPort, rlm->_portSet);
 #endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 }
 
-static void __CFArmNextTimerInMode(CFRunLoopModeRef rlm) {
+static void __CFArmNextTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm) {
     CFRunLoopTimerRef nextTimer = NULL;
     for (CFIndex idx = 0, cnt = CFArrayGetCount(rlm->_timers); idx < cnt; idx++) {
         CFRunLoopTimerRef t = (CFRunLoopTimerRef)CFArrayGetValueAtIndex(rlm->_timers, idx);
@@ -2543,7 +2552,7 @@ static void __CFArmNextTimerInMode(CFRunLoopModeRef rlm) {
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
         mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-        EV_SET(rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, EV_ADD | EV_ENABLE, 0, fireRelMSeconds, 0);
+        kqueue_update(rl->_waitQueue, rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, (EV_ADD | EV_ENABLE), 0, fireRelMSeconds, 0);
         __CFPortSetUpdate(rlm->_timerPort, rlm->_portSet);
 #elif DEPLOYMENT_TARGET_WINDOWS
         LARGE_INTEGER dueTime;
@@ -2555,10 +2564,10 @@ static void __CFArmNextTimerInMode(CFRunLoopModeRef rlm) {
 
 // call with rlm and its run loop locked, and the TSRLock locked; rlt not locked; returns with same state
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-static void __CFRepositionTimerInMode(CFRunLoopModeRef rlm, CFRunLoopTimerRef rlt, Boolean isInArray) __attribute__((noinline));
+static void __CFRepositionTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLoopTimerRef rlt, Boolean isInArray) __attribute__((noinline));
 #endif
-static void __CFRepositionTimerInMode(CFRunLoopModeRef rlm, CFRunLoopTimerRef rlt, Boolean isInArray) {
-    if (!rlt || !rlm->_timers) return;
+static void __CFRepositionTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLoopTimerRef rlt, Boolean isInArray) {
+    if (!rl || !rlt || !rlm->_timers) return;
     Boolean found = false;
     if (isInArray) {
 	CFIndex idx = CFArrayGetFirstIndexOfValue(rlm->_timers, CFRangeMake(0, CFArrayGetCount(rlm->_timers)), rlt);
@@ -2571,7 +2580,7 @@ static void __CFRepositionTimerInMode(CFRunLoopModeRef rlm, CFRunLoopTimerRef rl
     if (!found && isInArray) return;
     CFIndex newIdx = __CFRunLoopInsertionIndexInTimerArray(rlm->_timers, rlt);
     CFArrayInsertValueAtIndex(rlm->_timers, newIdx, rlt);
-    __CFArmNextTimerInMode(rlm);
+    __CFArmNextTimerInMode(rl, rlm);
     if (isInArray) CFRelease(rlt);
 }
 
@@ -2600,7 +2609,7 @@ static Boolean __CFRunLoopDoTimer(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLo
         oldFireTSR = rlt->_fireTSR;
         __CFRunLoopTimerFireTSRUnlock();
 
-        __CFArmNextTimerInMode(rlm);
+        __CFArmNextTimerInMode(rl, rlm);
 
         __CFRunLoopModeUnlock(rlm);
         __CFRunLoopUnlock(rl);
@@ -2632,7 +2641,7 @@ static Boolean __CFRunLoopDoTimer(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLo
             // skipped because it was firing.  Need to redo the
             // min timer calculation in case rlt should now be that
             // timer instead of whatever was chosen.
-            __CFArmNextTimerInMode(rlm);
+            __CFArmNextTimerInMode(rl, rlm);
 	    } else {
             int64_t nextFireTSR = 0LL;
             int64_t intervalTSR = 0LL;
@@ -2676,7 +2685,7 @@ static Boolean __CFRunLoopDoTimer(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLo
 		for (CFIndex idx = 0; idx < cnt; idx++) {
 		    CFRunLoopModeRef rlm = (CFRunLoopModeRef)modes[idx];
 		    if (rlm) {
-			__CFRepositionTimerInMode(rlm, rlt, true);
+                __CFRepositionTimerInMode(rlt_rl, rlm, rlt, true);
 		    }
 		}
 		__CFRunLoopTimerFireTSRUnlock();
@@ -2826,6 +2835,30 @@ static Boolean __CFRunLoopWaitForMultipleObjects(__CFPortSet portSet, HANDLE *on
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 
 #define TIMEOUT_INFINITY NULL
+
+static void kqueue_update(int             queue,
+                          struct kevent * kev,
+                          uintptr_t       ident,
+                          short           filter,
+                          unsigned short  flags,
+                          unsigned int    fflags,
+                          intptr_t        data,
+                          void *          udata) {
+    int status;
+
+    EV_SET(kev, ident, filter, flags, fflags, data, udata);
+
+    status = kevent(queue, kev, 1, NULL, 0, NULL);
+
+    CFAssert3(status == -1,
+              __kCFLogAssertion,
+              "%s(): unable to add event ident %" PRIxPTR " filter %hd",
+              __PRETTY_FUNCTION__,
+              ident,
+              filter);
+
+    if (status == -1) HALT;
+}
 
 static Boolean __CFRunLoopWait(CFRunLoopRef rl, CFRunLoopModeRef rlm, __CFPortSet portSet, __CFPort *onePort, const struct timespec *timeout, __CFPort *livePort) {
     __CFPortPointer    events = NULL;
@@ -3773,7 +3806,7 @@ void CFRunLoopAddTimer(CFRunLoopRef rl, CFRunLoopTimerRef rlt, CFStringRef modeN
   	    CFSetAddValue(rlt->_rlModes, rlm->_name);
             __CFRunLoopTimerUnlock(rlt);
             __CFRunLoopTimerFireTSRLock();
-	    __CFRepositionTimerInMode(rlm, rlt, false);
+            __CFRepositionTimerInMode(rl, rlm, rlt, false);
             __CFRunLoopTimerFireTSRUnlock();
             if (!_CFExecutableLinkedOnOrAfter(CFSystemVersionLion)) {
                 // Normally we don't do this on behalf of clients, but for
@@ -3818,9 +3851,9 @@ void CFRunLoopRemoveTimer(CFRunLoopRef rl, CFRunLoopTimerRef rlt, CFStringRef mo
             __CFRunLoopTimerUnlock(rlt);
             CFArrayRemoveValueAtIndex(rlm->_timers, idx);
             if (0 == CFArrayGetCount(rlm->_timers)) {
-                __CFDisarmTimerInMode(rlm);
+                __CFDisarmTimerInMode(rl, rlm);
             } else if (0 == idx) {
-                __CFArmNextTimerInMode(rlm);
+                __CFArmNextTimerInMode(rl, rlm);
             }
         }
         if (NULL != rlm) {
@@ -4388,11 +4421,11 @@ void CFRunLoopTimerSetNextFireDate(CFRunLoopTimerRef rlt, CFAbsoluteTime fireDat
     int64_t now2 = (int64_t)mach_absolute_time();
     CFAbsoluteTime now1 = CFAbsoluteTimeGetCurrent();
     if (fireDate < now1) {
-	nextFireTSR = now2;
+	    nextFireTSR = now2;
     } else if (TIMER_INTERVAL_LIMIT < fireDate - now1) {
-	nextFireTSR = now2 + __CFTimeIntervalToTSR(TIMER_INTERVAL_LIMIT);
+	    nextFireTSR = now2 + __CFTimeIntervalToTSR(TIMER_INTERVAL_LIMIT);
     } else {
-	nextFireTSR = now2 + __CFTimeIntervalToTSR(fireDate - now1);
+	    nextFireTSR = now2 + __CFTimeIntervalToTSR(fireDate - now1);
     }
     __CFRunLoopTimerLock(rlt);
     if (NULL != rlt->_runLoop) {
@@ -4410,20 +4443,20 @@ void CFRunLoopTimerSetNextFireDate(CFRunLoopTimerRef rlt, CFAbsoluteTime fireDat
         __CFRunLoopTimerUnlock(rlt);
         __CFRunLoopLock(rl);
         for (CFIndex idx = 0; idx < cnt; idx++) {
-	    CFStringRef name = (CFStringRef)modes[idx];
+            CFStringRef name = (CFStringRef)modes[idx];
             modes[idx] = __CFRunLoopFindMode(rl, name, false);
-	    CFRelease(name);
+            CFRelease(name);
         }
         __CFRunLoopTimerFireTSRLock();
-	rlt->_fireTSR = nextFireTSR;
+        rlt->_fireTSR = nextFireTSR;
         rlt->_nextFireDate = fireDate;
         for (CFIndex idx = 0; idx < cnt; idx++) {
-	    CFRunLoopModeRef rlm = (CFRunLoopModeRef)modes[idx];
+	        CFRunLoopModeRef rlm = (CFRunLoopModeRef)modes[idx];
             if (rlm) {
-                __CFRepositionTimerInMode(rlm, rlt, true);
-    }
-    }
-    __CFRunLoopTimerFireTSRUnlock();
+                __CFRepositionTimerInMode(rl, rlm, rlt, true);
+            }
+        }
+        __CFRunLoopTimerFireTSRUnlock();
         for (CFIndex idx = 0; idx < cnt; idx++) {
             __CFRunLoopModeUnlock((CFRunLoopModeRef)modes[idx]);
         }
@@ -4437,10 +4470,10 @@ void CFRunLoopTimerSetNextFireDate(CFRunLoopTimerRef rlt, CFAbsoluteTime fireDat
         CFRelease(rl);
      } else {
         __CFRunLoopTimerFireTSRLock();
-	rlt->_fireTSR = nextFireTSR;
+        rlt->_fireTSR = nextFireTSR;
         rlt->_nextFireDate = fireDate;
         __CFRunLoopTimerFireTSRUnlock();
-         __CFRunLoopTimerUnlock(rlt);
+        __CFRunLoopTimerUnlock(rlt);
      }
 }
 

@@ -735,7 +735,7 @@ typedef __CFPort *            __CFPortPointer;
 #define __kCFPortSize         (sizeof (HANDLE))
 #define __kCFPortNull         NULL
 #define __kCFPortPointerNull  NULL
-#define MAX_PORTS             MAXIMUM_WAIT_OBJECTS
+#define __kCFPortsMax         MAXIMUM_WAIT_OBJECTS
 
 #define __kCFPortSetNull      NULL
 
@@ -765,8 +765,7 @@ typedef struct kevent *       __CFPortPointer;
 #define __kCFPortSize         (sizeof (struct kevent))
 #define __kCFPortNull         NULL
 #define __kCFPortPointerNull  NULL
-#define MAX_PORTS             16
-#define MAXIMUM_WAIT_OBJECTS  MAX_PORTS
+#define __kCFPortsMax         16
 
 #define __kCFPortSetNull      NULL
 
@@ -962,8 +961,8 @@ static Boolean __CFPortSetInsert(__CFPort port, __CFPortSet portSet) {
             portSet->ports = (__CFPortPointer)CFAllocatorReallocate(kCFAllocatorSystemDefault, portSet->ports, portSet->size * __kCFPortSize, 0);
         }
 
-        if (portSet->used >= MAXIMUM_WAIT_OBJECTS) {
-            CFLog(kCFLogLevelWarning, CFSTR("*** More than MAXIMUM_WAIT_OBJECTS (%d) ports add to a port set.  The last ones will be ignored."), MAXIMUM_WAIT_OBJECTS);
+        if (portSet->used >= __kCFPortsMax) {
+            CFLog(kCFLogLevelWarning, CFSTR("*** More than __kCFPortsMax (%d) ports add to a port set.  The last ones will be ignored."), __kCFPortsMax);
         }
 
         __CFPortCopy(&portSet->ports[portSet->used++], port);

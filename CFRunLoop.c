@@ -81,6 +81,8 @@ typedef void* dispatch_source_t ;
 #include <sys/event.h>
 
 typedef void* dispatch_source_t ;
+
+#include <AssertMacros.h>
 #endif
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
@@ -1330,7 +1332,7 @@ static CFRunLoopModeRef __CFRunLoopFindMode(CFRunLoopRef rl, CFStringRef modeNam
     if (__CFPortEqual(__kCFPortNull, rlm->_timerPort)) HALT;
 
     if (!__CFPortSetInsert(rlm->_timerPort, rlm->_portSet)) HALT;
-    //if (!__CFPortSetInsert(rl->_wakeUpPort, rlm->_portSet)) HALT;
+    if (!__CFPortSetInsert(rl->_wakeUpPort, rlm->_portSet)) HALT;
 #if DEPLOYMENT_TARGET_WINDOWS    
     rlm->_msgQMask = 0;
     rlm->_msgPump = NULL;
@@ -1872,7 +1874,7 @@ static CFRunLoopRef __CFRunLoopCreate(pthread_t t) {
     loop->_wakeUpPort = __CFPortAllocate();
     if (__CFPortEqual(__kCFPortNull, loop->_wakeUpPort)) HALT;
 #if DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-    //EV_SET(loop->_wakeUpPort, (uintptr_t)loop->_wakeUpPort, EVFILT_USER, EV_ADD, NOTE_FFCOPY, 0, NULL);
+    kqueue_update(loop->_waitQueue, loop->_wakeUpPort, (uintptr_t)loop->_wakeUpPort, EVFILT_USER, (EV_ADD | EV_CLEAR | EV_ONESHOT), NOTE_FFNOP, 0, NULL);
 #endif
     loop->_ignoreWakeUps = true;
     loop->_commonModes = CFSetCreateMutable(kCFAllocatorSystemDefault, 0, &kCFTypeSetCallBacks);
@@ -2861,25 +2863,31 @@ static void kqueue_update(int             queue,
 }
 
 static Boolean __CFRunLoopWait(CFRunLoopRef rl, CFRunLoopModeRef rlm, __CFPortSet portSet, __CFPort *onePort, const struct timespec *timeout, __CFPort *livePort) {
-    __CFPortPointer    events = NULL;
-    uint16_t           i, eventsUsed = 0;
+    __CFPortPointer    inputEvents = NULL;
+    uint16_t           i, inputEventsUsed = 0;
+    __CFPortTemporary  outputEvents[__kCFPortsMax];
+    uint16_t           outputEventsAvailable = __kCFPortsMax;
     int                status = 0;
     Boolean            result = false;
 
+    __Require(livePort != NULL, done);
+
     if (portSet != __kCFPortSetNull) {
-        events     = __CFPortSetGetPorts(portSet);
-        eventsUsed = __CFPortSetGetSize(portSet);
+        inputEvents     = __CFPortSetGetPorts(portSet);
+        inputEventsUsed = __CFPortSetGetSize(portSet);
     } else if (onePort != NULL) {
-        events     = *onePort;
-        eventsUsed = 1;
+        inputEvents     = *onePort;
+        inputEventsUsed = 1;
     }
 
-    if ((events != NULL) && (eventsUsed > 0)) {
+    if ((inputEvents != NULL) && (inputEventsUsed > 0)) {
+        memset(&outputEvents[0], 0, sizeof (outputEvents));
+
         status = kevent(rl->_waitQueue,
-                        events,
-                        eventsUsed,
-                        events,
-                        eventsUsed,
+                        inputEvents,
+                        inputEventsUsed,
+                        &outputEvents[0],
+                        outputEventsAvailable,
                         timeout);
 
         if (status == 0) {
@@ -2890,23 +2898,37 @@ static Boolean __CFRunLoopWait(CFRunLoopRef rl, CFRunLoopModeRef rlm, __CFPortSe
 
         } else {
             for (i = 0; i < status; i++) {
-                if (events[i].flags & EV_ERROR) {
-                    events[i].flags &= ~EV_ERROR;
+                if (outputEvents[i].flags & EV_ERROR) {
+                    outputEvents[i].flags &= ~EV_ERROR;
 
                     result = false;
+                    goto done;
                 } else {
-                    switch (events[i].filter) {
+                    switch (outputEvents[i].filter) {
 
                     case EVFILT_TIMER:
                         {
-                            if (events[i].data > 0) {
+                            if (outputEvents[i].data > 0) {
                                 if (livePort != NULL) {
-                                    *livePort = __CFPortSetFind(&events[0], portSet);
+                                    *livePort = __CFPortSetFind(&outputEvents[i], portSet);
                                 }
-                                events[i].flags &= ~EV_CLEAR;
+
+                                outputEvents[i].flags &= ~EV_CLEAR;
+
+                                result = true;
+                                goto done;
+                            }
+                        }
+                        break;
+
+                    case EVFILT_USER:
+                        {
+                            if (livePort != NULL) {
+                                *livePort = __CFPortSetFind(&outputEvents[i], portSet);
                             }
 
                             result = true;
+                            goto done;
                         }
                         break;
 
@@ -2916,6 +2938,7 @@ static Boolean __CFRunLoopWait(CFRunLoopRef rl, CFRunLoopModeRef rlm, __CFPortSe
         }
     }
 
+done:
     return result;
 }
 
@@ -3201,8 +3224,7 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
             // Always reset the wake up port, or risk spinning forever
             ResetEvent(rl->_wakeUpPort);
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-            //EV_SET(rl->_wakeUpPort, (uintptr_t)rl->_wakeUpPort, EVFILT_USER, EV_CLEAR, NOTE_FFCOPY, 0, NULL);
-            //__CFPortSetUpdate(rl->_wakeUpPort, rlm->_portSet);
+            kqueue_update(rl->_waitQueue, rl->_wakeUpPort, (uintptr_t)rl->_wakeUpPort, EVFILT_USER, (EV_ADD | EV_CLEAR | EV_ONESHOT), NOTE_FFNOP, 0, NULL);
 #endif
         } else if (__CFPortEqual(livePort, rlm->_timerPort)) {
 #if DEPLOYMENT_TARGET_WINDOWS
@@ -3355,8 +3377,7 @@ void CFRunLoopWakeUp(CFRunLoopRef rl) {
 #elif DEPLOYMENT_TARGET_WINDOWS
     SetEvent(rl->_wakeUpPort);
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-    //EV_SET(rl->_wakeUpPort, (uintptr_t)rl->_wakeUpPort, EVFILT_USER, EV_ENABLE, NOTE_FFCOPY | NOTE_TRIGGER, 0, NULL);
-    //__CFPortSetUpdate(rl->_wakeUpPort, // XXX how to get to portSet from here?);
+    kqueue_update(rl->_waitQueue, rl->_wakeUpPort, (uintptr_t)rl->_wakeUpPort, EVFILT_USER, 0, NOTE_TRIGGER, 0, NULL);
 #endif
     __CFRunLoopUnlock(rl);
 }

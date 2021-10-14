@@ -2387,7 +2387,7 @@ __CFFileDescriptorSignalSourceAndWakeupRunLoops_LockedAndUnlock(CFFileDescriptor
     CFMutableArrayRef  runLoopsOrig  = NULL;
     CFMutableArrayRef  runLoopsCopy  = NULL;
     CFRunLoopSourceRef runLoopSource = NULL;
-    CFRunLoopRef       runLoop            = NULL;
+    CFRunLoopRef       runLoop       = NULL;
 
     CFRunLoopSourceSignal(f->_rlsource);
 
@@ -2530,7 +2530,7 @@ __CFFileDescriptorRunLoopSchedule(void *info, CFRunLoopRef rl, CFStringRef mode)
         CFMutableArrayRef runLoopsOrig = f->_rloops;
         CFMutableArrayRef runLoopsCopy = CFArrayCreateMutableCopy(kCFAllocatorSystemDefault, 0, f->_rloops);
 
-        CFArrayAppendValue(f->_rloops, rl);
+        CFArrayAppendValue(runLoopsCopy, rl);
 
         f->_rloops = runLoopsCopy;
         CFRelease(runLoopsOrig);

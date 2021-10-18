@@ -463,6 +463,8 @@ __private_extern__ CFIndex __CFActiveProcessorCount() {
     if (result != 0) {
         pcnt = 0;
     }
+#elif defined(_SC_NPROCESSORS_ONLN)
+    pcnt = sysconf(_SC_NPROCESSORS_ONLN);
 #else
     // Assume the worst
     pcnt = 1;

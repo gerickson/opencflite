@@ -465,34 +465,40 @@ CF_INLINE Boolean __CFSpinLockTry(volatile CFSpinLock_t *lock) {
     return (InterlockedCompareExchange((LONG volatile *)lock, ~0, 0) == 0);
 }
 
-#elif DEPLOYMENT_TARGET_LINUX
+#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 
-typedef int32_t CFSpinLock_t;
-#define CFSpinLockInit 0
-#define CF_SPINLOCK_INIT_FOR_STRUCTS(X) (X = CFSpinLockInit)
+typedef struct __CFSpinLock {
+	int                _init;
+	pthread_spinlock_t _lock;
+} CFSpinLock_t;
+
+#define CFSpinLockInit {0}
+#define CF_SPINLOCK_INIT_FOR_STRUCTS(X) do { pthread_spin_init(&X._lock, PTHREAD_PROCESS_PRIVATE); X._init = 1; } while (0)
 
 CF_INLINE void __CFSpinLock(volatile CFSpinLock_t *lock) {
-    while (__sync_val_compare_and_swap(lock, ~0, 0) != 0) {
-	sleep(0);
-    }
+	if (lock->_init == 0) {
+		!pthread_spin_init(&lock->_lock, PTHREAD_PROCESS_PRIVATE) &&
+		(lock->_init = 1);
+	}
+	pthread_spin_lock(&lock->_lock);
 }
 
 CF_INLINE void __CFSpinUnlock(volatile CFSpinLock_t *lock) {
-    __sync_synchronize();
-    *lock = 0;
+	pthread_spin_unlock(&lock->_lock);
 }
 
 CF_INLINE Boolean __CFSpinLockTry(volatile CFSpinLock_t *lock) {
-    return (__sync_val_compare_and_swap(lock, ~0, 0) == 0);
+	return (pthread_spin_trylock(&lock->_lock) == 0);
 }
 
 #else
 
 #warning CF spin locks not defined for this platform -- CF is not thread-safe
-#define __CFSpinLock(A)		do {} while (0)
-#define __CFSpinUnlock(A)	do {} while (0)
+#define __CFSpinLock(A)		do { (void)A; } while (0)
+#define __CFSpinUnlock(A)	do { (void)A; } while (0)
+#define __CFSpinLockTry(A)	do { (void)A; } while (0)
 
-#endif
+#endif // DEPLOYMENT_TARGET_MACOSX
 
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED

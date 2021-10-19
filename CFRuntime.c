@@ -1031,7 +1031,7 @@ void __CFInitialize(void) {
 	for (CFIndex idx = 0; idx < NUM_EXTERN_TABLES; idx++) {
 	    __NSRetainCounters[idx].table = CFBasicHashCreate(kCFAllocatorSystemDefault, kCFBasicHashHasCounts | kCFBasicHashLinearHashing | kCFBasicHashAggressiveGrowth, &CFExternRefCallbacks);
 	    CFBasicHashSetCapacity(__NSRetainCounters[idx].table, 40);
-	    __NSRetainCounters[idx].lock = CFSpinLockInit;
+	    CF_SPINLOCK_INIT_FOR_STRUCTS(__NSRetainCounters[idx].lock);
 	}
 
         /*** _CFRuntimeCreateInstance() can finally be called generally after this line. ***/

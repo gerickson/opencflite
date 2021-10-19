@@ -102,7 +102,7 @@ CF_INLINE void checkRLMArray(CFArrayRef arr)
 CF_INLINE void* _CFStreamCreateReserved(CFAllocatorRef alloc) {
 	struct CFStreamAux* aux = (struct CFStreamAux*) CFAllocatorAllocate(alloc, sizeof(struct CFStreamAux), 0);
 	if (aux) {
-		aux->streamLock = CFSpinLockInit;
+		CF_SPINLOCK_INIT_FOR_STRUCTS(aux->streamLock);
         aux->previousRunloopsAndModes = NULL;
 	}
 	return aux;

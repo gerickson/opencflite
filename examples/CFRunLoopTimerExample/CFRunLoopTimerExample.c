@@ -48,13 +48,14 @@
 /* Type Definitions */
 
 typedef struct _TimerData {
-	CFIndex				mIndex;
-	double				mInterval;
-	struct {
-		unsigned long	mDid;
-		unsigned long	mShould;
-	} mIterations;
-	CFRunLoopTimerRef	mRef;
+    CFIndex             mIndex;
+    double              mInterval;
+    CFAbsoluteTime      mLastFired;
+    struct {
+        unsigned long   mDid;
+        unsigned long   mShould;
+    } mIterations;
+    CFRunLoopTimerRef   mRef;
 } TimerData;
 
 typedef TimerData ** TimerContainerRef;
@@ -105,11 +106,15 @@ TimerCallback(CFRunLoopTimerRef timer, void *info)
     seconds = (int)(now);
     milliseconds = (now - (double)(seconds)) * 1.0E3;
 
-    printf("%04d-%02d-%02d %02d:%02d:%02d.%03d, timer: %lu, iteration: %lu\n",
+    printf("%04d-%02d-%02d %02d:%02d:%02d.%03d, timer: %lu, delta: %.03f, variance: %+.03f, iteration: %lu\n",
            year, month, day,
            hour, minute, second, milliseconds,
            theData->mIndex,
+           now - theData->mLastFired,
+           now - theData->mLastFired - theData->mInterval,
            theData->mIterations.mDid++);
+
+    theData->mLastFired = now;
 
     CFRelease(cal);
 
@@ -137,10 +142,10 @@ TimerCallback(CFRunLoopTimerRef timer, void *info)
 static TimerContainerRef
 TimerContainerCreate(CFIndex inElements)
 {
-	return ((TimerContainerRef)CFAllocatorAllocate(kCFAllocatorSystemDefault,
-												   inElements *
-												   sizeof(TimerData *),
-												   0));
+    return ((TimerContainerRef)CFAllocatorAllocate(kCFAllocatorSystemDefault,
+                                                   inElements *
+                                                   sizeof(TimerData *),
+                                                   0));
 }
 
 /*
@@ -165,7 +170,7 @@ TimerContainerCreate(CFIndex inElements)
 static TimerData *
 TimerContainerGet(TimerContainerRef inContainer, CFIndex inIndex)
 {
-	return (inContainer ? inContainer[inIndex] : NULL);
+    return (inContainer ? inContainer[inIndex] : NULL);
 }
 
 /*
@@ -190,10 +195,10 @@ TimerContainerGet(TimerContainerRef inContainer, CFIndex inIndex)
  */
 static void
 TimerContainerSet(TimerContainerRef inContainer,
-				  CFIndex inIndex,
-				  TimerData *inData)
+                  CFIndex inIndex,
+                  TimerData *inData)
 {
-	inContainer[inIndex] = inData;
+    inContainer[inIndex] = inData;
 }
 
 /*
@@ -219,7 +224,7 @@ TimerContainerSet(TimerContainerRef inContainer,
 static void
 TimerContainerDestroy(TimerContainerRef inContainer)
 {
-	CFAllocatorDeallocate(kCFAllocatorSystemDefault, inContainer);
+    CFAllocatorDeallocate(kCFAllocatorSystemDefault, inContainer);
 }
 
 /*
@@ -248,25 +253,25 @@ TimerContainerDestroy(TimerContainerRef inContainer)
 static
 long local_lround(double x)
 {
-	double t;
+    double t;
 
-	if (x >= 0.0) {
-		t = ceilf(x);
+    if (x >= 0.0) {
+        t = ceilf(x);
 
-		if (t - x > 0.5)
-			t -= 1.0;
+        if (t - x > 0.5)
+            t -= 1.0;
 
-		return (long)t;
+        return (long)t;
 
-	} else {
-		t = ceilf(-x);
+    } else {
+        t = ceilf(-x);
 
-		if (t + x > 0.5)
-			t -= 1.0;
+        if (t + x > 0.5)
+            t -= 1.0;
 
-		return (long)-t;
+        return (long)-t;
 
-	}
+    }
 }
 
 /*
@@ -295,68 +300,69 @@ long local_lround(double x)
 static TimerData *
 TimerDataCreate(CFIndex inIndex, double inLimit, const char *inInterval)
 {
-	double timerInterval = 0.0;
-	unsigned long timerIterations = 0;
-	char *end = NULL;
-	TimerData *theData = NULL;
-	CFRunLoopTimerRef theTimer = NULL;
+    double timerInterval = 0.0;
+    unsigned long timerIterations = 0;
+    char *end = NULL;
+    TimerData *theData = NULL;
+    CFRunLoopTimerRef theTimer = NULL;
     CFRunLoopTimerContext theContext = { 0, NULL, NULL, NULL, NULL };
  
-	/* Parse and validate the timer interval. */
+    /* Parse and validate the timer interval. */
 
-	timerInterval = strtod(inInterval, &end);
-	__Verify(errno != ERANGE);
+    timerInterval = strtod(inInterval, &end);
+    __Verify(errno != ERANGE);
 
-	if (errno == ERANGE || timerInterval <= 0) {
-		fprintf(stderr, "Timer %lu interval must be greater than zero.\n",
-				inIndex);
-		goto done;
-	}
+    if (errno == ERANGE || timerInterval <= 0) {
+        fprintf(stderr, "Timer %lu interval must be greater than zero.\n",
+                inIndex);
+        goto done;
+    }
 
-	/* Compute the expected number of timer iterations. */
+    /* Compute the expected number of timer iterations. */
 
-	timerIterations = local_lround(inLimit / timerInterval);
+    timerIterations = local_lround(inLimit / timerInterval);
 
-	/* Allocate storage for the timer data. */
+    /* Allocate storage for the timer data. */
 
-	theData = (TimerData*)CFAllocatorAllocate(kCFAllocatorSystemDefault,
-											  sizeof (TimerData),
-											  0);
-	__Require(theData != NULL, done);
+    theData = (TimerData*)CFAllocatorAllocate(kCFAllocatorSystemDefault,
+                                              sizeof (TimerData),
+                                              0);
+    __Require(theData != NULL, done);
 
-	theContext.info = theData;
+    theContext.info = theData;
 
-	/* Create a CoreFoundation run loop timer. */
+    /* Create a CoreFoundation run loop timer. */
 
-	theTimer = CFRunLoopTimerCreate(kCFAllocatorDefault,
-									CFAbsoluteTimeGetCurrent() + timerInterval,
-									timerInterval,
-									0,
-									0,
-									TimerCallback,
-									&theContext);
-	__Require(theTimer != NULL, fail);
+    theTimer = CFRunLoopTimerCreate(kCFAllocatorDefault,
+                                    CFAbsoluteTimeGetCurrent() + timerInterval,
+                                    timerInterval,
+                                    0,
+                                    0,
+                                    TimerCallback,
+                                    &theContext);
+    __Require(theTimer != NULL, fail);
 
-	printf("Will fire timer %lu every %g seconds for %g seconds, "
-		   "up to %lu time%s.\n",
-		   inIndex, timerInterval, inLimit, timerIterations,
-		   timerIterations == 1 ? "" : "s");
+    printf("Will fire timer %lu every %g seconds for %g seconds, "
+           "up to %lu time%s.\n",
+           inIndex, timerInterval, inLimit, timerIterations,
+           timerIterations == 1 ? "" : "s");
 
-	/* Initialize timer data members. */
+    /* Initialize timer data members. */
 
-	theData->mIndex					= inIndex;
-	theData->mInterval				= timerInterval;
-	theData->mIterations.mDid		= 0;
-	theData->mIterations.mShould	= timerIterations;
-	theData->mRef					= theTimer;
+    theData->mIndex              = inIndex;
+    theData->mInterval           = timerInterval;
+    theData->mLastFired          = CFAbsoluteTimeGetCurrent();
+    theData->mIterations.mDid    = 0;
+    theData->mIterations.mShould = timerIterations;
+    theData->mRef                = theTimer;
 
  done:
-	return (theData);
+    return (theData);
 
  fail:
-	CFAllocatorDeallocate(kCFAllocatorSystemDefault, theData);
+    CFAllocatorDeallocate(kCFAllocatorSystemDefault, theData);
 
-	return (NULL);
+    return (NULL);
 }
 
 /*
@@ -379,101 +385,103 @@ TimerDataCreate(CFIndex inIndex, double inLimit, const char *inInterval)
 static void
 TimerDataDestroy(TimerData *inData)
 {
-	__Verify_Action(inData != NULL, return);
+    __Verify_Action(inData != NULL, return);
 
-	if (inData->mRef != NULL) {
-		CFRunLoopTimerInvalidate(inData->mRef);
-		CFRelease(inData->mRef);
-	}
+    if (inData->mRef != NULL) {
+        CFRunLoopTimerInvalidate(inData->mRef);
+        CFRelease(inData->mRef);
+    }
 
-	CFAllocatorDeallocate(kCFAllocatorSystemDefault, inData);
+    CFAllocatorDeallocate(kCFAllocatorSystemDefault, inData);
 }
 
 int
 main(int argc, const char * const argv[])
 {
-	int status = 0;
-	int i, timerCount = 0;
-	double timerLimit = 0;
-	char *end = NULL;
-	TimerData *theTimer;
-	TimerContainerRef timerContainer;
+    int status = 0;
+    int i, timerCount = 0;
+    double timerLimit = 0;
+    char *end = NULL;
+    TimerData *theTimer;
+    TimerContainerRef timerContainer;
     CFRunLoopRef theRunLoop = CFRunLoopGetCurrent();
-	CFStringRef theMode = CFSTR("TimerMode");
+    CFStringRef theMode = CFSTR("TimerMode");
 
-	/*
-	 * Perform a basic sanity check on usage: at least one timer and a limit.
-	 */
+    /*
+     * Perform a basic sanity check on usage: at least one timer and a limit.
+     */
 
-	if (argc < 3) {
-		fprintf(stderr, "Usage: %s <interval 1 / s> [<interval 2 / s> ...] "
-				"<limit / s>\n", argv[0]);
-		goto done;
-	}
+    if (argc < 3) {
+        fprintf(stderr, "Usage: %s <interval 1 / s> [<interval 2 / s> ...] "
+                "<limit / s>\n", argv[0]);
+        goto done;
+    }
 
-	/* Convert and check the specified limit value. */
+    /* Convert and check the specified limit value. */
 
-	timerLimit = strtod(argv[argc - 1], &end);
-	__Verify(errno != ERANGE);
+    timerLimit = strtod(argv[argc - 1], &end);
+    __Verify(errno != ERANGE);
 
-	if (errno == ERANGE || timerLimit <= 0) {
-		fprintf(stderr, "Timer limit must be greater than zero.\n");
-		goto done;
-	}
+    if (errno == ERANGE || timerLimit <= 0) {
+        fprintf(stderr, "Timer limit must be greater than zero.\n");
+        goto done;
+    }
 
-	timerCount = argc - 2;
+    timerCount = argc - 2;
 
-	/*
-	 * Allocate a container for all the timers we are going to
-	 * allocate and run.
-	 */
+    /*
+     * Allocate a container for all the timers we are going to
+     * allocate and run.
+     */
 
-	timerContainer = TimerContainerCreate(timerCount);
+    timerContainer = TimerContainerCreate(timerCount);
 
-	printf("Will fire a total of %d timer%s for %g seconds.\n",
-		   timerCount, ((timerCount == 1) ? "" : "s"), timerLimit);
+    printf("Will fire a total of %d timer%s for %g seconds.\n",
+           timerCount, ((timerCount == 1) ? "" : "s"), timerLimit);
 
-	/* Allocate each timer and add it to the container. */
+    /* Allocate each timer and add it to the container. */
 
-	for (i = 0; i < timerCount; i++) {
-		theTimer = TimerDataCreate(i, timerLimit, argv[i + 1]);
-		__Require(theTimer != NULL, finish);
+    for (i = 0; i < timerCount; i++) {
+        theTimer = TimerDataCreate(i, timerLimit, argv[i + 1]);
+        __Require(theTimer != NULL, finish);
 
-		TimerContainerSet(timerContainer, i, theTimer);
+        TimerContainerSet(timerContainer, i, theTimer);
 
-		CFRunLoopAddTimer(theRunLoop, theTimer->mRef, theMode);
-	}
+        CFRunLoopAddTimer(theRunLoop, theTimer->mRef, theMode);
+    }
 
-	/* Run the timers */
+    /* Run the timers */
 
-	CFRunLoopRunInMode(theMode, timerLimit, false);
+    CFRunLoopRunInMode(theMode, timerLimit, false);
 
-	/* Determine the run results and deallocate resources. */
+    /* Determine the run results and deallocate resources. */
 
  finish:
-	for (i = 0; i < timerCount; i++) {
-		bool result;
-		theTimer = TimerContainerGet(timerContainer, i);
+    for (i = 0; i < timerCount; i++) {
+        bool result = false;
+        theTimer = TimerContainerGet(timerContainer, i);
 
-		result = (theTimer->mIterations.mShould >= theTimer->mIterations.mDid);
+        if (theTimer->mIterations.mDid > 0) {
+            result = (theTimer->mIterations.mShould >= theTimer->mIterations.mDid);
 
-		if (!result) {
-			fprintf(stderr,
-					"Timer %lu fired %lu of the expected %lu times.\n",
-					theTimer->mIndex,
-					theTimer->mIterations.mDid,
-					theTimer->mIterations.mShould);
-		}
+            if (!result) {
+                fprintf(stderr,
+                        "Timer %lu fired %lu of the expected %lu times.\n",
+                        theTimer->mIndex,
+                        theTimer->mIterations.mDid,
+                        theTimer->mIterations.mShould);
+            }
+        }
 
-		status += result;
+        status += result;
 
         CFRunLoopRemoveTimer(theRunLoop, theTimer->mRef, theMode);
 
         TimerDataDestroy(theTimer);
-	}
+    }
 
-	TimerContainerDestroy(timerContainer);
+    TimerContainerDestroy(timerContainer);
 
  done:
-	return ((status == timerCount) ? EXIT_SUCCESS : EXIT_FAILURE);
+    return ((status == timerCount) ? EXIT_SUCCESS : EXIT_FAILURE);
 }

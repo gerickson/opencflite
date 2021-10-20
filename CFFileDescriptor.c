@@ -536,6 +536,7 @@ struct __CFFileDescriptorManager {
 #endif
     volatile UInt32                   mGeneration;
     void *                            mThread;
+    long                              mRun;
     Boolean                           mReadFileDescriptorsTimeoutInvalid;
     CFFileDescriptorNativeDescriptor  mWakeupNativeDescriptorPipe[2];
 };
@@ -618,6 +619,10 @@ static void *              __CFFileDescriptorManagerAllocateSelectState(struct _
 static void *              __CFFileDescriptorManagerAllocateSelectedDescriptors(struct __CFFileDescriptorManagerSelectedDescriptors *selected);
 static void *              __CFFileDescriptorManagerAllocateSelectedDescriptorsContainer(struct __CFFileDescriptorManagerSelectedDescriptorsContainer *container);
 static SInt32              __CFFileDescriptorManagerCreateWakeupPipe(void);
+static void                __CFFileDescriptorManagerDeallocateWatchedDescriptors(struct __CFFileDescriptorManagerWatchedDescriptors *watches);
+static void                __CFFileDescriptorManagerDeallocateSelectState(struct __CFFileDescriptorManagerSelectState *state);
+static void                __CFFileDescriptorManagerDeallocateSelectedDescriptors(struct __CFFileDescriptorManagerSelectedDescriptors *selected);
+static void                __CFFileDescriptorManagerDeallocateSelectedDescriptorsContainer(struct __CFFileDescriptorManagerSelectedDescriptorsContainer *container);
 static void                __CFFileDescriptorManagerHandleError(void);
 static void                __CFFileDescriptorManagerHandleReadyDescriptors(struct __CFFileDescriptorManagerSelectState *state,
 																		   CFIndex max,
@@ -705,6 +710,7 @@ static struct __CFFileDescriptorManager __sCFFileDescriptorManager = {
 #endif
     0,
     NULL,
+    FALSE,
     TRUE,
     { __CFFILEDESCRIPTOR_INVALID_DESCRIPTOR, __CFFILEDESCRIPTOR_INVALID_DESCRIPTOR }
 };
@@ -1013,11 +1019,9 @@ CF_INLINE CFIndex __CFFileDescriptorManagerNativeDescriptorCalculateMaxSize_Lock
 
 // MARK: Manager Functions
 
-#ifdef __GNUC__
-__attribute__ ((noreturn))
-#endif /* __GNUC__ */
 /* static */ void
 __CFFileDescriptorManager(void * arg) {
+    volatile long *run = (volatile long *)(arg);
 	struct __CFFileDescriptorManagerSelectState state;
 	void *result;
     CFIndex nrfds, maxnrfds, fdentries = 1;
@@ -1043,7 +1047,7 @@ __CFFileDescriptorManager(void * arg) {
 	result = __CFFileDescriptorManagerAllocateSelectState(&state, fdentries);
 	__Verify_Action(result != NULL, abort());
 
-    for (;;) {
+    while ((run != NULL) && (*run != FALSE)) {
 		maxnrfds = __CFFileDescriptorManagerPrepareWatches(&state._watches, &timeout);
 
 		gettimeofday(&timeBeforeSelect, NULL);
@@ -1064,6 +1068,8 @@ __CFFileDescriptorManager(void * arg) {
 
 		__CFFileDescriptorManagerProcessState(&state, nrfds, maxnrfds, &timeElapsed);
     }
+
+	__CFFileDescriptorManagerDeallocateSelectState(&state);
 
     __CFFileDescriptorTraceExit();
 }
@@ -1152,6 +1158,68 @@ __CFFileDescriptorManagerAllocateSelectedDescriptorsContainer(struct __CFFileDes
 __CFFileDescriptorManagerCreateWakeupPipe(void)
 {
     return pipe(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe);
+}
+
+/* static */ void __CFFileDescriptorManagerDeallocateSelectState(struct __CFFileDescriptorManagerSelectState *state) {
+	__Require(state != NULL, done);
+
+	__CFFileDescriptorManagerDeallocateSelectedDescriptors(&state->_selected);
+
+	__CFFileDescriptorManagerDeallocateWatchedDescriptors(&state->_watches);
+
+ done:
+	return;
+}
+
+/* static */ void __CFFileDescriptorManagerDeallocateSelectedDescriptors(struct __CFFileDescriptorManagerSelectedDescriptors *selected) {
+	__Require(selected != NULL, done);
+
+	__CFFileDescriptorManagerDeallocateSelectedDescriptorsContainer(&selected->_write);
+
+	__CFFileDescriptorManagerDeallocateSelectedDescriptorsContainer(&selected->_read);
+
+ done:
+	return;
+}
+
+/* static */ void __CFFileDescriptorManagerDeallocateSelectedDescriptorsContainer(struct __CFFileDescriptorManagerSelectedDescriptorsContainer *container) {
+	__Require(container != NULL, done);
+
+    if (container->_descriptors != NULL) {
+        CFRelease(container->_descriptors);
+        container->_descriptors = NULL;
+    }
+
+	container->_index = 0;
+
+ done:
+	return;
+}
+
+/* static */ void __CFFileDescriptorManagerDeallocateWatchedDescriptors(struct __CFFileDescriptorManagerWatchedDescriptors *watches) {
+    CFAllocatorRef allocator = kCFAllocatorSystemDefault;
+
+	__Require(watches != NULL, done);
+
+    if (watches->_read != NULL) {
+        CFAllocatorDeallocate(allocator, watches->_read);
+        watches->_read = NULL;
+    }
+
+    if (watches->_write != NULL) {
+        CFAllocatorDeallocate(allocator, watches->_write);
+        watches->_write = NULL;
+    }
+
+    if (watches->_except != NULL) {
+        CFAllocatorDeallocate(allocator, watches->_except);
+        watches->_except = NULL;
+    }
+
+	watches->_count = 0;
+
+ done:
+	return;
 }
 
 /* static */ void
@@ -1569,6 +1637,8 @@ __CFFileDescriptorManagerRemoveInvalidFileDescriptors(void) {
 	CFIndex count;
 	CFIndex index;
 
+    __CFFileDescriptorTraceEnter();
+
 	__CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
 
 	__CFFileDescriptorFindAndAppendInvalidDescriptors(__sCFFileDescriptorManager.mWriteFileDescriptors,
@@ -1585,7 +1655,10 @@ __CFFileDescriptorManagerRemoveInvalidFileDescriptors(void) {
 	for (index = 0; index < count; index++) {
 		CFFileDescriptorInvalidate(((CFFileDescriptorRef)CFArrayGetValueAtIndex(invalidFileDescriptors, index)));
 	}
+
 	CFRelease(invalidFileDescriptors);
+
+    __CFFileDescriptorTraceExit();
 }
 
 /* static */ void
@@ -1887,7 +1960,8 @@ __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
 
         if (__sCFFileDescriptorManager.mThread == NULL) {
             __CFFileDescriptorMaybeLog("Starting manager thread...\n");
-            __sCFFileDescriptorManager.mThread = __CFStartSimpleThread((void*)__CFFileDescriptorManager, 0);
+            __sCFFileDescriptorManager.mRun    = TRUE;
+            __sCFFileDescriptorManager.mThread = __CFStartSimpleThread((void*)__CFFileDescriptorManager, &__sCFFileDescriptorManager.mRun);
         }
 
         __CFSpinUnlock(&__sCFFileDescriptorManager.mAllFileDescriptorsLock);
@@ -2276,6 +2350,8 @@ __CFFileDescriptorHandleWrite(CFFileDescriptorRef f,
 
 /* static */ void
 __CFFileDescriptorInvalidate_Retained(CFFileDescriptorRef f) {
+    __CFFileDescriptorTraceEnterWithFormat("f %p\n", f);
+
     __CFSpinLock(&__sCFFileDescriptorManager.mAllFileDescriptorsLock);
     __CFFileDescriptorLock(f);
 
@@ -2347,6 +2423,8 @@ __CFFileDescriptorInvalidate_Retained(CFFileDescriptorRef f) {
     }
 
     __CFSpinUnlock(&__sCFFileDescriptorManager.mAllFileDescriptorsLock);
+
+    __CFFileDescriptorTraceExit();
 }
 
 #if LOG_CFFILEDESCRIPTOR
@@ -2454,9 +2532,37 @@ __private_extern__ void __CFFileDescriptorInitialize(void) {
     __CFFileDescriptorTraceExit();
 }
 
+#if DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+/**
+ *  @brief
+ *   Handle any post-exit deallocation for this CFFileDescriptor scope.
+ *
+ *  This handles post-exit deallocation by signalling the manager
+ *  thread to terminate.
+ *
+ */
+static void
+__attribute__((destructor(1))) __CFFileDescriptorDestroy(void) {
+   unsigned long newrun;
+   unsigned long oldrun;
+
+    __CFFileDescriptorTraceEnter();
+
+    do {
+        oldrun = __sCFFileDescriptorManager.mRun;
+        newrun = FALSE;
+    } while (!OSAtomicCompareAndSwapLong(oldrun, newrun, &__sCFFileDescriptorManager.mRun));
+
+    __CFFileDescriptorTraceExit();
+}
+#endif // DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+
 /* static */ void
 __CFFileDescriptorDeallocate(CFTypeRef cf) {
-    __CFGenericValidateType(cf, CFFileDescriptorGetTypeID());
+    CFFileDescriptorRef f = (CFFileDescriptorRef)(cf);
+    __CFFileDescriptorTraceEnterWithFormat("f %p\n", f);
+    CFFileDescriptorInvalidate(f);
+    __CFFileDescriptorTraceExit();
 }
 
 /* static */ CFStringRef
@@ -2807,11 +2913,9 @@ void
 CFFileDescriptorInvalidate(CFFileDescriptorRef f) {
     CHECK_FOR_FORK();
 
-    __CFFileDescriptorTraceEnter();
+    __CFFileDescriptorTraceEnterWithFormat("f %p\n", f);
 
     __CFGenericValidateType(f, CFFileDescriptorGetTypeID());
-
-    __CFFileDescriptorMaybeLog("invalidating file descriptor %d\n", f->_descriptor);
 
     CFRetain(f);
 

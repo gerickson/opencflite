@@ -1874,7 +1874,7 @@ static CFRunLoopRef __CFRunLoopCreate(pthread_t t) {
     loop->_wakeUpPort = __CFPortAllocate();
     if (__CFPortEqual(__kCFPortNull, loop->_wakeUpPort)) HALT;
 #if DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-    kqueue_update(loop->_waitQueue, loop->_wakeUpPort, (uintptr_t)loop->_wakeUpPort, EVFILT_USER, (EV_ADD | EV_CLEAR | EV_ONESHOT), NOTE_FFNOP, 0, NULL);
+    kqueue_update(loop->_waitQueue, loop->_wakeUpPort, (uintptr_t)loop->_wakeUpPort, EVFILT_USER, (EV_ADD | EV_CLEAR), NOTE_FFNOP, 0, NULL);
 #endif
     loop->_ignoreWakeUps = true;
     loop->_commonModes = CFSetCreateMutable(kCFAllocatorSystemDefault, 0, &kCFTypeSetCallBacks);
@@ -3035,7 +3035,7 @@ CF_INLINE void __CFWakeUpPortReset(CFRunLoopRef rl) {
     // Always reset the wake up port, or risk spinning forever
     ResetEvent(rl->_wakeUpPort);
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-    kqueue_update(rl->_waitQueue, rl->_wakeUpPort, (uintptr_t)rl->_wakeUpPort, EVFILT_USER, (EV_ADD | EV_CLEAR | EV_ONESHOT), NOTE_FFNOP, 0, NULL);
+    kqueue_update(rl->_waitQueue, rl->_wakeUpPort, (uintptr_t)rl->_wakeUpPort, EVFILT_USER, (EV_ADD | EV_CLEAR), NOTE_FFNOP, 0, NULL);
 #endif
 }
 

@@ -1156,6 +1156,13 @@ static void __CFRunLoopDeallocate(CFTypeRef cf) {
     if (_CFRunLoopGet0b(_CFMainPThread) == cf) HALT;
 #endif // !(DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD)
 
+    /* Do not attempt to deallocate a run loop that is already being
+       deallocated or that is invalid because it has already been
+       deallocated. Absent these checks, occassionally, run loop
+       deallocation will race and deallocation will crash against
+       another deallocation already in progress. */
+    if (__CFRunLoopIsDeallocating(rl) || !__CFIsValid(rl)) return;
+
     /* We try to keep the run loop in a valid state as long as possible,
        since sources may have non-retained references to the run loop.
        Another reason is that we don't want to lock the run loop for

@@ -2543,15 +2543,12 @@ __private_extern__ void __CFFileDescriptorInitialize(void) {
  */
 static void
 __attribute__((destructor(1))) __CFFileDescriptorDestroy(void) {
-   unsigned long newrun;
-   unsigned long oldrun;
+    const unsigned long oldrun = __sCFFileDescriptorManager.mRun;
+    const unsigned long newrun = FALSE;
 
     __CFFileDescriptorTraceEnter();
 
-    do {
-        oldrun = __sCFFileDescriptorManager.mRun;
-        newrun = FALSE;
-    } while (!OSAtomicCompareAndSwapLong(oldrun, newrun, &__sCFFileDescriptorManager.mRun));
+    OSAtomicCompareAndSwapLong(oldrun, newrun, &__sCFFileDescriptorManager.mRun);
 
     __CFFileDescriptorTraceExit();
 }

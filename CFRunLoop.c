@@ -1781,10 +1781,10 @@ static void __CFRunLoopDeallocate(CFTypeRef cf) {
        three lines. */
     __CFRunLoopSetDeallocating(rl);
     if (NULL != rl->_modes) {
-	CFSetApplyFunction(rl->_modes, (__CFRunLoopCleanseSources), rl); // remove references to rl
-	CFSetApplyFunction(rl->_modes, (__CFRunLoopDeallocateSources), rl);
-	CFSetApplyFunction(rl->_modes, (__CFRunLoopDeallocateObservers), rl);
-	CFSetApplyFunction(rl->_modes, (__CFRunLoopDeallocateTimers), rl);
+        CFSetApplyFunction(rl->_modes, (__CFRunLoopCleanseSources), rl); // remove references to rl
+        CFSetApplyFunction(rl->_modes, (__CFRunLoopDeallocateSources), rl);
+        CFSetApplyFunction(rl->_modes, (__CFRunLoopDeallocateObservers), rl);
+        CFSetApplyFunction(rl->_modes, (__CFRunLoopDeallocateTimers), rl);
     }
     __CFRunLoopLock(rl);
     struct _block_item *item = rl->_blocks_head;
@@ -2588,7 +2588,28 @@ static void __CFRepositionTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFR
     if (isInArray) CFRelease(rlt);
 }
 
-// mode and rl are locked on entry and exit
+/**
+ *  @brief
+ *    Handle the specified timer expiration on the specfied run loop
+ *    and mode.
+ *
+ *  This handles the expiration of the specified timer on the
+ *  specified run loop and mode.
+ *
+ *  @note
+ *    @a rl and @a rlm are locked on entrace and exit. In addition,
+ *    this routine does callout to application callbacks.
+ *
+ *  @param[in]  rl        The run loop on which the expired timer is
+ *                        to be handled.
+ *  @param[in]  rlm       The run loop mode for which the expired
+ *                        timer is to be handled.
+ *  @param[in]  rlt       The expired timer to be handled.
+ *
+ *  @returns
+ *    True if the timer expiry was handled; otherwise, false.
+ *
+ */
 static Boolean __CFRunLoopDoTimer(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLoopTimerRef rlt) {	/* DOES CALLOUT */
     Boolean timerHandled = false;
     int64_t oldFireTSR = 0;
@@ -2712,7 +2733,30 @@ static Boolean __CFRunLoopDoTimer(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLo
     return timerHandled;
 }
 
-// rl and rlm are locked on entry and exit
+/**
+ *  @brief
+ *    Handle all timer expirations for the specfied run loop and mode.
+ *
+ *  This handles the expiration for all expired timers for the
+ *  specified run loop and mode.
+ *
+ *  @note
+ *    @a rl and @a rlm are locked on entrace and exit. In addition,
+ *    this routine does callout to application callbacks.
+ *
+ *  @param[in]  rl        The run loop on which expired timers are to
+ *                        be handled.
+ *  @param[in]  rlm       The run loop mode for which expired timers
+ *                        are to be handled.
+ *  @param[in]  limitTSR  The absolute time at which or below timers
+ *                        will be considered expired. Any timers
+ *                        exceeding this value are in the future and
+ *                        will be considered in the future.
+ *
+ *  @returns
+ *    True if a timer expiry was handled; otherwise, false.
+ *
+ */
 static Boolean __CFRunLoopDoTimers(CFRunLoopRef rl, CFRunLoopModeRef rlm, int64_t limitTSR) {	/* DOES CALLOUT */
     Boolean timerHandled = false;
     CFMutableArrayRef timers = NULL;

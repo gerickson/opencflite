@@ -2854,12 +2854,13 @@ static void kqueue_update(int             queue,
 
     status = kevent(queue, kev, 1, NULL, 0, NULL);
 
-    CFAssert3(status == -1,
+    CFAssert4(status == -1,
               __kCFLogAssertion,
-              "%s(): unable to add event ident %" PRIxPTR " filter %hd",
+              "%s(): unable to add event ident 0x%" PRIxPTR " filter %hd to queue %d",
               __PRETTY_FUNCTION__,
               ident,
-              filter);
+              filter,
+              queue);
 
     if (status == -1) HALT;
 }

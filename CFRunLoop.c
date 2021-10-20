@@ -3142,15 +3142,17 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
 	int32_t retVal = 0;
     do {
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-        uint8_t               msg_buffer[3 * 1024];
-        mach_msg_header_t *   msg = NULL;
+        const mach_msg_timeout_t kZeroTimeout = 0;
+        uint8_t                  msg_buffer[3 * 1024];
+        mach_msg_header_t *      msg = NULL;
 #elif DEPLOYMENT_TARGET_WINDOWS
-        Boolean               windowsMessageReceived = false;
+        const DWORD              kZeroTimeout = 0;
+        Boolean                  windowsMessageReceived = false;
 #elif DEPLOYMENT_TARGET_LINUX
-        const struct timespec kZeroTimeout = { 0, 0 };
+        const struct timespec    kZeroTimeout = { 0, 0 };
 #endif
-        __CFPort              livePort = __kCFPortNull;
-        __CFPortSet           waitSet = rlm->_portSet;
+        __CFPort                 livePort = __kCFPortNull;
+        __CFPortSet              waitSet = rlm->_portSet;
 
         // MARK: Pre-wait
 
@@ -3171,11 +3173,11 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
         if (!__CFPortEqual(dispatchPort, __kCFPortNull) && !didDispatchPortLastTime) {
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
             msg = (mach_msg_header_t *)msg_buffer;
-            if (__CFRunLoopServiceMachPort(dispatchPort, &msg, sizeof(msg_buffer), 0)) {
+            if (__CFRunLoopServiceMachPort(dispatchPort, &msg, sizeof(msg_buffer), kZeroTimeout)) {
                 goto handle_msg;
             }
 #elif DEPLOYMENT_TARGET_WINDOWS
-            if (__CFRunLoopWaitForMultipleObjects(NULL, &dispatchPort, 0, 0, &livePort, NULL)) {
+            if (__CFRunLoopWaitForMultipleObjects(NULL, &dispatchPort, kZeroTimeout, 0, &livePort, NULL)) {
                 goto handle_msg;
             }
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
@@ -3211,11 +3213,11 @@ static int32_t __CFRunLoopRun(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFTimeInter
         }
 
         msg = (mach_msg_header_t *)msg_buffer;
-        __CFRunLoopServiceMachPort(waitSet, &msg, sizeof(msg_buffer), poll ? 0 : TIMEOUT_INFINITY);
+        __CFRunLoopServiceMachPort(waitSet, &msg, sizeof(msg_buffer), (poll ? kZeroTimeout : TIMEOUT_INFINITY));
 #elif DEPLOYMENT_TARGET_WINDOWS
         // Here, use the app-supplied message queue mask. They will set this if they are interested in having this run loop receive windows messages.
         // Note: don't pass 0 for polling, or this thread will never yield the CPU.
-        __CFRunLoopWaitForMultipleObjects(waitSet, NULL, poll ? 0 : TIMEOUT_INFINITY, rlm->_msgQMask, &livePort, &windowsMessageReceived);
+        __CFRunLoopWaitForMultipleObjects(waitSet, NULL, (poll ? kZeroTimeout : TIMEOUT_INFINITY), rlm->_msgQMask, &livePort, &windowsMessageReceived);
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
         __CFRunLoopWait(rl, rlm, waitSet, NULL, (poll ? &kZeroTimeout : TIMEOUT_INFINITY), &livePort);
 #endif

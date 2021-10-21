@@ -2556,7 +2556,7 @@ static void __CFArmNextTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm) {
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
         mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-        kqueue_update(rl->_waitQueue, rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, (EV_ADD | EV_ENABLE), 0, fireRelMSeconds, 0);
+        kqueue_update(rl->_waitQueue, rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, (EV_ADD | EV_ENABLE | EV_ONESHOT), 0, fireRelMSeconds, 0);
         __CFPortSetUpdate(rlm->_timerPort, rlm->_portSet);
 #elif DEPLOYMENT_TARGET_WINDOWS
         LARGE_INTEGER dueTime;

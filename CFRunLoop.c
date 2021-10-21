@@ -95,6 +95,29 @@ typedef void* dispatch_source_t ;
 
 static int _LogCFRunLoop = 0;
 
+/* Preprocessor Definitions */
+
+#if !defined(LOG_CFRUNLOOP)
+#define LOG_CFRUNLOOP 0
+#endif
+
+#if LOG_CFRUNLOOP
+#define __CFRunLoopMaybeLog(format, ...)  do { fprintf(stderr, format, ##__VA_ARGS__); fflush(stderr); } while (0)
+#else
+#define __CFRunLoopMaybeLog(format, ...)
+#endif
+
+#define __CFRunLoopMaybeTraceWithFormat(dir, name, format, ...)	  \
+	__CFRunLoopMaybeLog(dir " %s" format, name, ##__VA_ARGS__)
+#define __CFRunLoopTraceEnterWithFormat(format, ...)              \
+	__CFRunLoopMaybeTraceWithFormat("-->", __func__, " " format, ##__VA_ARGS__)
+#define __CFRunLoopTraceExitWithFormat(format, ...)               \
+	__CFRunLoopMaybeTraceWithFormat("<--", __func__, " " format, ##__VA_ARGS__)
+#define __CFRunLoopTraceEnter()                                   \
+	__CFRunLoopTraceEnterWithFormat("\n")
+#define __CFRunLoopTraceExit()                                    \
+	__CFRunLoopTraceExitWithFormat("\n")
+
 // for conservative arithmetic safety, such that (TIMER_DATE_LIMIT + TIMER_INTERVAL_LIMIT + kCFAbsoluteTimeIntervalSince1970) * 10^9 < 2^63
 #define TIMER_DATE_LIMIT	4039289856.0
 #define TIMER_INTERVAL_LIMIT	504911232.0

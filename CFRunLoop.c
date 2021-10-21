@@ -1327,7 +1327,7 @@ static CFRunLoopModeRef __CFRunLoopFindMode(CFRunLoopRef rl, CFStringRef modeNam
     rlm->_timerPort = CreateWaitableTimer(NULL, TRUE, NULL);
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     rlm->_timerPort = __CFPortAllocate();
-    EV_SET(rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, EV_ADD, 0, 0, NULL);
+    EV_SET(rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, (EV_ADD | EV_ONESHOT), 0, 0, NULL);
 #endif
     if (__CFPortEqual(__kCFPortNull, rlm->_timerPort)) HALT;
 

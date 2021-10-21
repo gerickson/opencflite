@@ -2559,7 +2559,7 @@ static void __CFArmTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLoopT
     const unsigned int   fflags = 0;
     const intptr_t       data   = (fireTSR - now) / 1000000;
 #endif // defined(NOTE_NSECONDS)
-#endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#endif // DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
     mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));

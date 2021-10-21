@@ -2142,11 +2142,11 @@ static void __CFRunLoopAddItemsToCommonMode(const void *value, void *ctx) {
     CFRunLoopRef rl = (CFRunLoopRef)(((CFTypeRef *)ctx)[0]);
     CFStringRef modeName = (CFStringRef)(((CFTypeRef *)ctx)[1]);
     if (CFGetTypeID(item) == __kCFRunLoopSourceTypeID) {
-	CFRunLoopAddSource(rl, (CFRunLoopSourceRef)item, modeName);
+        CFRunLoopAddSource(rl, (CFRunLoopSourceRef)item, modeName);
     } else if (CFGetTypeID(item) == __kCFRunLoopObserverTypeID) {
-	CFRunLoopAddObserver(rl, (CFRunLoopObserverRef)item, modeName);
+        CFRunLoopAddObserver(rl, (CFRunLoopObserverRef)item, modeName);
     } else if (CFGetTypeID(item) == __kCFRunLoopTimerTypeID) {
-	CFRunLoopAddTimer(rl, (CFRunLoopTimerRef)item, modeName);
+        CFRunLoopAddTimer(rl, (CFRunLoopTimerRef)item, modeName);
     }
 }
 
@@ -2155,11 +2155,11 @@ static void __CFRunLoopAddItemToCommonModes(const void *value, void *ctx) {
     CFRunLoopRef rl = (CFRunLoopRef)(((CFTypeRef *)ctx)[0]);
     CFTypeRef item = (CFTypeRef)(((CFTypeRef *)ctx)[1]);
     if (CFGetTypeID(item) == __kCFRunLoopSourceTypeID) {
-	CFRunLoopAddSource(rl, (CFRunLoopSourceRef)item, modeName);
+        CFRunLoopAddSource(rl, (CFRunLoopSourceRef)item, modeName);
     } else if (CFGetTypeID(item) == __kCFRunLoopObserverTypeID) {
-	CFRunLoopAddObserver(rl, (CFRunLoopObserverRef)item, modeName);
+        CFRunLoopAddObserver(rl, (CFRunLoopObserverRef)item, modeName);
     } else if (CFGetTypeID(item) == __kCFRunLoopTimerTypeID) {
-	CFRunLoopAddTimer(rl, (CFRunLoopTimerRef)item, modeName);
+        CFRunLoopAddTimer(rl, (CFRunLoopTimerRef)item, modeName);
     }
 }
 
@@ -2536,6 +2536,25 @@ static void __CFDisarmTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm) {
 #endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 }
 
+static void __CFArmTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLoopTimerRef rlt) {
+    const int64_t fireTSR = (rlt->_fireTSR / tenus + 1) * tenus;
+#if DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+    const int64_t now = (int64_t)mach_absolute_time();
+    const int64_t fireRelMSeconds = (fireTSR - now) / 1000000;
+#endif // DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+    mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
+#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+    kqueue_update(rl->_waitQueue, rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, (EV_ADD | EV_ENABLE | EV_ONESHOT), 0, fireRelMSeconds, 0);
+    __CFPortSetUpdate(rlm->_timerPort, rlm->_portSet);
+#elif DEPLOYMENT_TARGET_WINDOWS
+    LARGE_INTEGER dueTime;
+    dueTime.QuadPart = __CFTSRToFiletime(fireTSR);
+    SetWaitableTimer(rlm->_timerPort, &dueTime, 0, NULL, NULL, FALSE);
+#endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+}
+
 static void __CFArmNextTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm) {
     CFRunLoopTimerRef nextTimer = NULL;
     for (CFIndex idx = 0, cnt = CFArrayGetCount(rlm->_timers); idx < cnt; idx++) {
@@ -2547,22 +2566,7 @@ static void __CFArmNextTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm) {
     }
 
     if (nextTimer) {
-        const int64_t fireTSR = (nextTimer->_fireTSR / tenus + 1) * tenus;
-#if DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-        const int64_t now = (int64_t)mach_absolute_time();
-        const int64_t fireRelMSeconds = (fireTSR - now) / 1000000;
-#endif // DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-        mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
-#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-        kqueue_update(rl->_waitQueue, rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, (EV_ADD | EV_ENABLE | EV_ONESHOT), 0, fireRelMSeconds, 0);
-        __CFPortSetUpdate(rlm->_timerPort, rlm->_portSet);
-#elif DEPLOYMENT_TARGET_WINDOWS
-        LARGE_INTEGER dueTime;
-        dueTime.QuadPart = __CFTSRToFiletime(fireTSR);
-        SetWaitableTimer(rlm->_timerPort, &dueTime, 0, NULL, NULL, FALSE);
-#endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+        __CFArmTimerInMode(rl, rlm, nextTimer);
     }
 }
 

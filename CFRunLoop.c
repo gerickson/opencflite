@@ -2539,14 +2539,32 @@ static void __CFDisarmTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm) {
 static void __CFArmTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLoopTimerRef rlt) {
     const int64_t fireTSR = (rlt->_fireTSR / tenus + 1) * tenus;
 #if DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-    const int64_t now = (int64_t)mach_absolute_time();
-    const int64_t fireRelMSeconds = (fireTSR - now) / 1000000;
-#endif // DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
+    const int64_t        now    = (int64_t)mach_absolute_time();
+    const unsigned short flags  = (EV_ADD | EV_ENABLE | EV_ONESHOT);
+    /* Note that while we could use NOTE_ABSOLUTE when available,
+       eliminating the need to calculate a relative expiration delta,
+       at least for the user-space libkqueue on Linux, in practice we
+       cannot. This is so because the clock base in libkqueue (and
+       ostensibly in kernel on BSD) is CLOCK_MONOTONIC rather than
+       CLOCK_REALTIME (which is what is used for the clock base in
+       CF). Unfortunately, there's no way to specify a different clock
+       base. Consequently, we stick with relative kqueue timers. */
+#if defined(NOTE_NSECONDS)
+    const unsigned int   fflags = NOTE_NSECONDS;
+    const intptr_t       data   = (fireTSR - now);
+#elif defined(NOTE_USECONDS)
+    const unsigned int   fflags = NOTE_USECONDS;
+    const intptr_t       data   = (fireTSR - now) / 1000;
+#else
+    const unsigned int   fflags = 0;
+    const intptr_t       data   = (fireTSR - now) / 1000000;
+#endif // defined(NOTE_NSECONDS)
+#endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
     mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-    kqueue_update(rl->_waitQueue, rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, (EV_ADD | EV_ENABLE | EV_ONESHOT), 0, fireRelMSeconds, 0);
+    kqueue_update(rl->_waitQueue, rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, flags, fflags, data, 0);
     __CFPortSetUpdate(rlm->_timerPort, rlm->_portSet);
 #elif DEPLOYMENT_TARGET_WINDOWS
     LARGE_INTEGER dueTime;

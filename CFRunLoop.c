@@ -2,11 +2,13 @@
  * Copyright (c) 2008-2012 Brent Fulgham <bfulgham@gmail.org>.  All rights reserved.
  * Copyright (c) 2009-2021 Grant Erickson <gerickson@nuovations.com>. All rights reserved.
  *
- * This source code is a modified version of the CoreFoundation sources released by Apple Inc. under
- * the terms of the APSL version 2.0 (see below).
+ * This source code is a modified version of the CoreFoundation
+ * sources released by Apple Inc. under the terms of the APSL version
+ * 2.0 (see below).
  *
- * For information about changes from the original Apple source release can be found by reviewing the
- * source control system for the project at https://sourceforge.net/svn/?group_id=246198.
+ * For information about changes from the original Apple source
+ * release can be found by reviewing the source control system for the
+ * project at https://sourceforge.net/svn/?group_id=246198.
  *
  * The original license information is as follows:
  * 
@@ -2928,6 +2930,29 @@ static Boolean __CFRunLoopWaitForMultipleObjects(__CFPortSet portSet, HANDLE *on
 
 #define TIMEOUT_INFINITY NULL
 
+/**
+ *  @brief
+ *    Update the specified kqueue event.
+ *
+ *  This attempts to update the specified kqueue event using the
+ *  specified flags, fflags, data, and udata.
+ *
+ *  @param[in]      queue   The queue descriptor on which to perform
+ *                          the update.
+ *  @param[in,out]  kev     A pointer to storage for the event
+ *                          structure for the event replacement. On
+ *                          success, the storage contains the replaced
+ *                          event.
+ *  @param[in]      ident   The value used to identify this event.
+ *  @param[in]      filter  Identifies the predefined kqueue filter
+ *                          used to process this event.
+ *  @param[in]      flags   Actions to perform on this event.
+ *  @param[in]      fflags  Filter-specific	flags.
+ *  @param[in]      data    Filter-specific	data value.
+ *  @param[in]      udata   Opaque user-defined value passed through
+ *                          the kqueue unchanged.
+ *
+ */
 static void kqueue_update(int             queue,
                           struct kevent * kev,
                           uintptr_t       ident,

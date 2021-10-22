@@ -1869,9 +1869,15 @@ static const CFRuntimeClass __CFRunLoopClass = {
 
 __private_extern__ void __CFFinalizeRunLoop(uintptr_t data);
 
+/**
+ *  The tenus applies a rounding factor to the future fire date of any
+ *  timer.
+ */
 static int64_t tenus = 0LL;
 
 __private_extern__ void __CFRunLoopInitialize(void) {
+    /* Set the timer tenus to 10 microseconds, rounding all timers up
+       to the nearest 10 microsecond boundary. */
     tenus = __CFTimeIntervalToTSR(0.000010000);
     __kCFRunLoopTypeID = _CFRuntimeRegisterClass(&__CFRunLoopClass);
     __kCFRunLoopModeTypeID = _CFRuntimeRegisterClass(&__CFRunLoopModeClass);
@@ -2560,8 +2566,29 @@ static void __CFDisarmTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm) {
 #endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 }
 
+/**
+ *  @brief
+ *    Round and return the specified timer fire TSR to the global
+ *    timer tenus.
+ *
+ *  This rounds and returns the fire TSR of the specified timer to the
+ *  global timer tenus. For example, if the tenus is 10 microseconds,
+ *  all timer fire TSRs will be rounded up to the nearest 10
+ *  microseconds.
+ *
+ *  @param[in]  rlt  The timer for which to round the fire TSR.
+ *
+ *  @returns
+ *     The fire TSR for the specified timer, rounded to the global
+ *     tenus.
+ *
+ */
+CF_INLINE int64_t __CFTimerRoundFireTSRToTenus(CFRunLoopTimerRef rlt) {
+    return (rlt->_fireTSR / tenus + 1) * tenus;
+}
+
 static void __CFArmTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLoopTimerRef rlt) {
-    const int64_t fireTSR = (rlt->_fireTSR / tenus + 1) * tenus;
+    const int64_t fireTSR = __CFTimerRoundFireTSRToTenus(rlt);
 #if DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     const int64_t        now    = (int64_t)mach_absolute_time();
     const unsigned short flags  = (EV_ADD | EV_ENABLE | EV_ONESHOT);

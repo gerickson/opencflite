@@ -836,6 +836,14 @@ static void __CFPortCopy(__CFPortPointer dest, __CFPortPointer src) {
     memcpy(dest, src, __kCFPortSize);
 }
 
+static void kqueue_replace(int             queue,
+                           struct kevent * kev,
+                           uintptr_t       ident,
+                           short           filter,
+                           unsigned short  flags,
+                           unsigned int    fflags,
+                           intptr_t        data,
+                           void *          udata);
 static void kqueue_update(int             queue,
                           struct kevent * kev,
                           uintptr_t       ident,
@@ -2615,7 +2623,7 @@ static void __CFArmTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLoopT
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
     mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-    kqueue_update(rl->_waitQueue, rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, flags, fflags, data, 0);
+    kqueue_replace(rl->_waitQueue, rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, flags, fflags, data, 0);
     __CFPortSetUpdate(rlm->_timerPort, rlm->_portSet);
 #elif DEPLOYMENT_TARGET_WINDOWS
     LARGE_INTEGER dueTime;
@@ -2956,6 +2964,79 @@ static Boolean __CFRunLoopWaitForMultipleObjects(__CFPortSet portSet, HANDLE *on
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 
 #define TIMEOUT_INFINITY NULL
+
+/**
+ *  @brief
+ *    Replace, via deletion and addition, the specified kqueue event.
+ *
+ *  This attempts to delete, if the event is present, the specified
+ *  kqueue event and then replaces it through addition with an event
+ *  of the same filter and identifier using the specified flags,
+ *  fflags, data, and udata.
+ *
+ *  The implementation and existence of this is necessary to address
+ *  the fact that, unlike the native in-kernel implementation of
+ *  kqueues in BSD systems such as FreeBSD or Darwin, libkqueue (at
+ *  least as of 2.5.1) is unable to update the data portion of events
+ *  such as EVFILT_TIMER. Consequently, the only way to set the data
+ *  expiry of such events is through the first-time add requiring this
+ *  sort of delete-and-add replacement to work around this fact.
+ *
+ *  This is far less efficient than if we were able to call kqueue
+ *  once and have it effect the input changelist as suggested by the
+ *  man page and as implemented by BSD.
+ *
+ *  @param[in]      queue   The queue descriptor on which to perform
+ *                          the replacement.
+ *  @param[in,out]  kev     A pointer to storage for the event
+ *                          structure for the event replacement. On
+ *                          success, the storage contains the replaced
+ *                          event.
+ *  @param[in]      ident   The value used to identify this event.
+ *  @param[in]      filter  Identifies the predefined kqueue filter
+ *                          used to process this event.
+ *  @param[in]      flags   Actions to perform on this event. EV_ADD
+ *                          and EV_DELETE are added/removed, as
+ *                          necessary to perform the replacement.
+ *  @param[in]      fflags  Filter-specific	flags.
+ *  @param[in]      data    Filter-specific	data value.
+ *  @param[in]      udata   Opaque user-defined value passed through
+ *                          the kqueue unchanged.
+ *
+ */
+static void kqueue_replace(int             queue,
+                           struct kevent * kev,
+                           uintptr_t       ident,
+                           short           filter,
+                           unsigned short  flags,
+                           unsigned int    fflags,
+                           intptr_t        data,
+                           void *          udata) {
+    int status;
+
+    // Delete the current event, which may or may not exist, with the
+    // specified identifier and filter.
+
+    EV_SET(kev, ident, filter, EV_DELETE, 0, 0, NULL);
+
+    status = kevent(queue, kev, 1, NULL, 0, NULL);
+
+    if (status == -1) {
+        switch (errno) {
+
+        case ENOENT:
+            break;
+
+        default:
+            HALT;
+
+        }
+    }
+
+    // Add the event back with all of the specified parameters.
+
+    kqueue_update(queue, kev, ident, filter, (EV_ADD | (flags & ~EV_DELETE)), fflags, data, udata);
+}
 
 /**
  *  @brief

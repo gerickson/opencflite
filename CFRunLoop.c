@@ -1878,14 +1878,14 @@ static const CFRuntimeClass __CFRunLoopClass = {
 __private_extern__ void __CFFinalizeRunLoop(uintptr_t data);
 
 /**
- *  The tenus applies a rounding factor to the future fire date of any
- *  timer.
+ *  The tenus applies a rounding and, by extension, quantizing factor
+ *  to the future fire date of any timer.
  */
 static int64_t tenus = 0LL;
 
 __private_extern__ void __CFRunLoopInitialize(void) {
-    /* Set the timer tenus to 10 microseconds, rounding all timers up
-       to the nearest 10 microsecond boundary. */
+    /* Set the timer tenus to 10 microseconds, rounding and quantizing
+       all timers up to the nearest 10 microsecond boundary. */
     tenus = __CFTimeIntervalToTSR(0.000010000);
     __kCFRunLoopTypeID = _CFRuntimeRegisterClass(&__CFRunLoopClass);
     __kCFRunLoopModeTypeID = _CFRuntimeRegisterClass(&__CFRunLoopModeClass);
@@ -2576,13 +2576,13 @@ static void __CFDisarmTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm) {
 
 /**
  *  @brief
- *    Round and return the specified timer fire TSR to the global
- *    timer tenus.
+ *    Round, quantize, and return the specified timer fire TSR to the
+ *    global timer tenus.
  *
- *  This rounds and returns the fire TSR of the specified timer to the
- *  global timer tenus. For example, if the tenus is 10 microseconds,
- *  all timer fire TSRs will be rounded up to the nearest 10
- *  microseconds.
+ *  This rounds, quantizes, and returns the fire TSR of the specified
+ *  timer to the global timer tenus. For example, if the tenus is 10
+ *  microseconds, all timer fire TSRs will be rounded up and quantized
+ *  to the nearest 10 microseconds.
  *
  *  @param[in]  rlt  The timer for which to round the fire TSR.
  *

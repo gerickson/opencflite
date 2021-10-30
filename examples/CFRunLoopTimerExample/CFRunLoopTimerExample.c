@@ -60,6 +60,10 @@ typedef struct _TimerData {
 
 typedef TimerData ** TimerContainerRef;
 
+/* Global Variables */
+
+unsigned long sFireLimitTolerance = 1;
+
 /*
  *  void TimerCallback()
  *
@@ -93,6 +97,8 @@ TimerCallback(CFRunLoopTimerRef timer, void *info)
     int                       year, month, day;
     int                       hour, minute, second;
     int                       seconds, milliseconds;
+    const CFAbsoluteTime      delta = (now - theData->mLastFired);
+    const double              variance = (delta - theData->mInterval);
     Boolean                   status;
 
     (void)timer;
@@ -110,8 +116,8 @@ TimerCallback(CFRunLoopTimerRef timer, void *info)
            year, month, day,
            hour, minute, second, milliseconds,
            theData->mIndex,
-           now - theData->mLastFired,
-           now - theData->mLastFired - theData->mInterval,
+           delta,
+           variance,
            theData->mIterations.mDid++);
 
     theData->mLastFired = now;
@@ -343,9 +349,10 @@ TimerDataCreate(CFIndex inIndex, double inLimit, const char *inInterval)
     __Require(theTimer != NULL, fail);
 
     printf("Will fire timer %lu every %g seconds for %g seconds, "
-           "up to %lu time%s.\n",
+           "up to %lu time%s (with a tolerance of %lu time).\n",
            inIndex, timerInterval, inLimit, timerIterations,
-           timerIterations == 1 ? "" : "s");
+           timerIterations == 1 ? "" : "s",
+           sFireLimitTolerance);
 
     /* Initialize timer data members. */
 
@@ -462,7 +469,7 @@ main(int argc, const char * const argv[])
         theTimer = TimerContainerGet(timerContainer, i);
 
         if (theTimer->mIterations.mDid > 0) {
-            result = (theTimer->mIterations.mShould >= theTimer->mIterations.mDid);
+            result = (theTimer->mIterations.mShould + sFireLimitTolerance >= theTimer->mIterations.mDid);
 
             if (!result) {
                 fprintf(stderr,

@@ -2841,6 +2841,12 @@ static Boolean __CFRunLoopDoTimer(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLo
 static Boolean __CFRunLoopDoTimers(CFRunLoopRef rl, CFRunLoopModeRef rlm, int64_t limitTSR) {	/* DOES CALLOUT */
     Boolean timerHandled = false;
     CFMutableArrayRef timers = NULL;
+
+    /* First, loop through all timers in the specified mode that are
+       valid and are not already firing and for which are under or
+       equal to the current limiting TSR and add them to a temporary
+       container of timers for which to handle expiration. */
+
     for (CFIndex idx = 0, cnt = rlm->_timers ? CFArrayGetCount(rlm->_timers) : 0; idx < cnt; idx++) {
         CFRunLoopTimerRef rlt = (CFRunLoopTimerRef)CFArrayGetValueAtIndex(rlm->_timers, idx);
         if (__CFIsValid(rlt) && rlt->_fireTSR <= limitTSR && !__CFRunLoopTimerIsFiring(rlt)) {
@@ -2849,11 +2855,16 @@ static Boolean __CFRunLoopDoTimers(CFRunLoopRef rl, CFRunLoopModeRef rlm, int64_
         }
     }
 
+    /* For those timers selected for expiration handling, handle them. */
+
     for (CFIndex idx = 0, cnt = timers ? CFArrayGetCount(timers) : 0; idx < cnt; idx++) {
         CFRunLoopTimerRef rlt = (CFRunLoopTimerRef)CFArrayGetValueAtIndex(timers, idx);
         Boolean did = __CFRunLoopDoTimer(rl, rlm, rlt);
         timerHandled = timerHandled || did;
     }
+
+    /* Dispose of the temporary timer container. */
+
     if (timers) CFRelease(timers);
 
     return timerHandled;

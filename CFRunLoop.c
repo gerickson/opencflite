@@ -2623,8 +2623,24 @@ static void __CFArmTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLoopT
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
     mk_timer_arm(rlm->_timerPort, __CFUInt64ToAbsoluteTime(fireTSR));
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
-    kqueue_replace(rl->_waitQueue, rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, flags, fflags, data, 0);
-    __CFPortSetUpdate(rlm->_timerPort, rlm->_portSet);
+    /* Since this implementation started out on Darwin / Mach in which
+       timers are absolute rather than relative the implementation is
+       such that and it is possible that timers in the past will get
+       flagged as the "next" timer to arm and will be armed before
+       __CFRunLoopDoTimer updates their _fireTSR. Consequently, just
+       skip updating the kqueue event data when the relative time out
+       is negative and things will sort themselves out as
+       __CFRunLoopDoTimer progresses.
+
+       Even if the implementation is sorted out in the future such
+       that this does not happen, this check is still correct but will
+       always succeed in such circumstances and may be left in
+       place. */
+
+    if (data >= 0) {
+        kqueue_replace(rl->_waitQueue, rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, flags, fflags, data, 0);
+        __CFPortSetUpdate(rlm->_timerPort, rlm->_portSet);
+    }
 #elif DEPLOYMENT_TARGET_WINDOWS
     LARGE_INTEGER dueTime;
     dueTime.QuadPart = __CFTSRToFiletime(fireTSR);

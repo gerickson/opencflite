@@ -2322,8 +2322,8 @@ static CFSocketRef _CFSocketCreateWithNative(CFAllocatorRef allocator, CFSocketN
     memory->_f.connected = FALSE;
     memory->_f.writableHint = FALSE;
     memory->_f.closeSignaled = FALSE;
-    memory->_lock = CFSpinLockInit;
-    memory->_writeLock = CFSpinLockInit;
+    CF_SPINLOCK_INIT_FOR_STRUCTS(memory->_lock);
+    CF_SPINLOCK_INIT_FOR_STRUCTS(memory->_writeLock);
     memory->_socket = sock;
     if (INVALID_SOCKET == sock || 0 != getsockopt(sock, SOL_SOCKET, SO_TYPE, (char *)&(memory->_socketType), (socklen_t *)&typeSize)) memory->_socketType = 0;		// cast for WinSock bad API
     memory->_errorCode = 0;

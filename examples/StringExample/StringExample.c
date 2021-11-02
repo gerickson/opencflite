@@ -99,6 +99,7 @@ void simpleStringExample(void) {
     show(CFSTR("String Out      : %@"), str);
 
     CFRelease(str);
+    CFRelease(data);
 
     // Create a string for which you already have some allocated contents which you want to 
     // pass ownership of to the CFString. The last argument, "NULL," indicates that the default allocator
@@ -160,6 +161,7 @@ void stringGettingContentsAsCStringExample(void) {
     if (data) {
         show(CFSTR("External Rep: %@"), data);   
         bytes = (const char *)CFDataGetBytePtr(data);
+        CFRelease(data);
     }
 
     // More complicated but efficient solution is to use a fixed size buffer, and put a loop in
@@ -179,6 +181,8 @@ void stringGettingContentsAsCStringExample(void) {
         rangeToProcess.location += numChars;
         rangeToProcess.length -= numChars;
     }
+
+    CFRelease(str);
 }
 
 
@@ -230,7 +234,8 @@ void stringGettingAtCharactersExample(void) {
 	         (void)ch;   // Dummy processing to prevent compiler warning...
         }
     }
-    
+
+    CFRelease(str);
 }
 
 
@@ -378,6 +383,7 @@ void stringManipulation(void) {
    CFRelease(find3);
    CFRelease(bigger);   
    CFRelease(smaller);
+   CFRelease(strOuter);
    CFRelease(strChange);
 }
 
@@ -390,6 +396,7 @@ Boolean equalValues(CFStringRef number, CFNumberRef expected, CFNumberFormatterS
    CFStringRef identifier = CFLocaleGetIdentifier(curLocale);
    CFNumberFormatterRef fmt;
    CFNumberRef val;
+   Boolean ret;
 
    show(CFSTR("Make a Number from : %@"), number);
    
@@ -399,9 +406,20 @@ Boolean equalValues(CFStringRef number, CFNumberRef expected, CFNumberFormatterS
    show(CFSTR("val=%@, should be=%@\n"), val, expected);
    
    if (!val)
-      return false;
-   
-   return (0 == CFNumberCompare(val, expected, 0));
+       ret = false;
+   else
+       ret = (0 == CFNumberCompare(val, expected, 0));
+
+   if (val)
+       CFRelease(val);
+
+   if (fmt)
+       CFRelease(fmt);
+
+   if (curLocale)
+       CFRelease(curLocale);
+
+   return ret;
 }
 
 void stringHandling(void) {
@@ -423,6 +441,7 @@ void stringHandling(void) {
    
    show(CFSTR("   (b) Currency Style"));
    CFRelease(number);
+
    number = CFStringCreateWithCString(NULL, "$80.00", kCFStringEncodingASCII);   
    if (equalValues(number, expected, kCFNumberFormatterCurrencyStyle, kCFNumberFormatterParseIntegersOnly))
       show(CFSTR("correct."));
@@ -431,6 +450,7 @@ void stringHandling(void) {
    
    show(CFSTR("   (c) Percent Style (does not work for integers)"));
    CFRelease(number);
+
    number = CFStringCreateWithCString(NULL, "80%", kCFStringEncodingASCII);   
    if (equalValues(number, expected, kCFNumberFormatterPercentStyle, kCFNumberFormatterParseIntegersOnly))
       show(CFSTR("correct."));
@@ -439,6 +459,7 @@ void stringHandling(void) {
    
    show(CFSTR("   (d) Scientific Notation Style (does not work for integers)"));
    CFRelease(number);
+
    number = CFStringCreateWithCString(NULL, "8.0E1", kCFStringEncodingASCII);   
    if (equalValues(number, expected, kCFNumberFormatterScientificStyle, kCFNumberFormatterParseIntegersOnly))
       show(CFSTR("correct."));
@@ -447,6 +468,7 @@ void stringHandling(void) {
    
    show(CFSTR("   (e) Spell-Out Style"));
    CFRelease(number);
+
    number = CFStringCreateWithCString(NULL, "eighty", kCFStringEncodingASCII);   
    if (equalValues(number, expected, kCFNumberFormatterSpellOutStyle, kCFNumberFormatterParseIntegersOnly))
       show(CFSTR("correct."));
@@ -455,6 +477,7 @@ void stringHandling(void) {
    
    show(CFSTR("   (f) No Style (decimal)"));
    CFRelease(number);
+
    number = CFStringCreateWithCString(NULL, "80.0", kCFStringEncodingASCII);   
    if (equalValues(number, expected, kCFNumberFormatterNoStyle, kCFNumberFormatterParseIntegersOnly))
       show(CFSTR("correct."));
@@ -463,6 +486,7 @@ void stringHandling(void) {
    
    show(CFSTR("   (g) No Style (spell out) (is not expected to work)"));
    CFRelease(number);
+
    number = CFStringCreateWithCString(NULL, "eighty", kCFStringEncodingASCII);   
    if (equalValues(number, expected, kCFNumberFormatterNoStyle, kCFNumberFormatterParseIntegersOnly))
       show(CFSTR("correct."));
@@ -473,9 +497,11 @@ void stringHandling(void) {
    show(CFSTR("   (a) Decimal Style"));
 
    CFRelease(expected);
+
    expected = CFNumberCreate(0, kCFNumberDoubleType, &theOtherValue);
    
    CFRelease(number);
+
    number = CFStringCreateWithCString(NULL, "123.26", kCFStringEncodingASCII);   
    if (equalValues(number, expected, kCFNumberFormatterDecimalStyle, 0))
       show(CFSTR("correct."));
@@ -484,6 +510,7 @@ void stringHandling(void) {
    
    show(CFSTR("   (b) Currency Style"));
    CFRelease(number);
+
    number = CFStringCreateWithCString(NULL, "$123.26", kCFStringEncodingASCII);   
    if (equalValues(number, expected, kCFNumberFormatterCurrencyStyle, 0))
       show(CFSTR("correct."));
@@ -500,6 +527,7 @@ void stringHandling(void) {
    
    show(CFSTR("   (d) Scientific Notation Style"));
    CFRelease(number);
+
    number = CFStringCreateWithCString(NULL, "1.2326e2", kCFStringEncodingASCII);   
    if (equalValues(number, expected, kCFNumberFormatterScientificStyle, 0))
       show(CFSTR("correct."));
@@ -516,6 +544,7 @@ void stringHandling(void) {
    
    show(CFSTR("   (f) No Style (decimal)"));
    CFRelease(number);
+
    number = CFStringCreateWithCString(NULL, "123.26", kCFStringEncodingASCII);   
    if (equalValues(number, expected, kCFNumberFormatterNoStyle, 0))
       show(CFSTR("correct."));
@@ -524,6 +553,7 @@ void stringHandling(void) {
    
    show(CFSTR("   (g) No Style (spell-out) (not expected to work)"));
    CFRelease(number);
+
    number = CFStringCreateWithCString(NULL, "one hundred twenty three point two six", kCFStringEncodingASCII);   
    if (equalValues(number, expected, kCFNumberFormatterNoStyle, 0))
       show(CFSTR("correct."));
@@ -531,6 +561,7 @@ void stringHandling(void) {
       show(CFSTR("WRONG!!!"));
    
    CFRelease(number);
+   CFRelease(expected);
 }
 
 int main () {   

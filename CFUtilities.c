@@ -463,6 +463,8 @@ __private_extern__ CFIndex __CFActiveProcessorCount() {
     if (result != 0) {
         pcnt = 0;
     }
+#elif defined(_SC_NPROCESSORS_ONLN)
+    pcnt = sysconf(_SC_NPROCESSORS_ONLN);
 #else
     // Assume the worst
     pcnt = 1;
@@ -552,7 +554,7 @@ static void _CFShowToFile(FILE *file, Boolean flush, const void *obj) {
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
          fprintf_l(file, NULL, "\n");
 #else
-         fprintf(file, NULL, "\n");
+         fprintf(file, "\n");
 #endif
          if (flush) fflush(file);
      }

@@ -1031,7 +1031,7 @@ void __CFInitialize(void) {
 	for (CFIndex idx = 0; idx < NUM_EXTERN_TABLES; idx++) {
 	    __NSRetainCounters[idx].table = CFBasicHashCreate(kCFAllocatorSystemDefault, kCFBasicHashHasCounts | kCFBasicHashLinearHashing | kCFBasicHashAggressiveGrowth, &CFExternRefCallbacks);
 	    CFBasicHashSetCapacity(__NSRetainCounters[idx].table, 40);
-	    __NSRetainCounters[idx].lock = CFSpinLockInit;
+	    CF_SPINLOCK_INIT_FOR_STRUCTS(__NSRetainCounters[idx].lock);
 	}
 
         /*** _CFRuntimeCreateInstance() can finally be called generally after this line. ***/
@@ -1089,6 +1089,7 @@ void __CFInitialize(void) {
         __CFCalendarInitialize();
         
 
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS
         {
             CFIndex idx, cnt;
             char **args;
@@ -1107,7 +1108,7 @@ void __CFInitialize(void) {
                 if (NULL == args[idx]) continue;
 #if DEPLOYMENT_TARGET_WINDOWS
                 list[count] = CFStringCreateWithCharacters(kCFAllocatorSystemDefault, (const UniChar *)args[idx], wcslen((wchar_t *)args[idx]));
-#else
+#elif DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
                 list[count] = CFStringCreateWithCString(kCFAllocatorSystemDefault, args[idx], kCFStringEncodingUTF8);
                 if (NULL == list[count]) {
                     list[count] = CFStringCreateWithCString(kCFAllocatorSystemDefault, args[idx], kCFStringEncodingISOLatin1);
@@ -1118,7 +1119,7 @@ void __CFInitialize(void) {
                     // conversion fails, but out of charity we try once
                     // more with ISO Latin1, a standard unix encoding.
                 }
-#endif
+#endif // DEPLOYMENT_TARGET_WINDOWS
                 if (NULL != list[count]) count++;
             }
             __CFArgStuff = CFArrayCreate(kCFAllocatorSystemDefault, (const void **)list, count, &kCFTypeArrayCallBacks);
@@ -1127,6 +1128,7 @@ void __CFInitialize(void) {
             LocalFree(args);
 #endif
         }
+#endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS
 
         _CFProcessPath();	// cache this early
 

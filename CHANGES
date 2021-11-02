@@ -1,6 +1,47 @@
                       Changes and What's New in OpenCFLite
                       ------------------------------------
 
+2021-11-02 v635.21.6
+
+  * Addressed resource leaks on Linux and FreeBSD identified by the
+    address sanitizer with the use of CFFileDescriptor when a process
+    terminates.
+
+  * Addressed resource leaks on Linux and FreeBSD identified by the
+    address sanitizer with the use of CFRunLoop when a process
+    terminates.
+
+  * Completely revamped the run loop wake up and timer implementation
+    for Linux and FreeBSD based on kqueue/libkqueue using EVFILT_USER
+    (wake up) and EVFILT_TIMER (timer), respectively. In the process,
+    addressed issues in which run loops spun open loop, rather than
+    waiting; in which timers would never fire; and in which Control-C
+    (SIGINT) would not terminate a process that had invoked
+    CFRunLoopRun.
+
+  * Enhanced the output of CFRunLoopTimer example to include the timer
+    firing delta and the variance from the expected interval. In
+    addition, better handle failures such that the example does not
+    appear to be successful when, in fact, it was not.
+
+  * Addressed an issue in which the spin lock implementation on Linux
+    was not providing any mutual exclusion.
+
+  * Addressed an issue in which __CFActiveProcessorCount did not
+    return an accurate value for Linux.
+
+  * Addressed an issue in which a number of example applications were
+    using old, deprecated APIs that no longer would work or compile on
+    modern versions of iOS/macOS/tvOS.
+
+  * Addressed resources leaks in the example applications.
+
+  * Addressed an issue in which __CFInitialize would fault when built
+    with the address anitizer.
+
+  * Addressed an issue in which CFShow would fault when built with the
+    address anitizer.
+
 2021-09-15 v635.21.5
 
   * Addressed an issue in which attempting to write a Property List

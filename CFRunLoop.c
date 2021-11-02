@@ -1360,7 +1360,7 @@ static CFRunLoopModeRef __CFRunLoopFindMode(CFRunLoopRef rl, CFStringRef modeNam
     rlm->_timerPort = CreateWaitableTimer(NULL, TRUE, NULL);
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     rlm->_timerPort = __CFPortAllocate();
-    EV_SET(rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, (EV_ADD | EV_ONESHOT), 0, 0, NULL);
+    EV_SET(rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, (EV_ADD | EV_CLEAR | EV_DISPATCH), 0, 0, NULL);
 #endif
     if (__CFPortEqual(__kCFPortNull, rlm->_timerPort)) HALT;
 
@@ -2599,7 +2599,7 @@ static void __CFArmTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLoopT
     const int64_t fireTSR = __CFTimerRoundFireTSRToTenus(rlt);
 #if DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     const int64_t        now    = (int64_t)mach_absolute_time();
-    const unsigned short flags  = (EV_ADD | EV_ENABLE | EV_ONESHOT);
+    const unsigned short flags  = (EV_ADD | EV_ENABLE | EV_CLEAR | EV_DISPATCH);
     /* Note that while we could use NOTE_ABSOLUTE when available,
        eliminating the need to calculate a relative expiration delta,
        at least for the user-space libkqueue on Linux, in practice we

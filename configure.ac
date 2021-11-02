@@ -39,7 +39,7 @@ AC_PREREQ([2.61])
 # release thereof.
 #
 AC_INIT([CoreFoundation],
-        [635.21.5],
+        [635.21.6],
         [gerickson@nuovations.com],
         [opencflite],
         [https://github.com/gerickson/opencflite/])
@@ -648,6 +648,24 @@ elif test "x${PKG_CONFIG}" != "x" -a "${PKG_CONFIG} --exists libkqueue"; then
 	KQUEUE_LDFLAGS="`${PKG_CONFIG} --libs-only-L libkqueue`"
 	KQUEUE_LIBS="`${PKG_CONFIG} --libs-only-l libkqueue`"
 
+	AC_MSG_CHECKING([the libkqueue version])
+
+		KQUEUE_VERSION="`${PKG_CONFIG} --modversion libkqueue`"
+
+	AC_MSG_RESULT(${KQUEUE_VERSION})
+
+	AC_MSG_CHECKING([whether the libkqueue version is sufficient])
+
+	# Check to ensure that libkqueue is at least version
+	# 2.5.2. Otherwise, run loop timers may not work correctly.
+
+	if ! ${PKG_CONFIG} --atleast-version=2.5.2 libkqueue; then
+		AC_MSG_RESULT([no])
+		AC_MSG_WARN([libkqueue version ${KQUEUE_VERSION} is older than 2.5.2. Run loop timers may not work correctly.])
+	else
+		AC_MSG_RESULT([yes])
+	fi
+
 else
 	AC_MSG_ERROR([Cannot find the Kqueue facility or package.])
 fi
@@ -960,6 +978,7 @@ AC_MSG_NOTICE([
   Kqueue compile options      : ${KQUEUE_CPPFLAGS:--}
   Kqueue link options         : ${KQUEUE_LDFLAGS:--}
   Kqueue link libraries       : ${KQUEUE_LIBS:--}
+  Kqueue version              : ${KQUEUE_VERSION:--}
   POSIX thread compile options: ${PTHREAD_CFLAGS}
   POSIX thread link options   : ${PTHREAD_LIBS}
   UUID compile options        : ${UUID_CPPFLAGS}

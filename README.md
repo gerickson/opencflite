@@ -82,6 +82,14 @@ package management system. For example, on Debian systems:
 
     % sudo apt-get install uuid-dev libicu-dev libkqueue-dev zlib1g-dev
 
+#### A Comment about libkqueue
+
+There are a number of issues in libkqueue prior to version 2.5.2 that
+preclude it from working correctly to serve the needs of run loop
+timers. Consequently, if your distribution does not have libkqueue
+equal to or later than 2.5.2, you may need to build a suitable version
+of libkqueue from source and install it.
+
 If you want to modify or otherwise maintain the Open CF-lite build
 system, see "Maintaining Open CF-lite" below for more information.
 

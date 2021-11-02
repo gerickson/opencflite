@@ -3309,6 +3309,8 @@ static Boolean __CFRunLoopWait(CFRunLoopRef rl, CFRunLoopModeRef rlm, __CFPortSe
     int                status = 0;
     Boolean            result = false;
 
+    __CFRunLoopTraceEnterWithFormat("rl %p rlm %p portSet %p onePort %p timeout %p livePort %p\n", rl, rlm, portSet, onePort, timeout, livePort);
+
     __Require(livePort != NULL, done);
 
     if (portSet != __kCFPortSetNull) {
@@ -3319,11 +3321,23 @@ static Boolean __CFRunLoopWait(CFRunLoopRef rl, CFRunLoopModeRef rlm, __CFPortSe
         inputEventsUsed = 1;
     }
 
+    __CFRunLoopMaybeLog("inputEvents %p inputEventsUsed %hu\n",
+                        inputEvents, inputEventsUsed);
+
     if ((inputEvents != NULL) && (inputEventsUsed > 0)) {
         memset(&outputEvents[0], 0, sizeof (outputEvents));
 
         __CFPortMaybeLog(inputEvents,      inputEventsUsed);
         __CFPortMaybeLog(&outputEvents[0], outputEventsAvailable);
+
+        __CFRunLoopMaybeLog("waiting on queue %d with %hu events w/%c timeout",
+                            rl->_waitQueue,
+                            inputEventsUsed,
+                            ((timeout == NULL) ? 'o' : '\0'));
+        if (timeout != NULL) {
+            __CFRunLoopMaybeLog(" %ld.%09ld", timeout->tv_sec, timeout->tv_nsec);
+        }
+        __CFRunLoopMaybeLog("\n");
 
         status = kevent(rl->_waitQueue,
                         inputEvents,
@@ -3331,6 +3345,8 @@ static Boolean __CFRunLoopWait(CFRunLoopRef rl, CFRunLoopModeRef rlm, __CFPortSe
                         &outputEvents[0],
                         outputEventsAvailable,
                         timeout);
+
+        __CFRunLoopMaybeLog("%s: %d: status %d\n", __func__, __LINE__, status);
 
         if (status == 0) {
             result = false;
@@ -3384,6 +3400,8 @@ static Boolean __CFRunLoopWait(CFRunLoopRef rl, CFRunLoopModeRef rlm, __CFPortSe
     }
 
 done:
+    __CFRunLoopTraceExitWithFormat("result %u\n", result);
+
     return result;
 }
 
@@ -4839,7 +4857,7 @@ CFRunLoopTimerRef CFRunLoopTimerCreate(CFAllocatorRef allocator, CFAbsoluteTime 
     size = sizeof(struct __CFRunLoopTimer) - sizeof(CFRuntimeBase);
     memory = (CFRunLoopTimerRef)_CFRuntimeCreateInstance(allocator, __kCFRunLoopTimerTypeID, size, NULL);
     if (NULL == memory) {
-	return NULL;
+	    return NULL;
     }
     __CFSetValid(memory);
     __CFRunLoopTimerUnsetFiring(memory);

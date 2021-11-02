@@ -796,6 +796,174 @@ typedef struct kevent *       __CFPortPointer;
 
 #define __kCFPortSetNull      NULL
 
+#if LOG_CFRUNLOOP
+static const char * __CFPortFilterToString(short filter) {
+    const char *result = "";
+
+    switch (filter) {
+
+    case EVFILT_READ:
+        result = "EVFILT_READ";
+        break;
+
+    case EVFILT_WRITE:
+        result = "EVFILT_WRITE";
+        break;
+
+    case EVFILT_AIO:
+        result = "EVFILT_AIO";
+        break;
+
+    case EVFILT_VNODE:
+        result = "EVFILT_VNODE";
+        break;
+
+    case EVFILT_PROC:
+        result = "EVFILT_PROC";
+        break;
+
+    case EVFILT_SIGNAL:
+        result = "EVFILT_SIGNAL";
+        break;
+
+    case EVFILT_TIMER:
+        result = "EVFILT_TIMER";
+        break;
+
+#ifdef EVFILT_NETDEV
+    case EVFILT_NETDEV:
+        result = "EVFILT_NETDEV";
+        break;
+#endif
+
+    case EVFILT_FS:
+        result = "EVFILT_FS";
+        break;
+
+#ifdef EVFILT_LIO
+    case EVFILT_LIO:
+        result = "EVFILT_LIO";
+        break;
+#endif
+
+    case EVFILT_USER:
+        result = "EVFILT_USER";
+        break;
+
+    default:
+        result = "EVFILT_UNKNOWN";
+        break;
+
+    }
+
+    return result;
+}
+
+static void
+__CFPortLogFlag(unsigned short *flags, unsigned short flag, const char *description) {
+    if ((flag & *flags) == flag) {
+        *flags &= ~flag;
+
+        __CFRunLoopMaybeLog("%s%s", description, *flags ? " | " : "");
+    }
+}
+
+static void
+__CFPortLogFlags(unsigned short flags) {
+    const unsigned short saved = flags;
+
+    __CFRunLoopMaybeLog("flags 0x%04x ", saved);
+
+    if (saved) {
+        __CFRunLoopMaybeLog("(");
+    }
+
+    __CFPortLogFlag(&flags, EV_ADD,      "EV_ADD");
+    __CFPortLogFlag(&flags, EV_DELETE,   "EV_DELETE");
+    __CFPortLogFlag(&flags, EV_ENABLE,   "EV_ENABLE");
+    __CFPortLogFlag(&flags, EV_DISABLE,  "EV_DISABLE");
+    __CFPortLogFlag(&flags, EV_ONESHOT,  "EV_ONESHOT");
+    __CFPortLogFlag(&flags, EV_CLEAR,    "EV_CLEAR");
+    __CFPortLogFlag(&flags, EV_RECEIPT,  "EV_RECEIPT");
+    __CFPortLogFlag(&flags, EV_DISPATCH, "EV_DISPATCH");
+    __CFPortLogFlag(&flags, EV_FLAG1,    "EV_FLAG1");
+    __CFPortLogFlag(&flags, EV_EOF,      "EV_EOF");
+    __CFPortLogFlag(&flags, EV_ERROR,    "EV_ERROR");
+
+    if (saved) {
+        __CFRunLoopMaybeLog(") ");
+    }
+}
+
+static void
+__CFPortLogFFlag(unsigned int *flags, unsigned int flag, const char *description) {
+    if ((flag & *flags) == flag) {
+        *flags &= ~flag;
+
+        __CFRunLoopMaybeLog("%s%s", description, *flags ? " | " : "");
+    }
+}
+
+static void
+__CFPortLogFFlags(int filter, unsigned int fflags) {
+    const unsigned int saved = fflags;
+
+    __CFRunLoopMaybeLog("fflags 0x%08x ", saved);
+
+    switch (filter) {
+
+    case EVFILT_TIMER:
+        if (saved) { __CFRunLoopMaybeLog("("); }
+        __CFPortLogFFlag(&fflags, NOTE_SECONDS,   "NOTE_SECONDS");
+        __CFPortLogFFlag(&fflags, NOTE_USECONDS,  "NOTE_USECONDS");
+        __CFPortLogFFlag(&fflags, NOTE_NSECONDS,  "NOTE_NSECONDS");
+        __CFPortLogFFlag(&fflags, NOTE_ABSOLUTE,  "NOTE_ABSOLUTE");
+        if (saved) { __CFRunLoopMaybeLog(") "); }
+        break;
+
+    case EVFILT_USER:
+        __CFRunLoopMaybeLog("(");
+        __CFPortLogFFlag(&fflags, NOTE_FFNOP,   "NOTE_FFNOP");
+        __CFPortLogFFlag(&fflags, NOTE_FFAND,   "NOTE_FFAND");
+        __CFPortLogFFlag(&fflags, NOTE_FFOR,    "NOTE_FFOR");
+        __CFPortLogFFlag(&fflags, NOTE_FFCOPY,  "NOTE_FFCOPY");
+        __CFPortLogFFlag(&fflags, NOTE_TRIGGER, "NOTE_TRIGGER");
+        __CFRunLoopMaybeLog(") ");
+        break;
+
+    default:
+        break;
+
+    }
+}
+
+static void
+__CFPortMaybeLog(__CFPortPointer ports, uint16_t numports) {
+    uint16_t i;
+
+    for (i = 0; i < numports; i++) {
+        __CFRunLoopMaybeLog("[%2d] %p ident 0x%lx filter %d (%s) ",
+                            i,
+                            &ports[i],
+                            ports[i].ident,
+                            ports[i].filter,
+                            __CFPortFilterToString(ports[i].filter));
+
+        __CFPortLogFlags(ports[i].flags);
+
+        __CFPortLogFFlags(ports[i].filter, ports[i].fflags);
+
+        __CFRunLoopMaybeLog("data %ld udata %p\n",
+                            ports[i].data,
+                            ports[i].udata);
+    }
+}
+#else
+CF_INLINE void __CFPortMaybeLog(__CFPortPointer ports, uint16_t numports) {
+    return;
+}
+#endif // LOG_CFRUNLOOP
+
 CF_INLINE Boolean __CFPortEqual(__CFPort dest, __CFPort src) {
     Boolean result = false;
 
@@ -1191,6 +1359,7 @@ static void __CFRunLoopModeDeallocate(CFTypeRef cf) {
         mk_timer_destroy(rlm->_timerPort);
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
         EV_SET(rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, EV_DISABLE | EV_DELETE, 0, 0, NULL);
+        __CFPortMaybeLog(rlm->_timerPort, 1);
         __CFPortSetUpdate(rlm->_timerPort, rlm->_portSet);
 #endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
         __CFPortSetRemove(rlm->_timerPort, rlm->_portSet);
@@ -1361,6 +1530,7 @@ static CFRunLoopModeRef __CFRunLoopFindMode(CFRunLoopRef rl, CFStringRef modeNam
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     rlm->_timerPort = __CFPortAllocate();
     EV_SET(rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, (EV_ADD | EV_CLEAR | EV_DISPATCH), 0, 0, NULL);
+    __CFPortMaybeLog(rlm->_timerPort, 1);
 #endif
     if (__CFPortEqual(__kCFPortNull, rlm->_timerPort)) HALT;
 
@@ -1913,6 +2083,7 @@ static CFRunLoopRef __CFRunLoopCreate(pthread_t t) {
     if (__CFPortEqual(__kCFPortNull, loop->_wakeUpPort)) HALT;
 #if DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     kqueue_update(loop->_waitQueue, loop->_wakeUpPort, (uintptr_t)loop->_wakeUpPort, EVFILT_USER, (EV_ADD | EV_CLEAR), NOTE_FFNOP, 0, NULL);
+    __CFPortMaybeLog(loop->_wakeUpPort, 1);
 #endif
     loop->_ignoreWakeUps = true;
     loop->_commonModes = CFSetCreateMutable(kCFAllocatorSystemDefault, 0, &kCFTypeSetCallBacks);
@@ -2570,6 +2741,7 @@ static void __CFDisarmTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm) {
     CancelWaitableTimer(rlm->_timerPort);
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     kqueue_update(rl->_waitQueue, rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, EV_DISABLE, 0, 0, NULL);
+    __CFPortMaybeLog(rlm->_timerPort, 1);
     __CFPortSetUpdate(rlm->_timerPort, rlm->_portSet);
 #endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 }
@@ -2639,6 +2811,7 @@ static void __CFArmTimerInMode(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLoopT
 
     if (data >= 0) {
         kqueue_replace(rl->_waitQueue, rlm->_timerPort, (uintptr_t)rlm->_timerPort, EVFILT_TIMER, flags, fflags, data, 0);
+        __CFPortMaybeLog(rlm->_timerPort, 1);
         __CFPortSetUpdate(rlm->_timerPort, rlm->_portSet);
     }
 #elif DEPLOYMENT_TARGET_WINDOWS
@@ -3046,6 +3219,8 @@ static void kqueue_replace(int             queue,
 
     EV_SET(kev, ident, filter, EV_DELETE, 0, 0, NULL);
 
+    __CFPortMaybeLog(kev, 1);
+
     status = kevent(queue, kev, 1, NULL, 0, NULL);
 
     if (status == -1) {
@@ -3101,6 +3276,8 @@ static void kqueue_update(int             queue,
 
     EV_SET(kev, ident, filter, flags, fflags, data, udata);
 
+    __CFPortMaybeLog(kev, 1);
+
     status = kevent(queue, kev, 1, NULL, 0, NULL);
 
     CFAssert4(status == -1,
@@ -3145,6 +3322,9 @@ static Boolean __CFRunLoopWait(CFRunLoopRef rl, CFRunLoopModeRef rlm, __CFPortSe
     if ((inputEvents != NULL) && (inputEventsUsed > 0)) {
         memset(&outputEvents[0], 0, sizeof (outputEvents));
 
+        __CFPortMaybeLog(inputEvents,      inputEventsUsed);
+        __CFPortMaybeLog(&outputEvents[0], outputEventsAvailable);
+
         status = kevent(rl->_waitQueue,
                         inputEvents,
                         inputEventsUsed,
@@ -3159,6 +3339,9 @@ static Boolean __CFRunLoopWait(CFRunLoopRef rl, CFRunLoopModeRef rlm, __CFPortSe
             result = false;
 
         } else {
+            __CFPortMaybeLog(inputEvents, inputEventsUsed);
+            __CFPortMaybeLog(&outputEvents[0], status);
+
             for (i = 0; i < status; i++) {
                 if (outputEvents[i].flags & EV_ERROR) {
                     outputEvents[i].flags &= ~EV_ERROR;
@@ -3272,6 +3455,7 @@ static void __CFWakeUpPortSet(CFRunLoopRef rl) {
     SetEvent(rl->_wakeUpPort);
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     kqueue_update(rl->_waitQueue, rl->_wakeUpPort, (uintptr_t)rl->_wakeUpPort, EVFILT_USER, 0, NOTE_TRIGGER, 0, NULL);
+    __CFPortMaybeLog(rl->_wakeUpPort, 1);
 #endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
 }
 
@@ -3295,6 +3479,7 @@ CF_INLINE void __CFWakeUpPortReset(CFRunLoopRef rl) {
     ResetEvent(rl->_wakeUpPort);
 #elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
     kqueue_update(rl->_waitQueue, rl->_wakeUpPort, (uintptr_t)rl->_wakeUpPort, EVFILT_USER, (EV_ADD | EV_CLEAR), NOTE_FFNOP, 0, NULL);
+    __CFPortMaybeLog(rl->_wakeUpPort, 1);
 #endif
 }
 

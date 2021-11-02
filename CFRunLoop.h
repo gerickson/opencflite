@@ -44,8 +44,8 @@
 #include <CoreFoundation/CFString.h>
 #if (TARGET_OS_MAC && !(TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)) || (TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)
 #include <mach/port.h>
-#elif DEPLOYMENT_TARGET_LINUX
-#include <semaphore.h>
+#elif TARGET_OS_UNIX
+struct kevent;
 #endif
 
 CF_EXTERN_C_BEGIN
@@ -140,8 +140,8 @@ typedef struct {
 #if (TARGET_OS_MAC && !(TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)) || (TARGET_OS_EMBEDDED || TARGET_OS_IPHONE)
     mach_port_t	(*getPort)(void *info);
     void *	(*perform)(void *msg, CFIndex size, CFAllocatorRef allocator, void *info);
-#elif DEPLOYMENT_TARGET_LINUX
-    sem_t *	(*getPort)(void *info);
+#elif TARGET_OS_UNIX
+    struct kevent *	(*getPort)(void *info);
     void	(*perform)(void *info);
 #else
     void *	(*getPort)(void *info);

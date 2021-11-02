@@ -49,7 +49,32 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get -y install autoconf automake libtool pkg-config
-        sudo apt-get -y install gobjc gobjc++ uuid-dev libicu-dev
+        sudo apt-get -y install gobjc gobjc++ uuid-dev libicu-dev cmake
+
+    - name: Checkout libkqueue Dependency
+      uses: actions/checkout@v2
+      with:
+        repository: mheily/libkqueue
+        ref: master
+        path: libkqueue
+
+    - name: Configure libkqueue Dependency
+      run: |
+        cd "${GITHUB_WORKSPACE}/libkqueue"
+        cmake -S. -B. -G "Unix Makefiles" \
+          -DCMAKE_INSTALL_PREFIX="/usr" \
+          -DCMAKE_INSTALL_LIBDIR="lib"
+
+    - name: Build libkqueue Dependency
+      run: |
+        cd "${GITHUB_WORKSPACE}/libkqueue"
+        make -j
+
+    - name: Install libkqueue Dependency
+      run: |
+        cd "${GITHUB_WORKSPACE}/libkqueue"
+        sudo make install
+        sudo ldconfig
 
     - name: Install Distribution Archive Dependencies
       run: |

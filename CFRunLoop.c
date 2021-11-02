@@ -3055,6 +3055,7 @@ static void kqueue_replace(int             queue,
             break;
 
         default:
+            CFLog(kCFLogLevelEmergency, CFSTR("unexpected errno %d (%s) from kevent"), errno, strerror(errno));
             HALT;
 
         }
@@ -3110,7 +3111,17 @@ static void kqueue_update(int             queue,
               filter,
               queue);
 
-    if (status == -1) HALT;
+    if (status == -1) {
+        CFLog(kCFLogLevelEmergency,
+              CFSTR("%s(): unable to add event ident 0x%" PRIxPTR " filter %hd to queue %d: %d: %s"),
+              __PRETTY_FUNCTION__,
+              ident,
+              filter,
+              queue,
+              errno,
+              strerror(errno));
+        HALT;
+    }
 }
 
 static Boolean __CFRunLoopWait(CFRunLoopRef rl, CFRunLoopModeRef rlm, __CFPortSet portSet, __CFPort *onePort, const struct timespec *timeout, __CFPort *livePort) {

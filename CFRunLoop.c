@@ -1549,7 +1549,25 @@ static CFRunLoopModeRef __CFRunLoopFindMode(CFRunLoopRef rl, CFStringRef modeNam
     return rlm;
 }
 
-// expects rl and rlm locked
+/**
+ *  @brief
+ *    Introspect whether or not the specified run loop mode has any
+ *    timers, sources, blocks to dispatch, or represents the main
+ *    dispatch queue.
+ *
+ *  @note
+ *    @a rl and @a rlm are locked on entrace and exit.
+
+ *  @param[in]  rl            The run loop to introspect.
+ *  @param[in]  rlm           The run loop mode to introspect.
+ *  @param[in]  previousMode  ???
+ *
+ *  @returns
+ *    True if the run loop mode is null or if it is non-null and has
+ *    no timers, sources, or blocks to dispatch and does not represent
+ *    the main dispatch queue; otherwise, false.
+ *
+ */
 static Boolean __CFRunLoopModeIsEmpty(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLoopModeRef previousMode) {
     CHECK_FOR_FORK();
     if (NULL == rlm) return true;
@@ -1557,9 +1575,9 @@ static Boolean __CFRunLoopModeIsEmpty(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFR
     if (0 != rlm->_msgQMask) return false;
 #endif
 #if __DISPATCH__
-    Boolean libdispatchQSafe = pthread_main_np() && ((HANDLE_DISPATCH_ON_BASE_INVOCATION_ONLY && NULL == previousMode) || (!HANDLE_DISPATCH_ON_BASE_INVOCATION_ONLY && 0 == _CFGetTSD(__CFTSDKeyIsInGCDMainQ)));
+    const Boolean libdispatchQSafe = pthread_main_np() && ((HANDLE_DISPATCH_ON_BASE_INVOCATION_ONLY && NULL == previousMode) || (!HANDLE_DISPATCH_ON_BASE_INVOCATION_ONLY && 0 == _CFGetTSD(__CFTSDKeyIsInGCDMainQ)));
     if (libdispatchQSafe && (CFRunLoopGetMain() == rl) && CFSetContainsValue(rl->_commonModes, rlm->_name)) return false; // represents the libdispatch main queue
-#endif
+#endif // __DISPATCH__
     if (NULL != rlm->_sources0 && 0 < CFSetGetCount(rlm->_sources0)) return false;
     if (NULL != rlm->_sources1 && 0 < CFSetGetCount(rlm->_sources1)) return false;
     if (NULL != rlm->_timers && 0 < CFArrayGetCount(rlm->_timers)) return false;
@@ -2897,7 +2915,7 @@ static Boolean __CFRunLoopDoTimer(CFRunLoopRef rl, CFRunLoopModeRef rlm, CFRunLo
         } else {
             context_info = rlt->_context.info;
         }
-        Boolean doInvalidate = (0.0 == rlt->_interval);
+        const Boolean doInvalidate = (0.0 == rlt->_interval);
         __CFRunLoopTimerSetFiring(rlt);
         __CFRunLoopTimerUnlock(rlt);
         __CFRunLoopTimerFireTSRLock();

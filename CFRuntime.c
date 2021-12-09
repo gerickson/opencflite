@@ -586,7 +586,7 @@ void CFRelease(CFTypeRef cf) {
     void **addrs[2] = {&&start, &&end};
     start:;
     if (addrs[0] <= __builtin_return_address(0) && __builtin_return_address(0) <= addrs[1]) {
-	CFLog(3, CFSTR("*** WARNING: Recursion in CFRelease(%p) : %p '%s' : 0x%08lx 0x%08lx 0x%08lx 0x%08lx 0x%08lx 0x%08lx"), cf, object_getClass(cf), object_getClassName(cf), ((uintptr_t *)cf)[0], ((uintptr_t *)cf)[1], ((uintptr_t *)cf)[2], ((uintptr_t *)cf)[3], ((uintptr_t *)cf)[4], ((uintptr_t *)cf)[5]);
+	CFLog(kCFLogLevelError, CFSTR("*** WARNING: Recursion in CFRelease(%p) : %p '%s' : 0x%08lx 0x%08lx 0x%08lx 0x%08lx 0x%08lx 0x%08lx"), cf, object_getClass(cf), object_getClassName(cf), ((uintptr_t *)cf)[0], ((uintptr_t *)cf)[1], ((uintptr_t *)cf)[2], ((uintptr_t *)cf)[3], ((uintptr_t *)cf)[4], ((uintptr_t *)cf)[5]);
 	HALT;
     }
 #endif

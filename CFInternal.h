@@ -402,7 +402,7 @@ typedef OSSpinLock CFSpinLock_t;
     OSSpinLock *__lockp__ = (LP); \
     OSSpinLock __lockv__ = *__lockp__; \
     if (0 != __lockv__ && ~0 != __lockv__ && (uintptr_t)__lockp__ != (uintptr_t)__lockv__) { \
-        CFLog(3, CFSTR("In '%s', file %s, line %d, during lock, spin lock %p has value 0x%x, which is neither locked nor unlocked.  The memory has been smashed."), __PRETTY_FUNCTION__, __FILE__, __LINE__, __lockp__, __lockv__); \
+        CFLog(kCFLogLevelError, CFSTR("In '%s', file %s, line %d, during lock, spin lock %p has value 0x%x, which is neither locked nor unlocked.  The memory has been smashed."), __PRETTY_FUNCTION__, __FILE__, __LINE__, __lockp__, __lockv__); \
         /* HALT; */ \
     } \
     OSSpinLockLock(__lockp__); })
@@ -411,7 +411,7 @@ typedef OSSpinLock CFSpinLock_t;
     OSSpinLock *__lockp__ = (LP); \
     OSSpinLock __lockv__ = *__lockp__; \
     if (~0 != __lockv__ && (uintptr_t)__lockp__ != (uintptr_t)__lockv__) { \
-        CFLog(3, CFSTR("In '%s', file %s, line %d, during unlock, spin lock %p has value 0x%x, which is not locked.  The memory has been smashed or the lock is being unlocked when not locked."), __PRETTY_FUNCTION__, __FILE__, __LINE__, __lockp__, __lockv__); \
+        CFLog(kCFLogLevelError, CFSTR("In '%s', file %s, line %d, during unlock, spin lock %p has value 0x%x, which is not locked.  The memory has been smashed or the lock is being unlocked when not locked."), __PRETTY_FUNCTION__, __FILE__, __LINE__, __lockp__, __lockv__); \
         /* HALT; */ \
     } \
     OSSpinLockUnlock(__lockp__); })
@@ -420,7 +420,7 @@ typedef OSSpinLock CFSpinLock_t;
     OSSpinLock *__lockp__ = (LP); \
     OSSpinLock __lockv__ = *__lockp__; \
     if (0 != __lockv__ && ~0 != __lockv__ && (uintptr_t)__lockp__ != (uintptr_t)__lockv__) { \
-        CFLog(3, CFSTR("In '%s', file %s, line %d, during lock, spin lock %p has value 0x%x, which is neither locked nor unlocked.  The memory has been smashed."), __PRETTY_FUNCTION__, __FILE__, __LINE__, __lockp__, __lockv__); \
+        CFLog(kCFLogLevelError, CFSTR("In '%s', file %s, line %d, during lock, spin lock %p has value 0x%x, which is neither locked nor unlocked.  The memory has been smashed."), __PRETTY_FUNCTION__, __FILE__, __LINE__, __lockp__, __lockv__); \
         /* HALT; */ \
     } \
     OSSpinLockTry(__lockp__); })

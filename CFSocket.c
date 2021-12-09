@@ -364,7 +364,7 @@ CFSocketRef CFSocketCreateWithNative(CFAllocatorRef allocator, CFSocketNativeHan
                         memory->_readable = true;
                         if (!memory->_rsuspended) {
                             dispatch_suspend(dsrc);
-// CFLog(5, CFSTR("suspend %p due to read event block"), memory);
+// CFLog(kCFLogLevelNotice, CFSTR("suspend %p due to read event block"), memory);
                             memory->_rsuspended = true;
                         }
                         if (shared->_source) {
@@ -404,7 +404,7 @@ CFSocketRef CFSocketCreateWithNative(CFAllocatorRef allocator, CFSocketNativeHan
                         memory->_writeable = true;
                         if (!memory->_wsuspended) {
                             dispatch_suspend(dsrc);
-// CFLog(5, CFSTR("suspend %p due to write event block"), memory);
+// CFLog(kCFLogLevelNotice, CFSTR("suspend %p due to write event block"), memory);
                             memory->_wsuspended = true;
                         }
                         if (shared->_source) {
@@ -444,7 +444,7 @@ CFSocketRef CFSocketCreateWithNative(CFAllocatorRef allocator, CFSocketNativeHan
             CFArrayAppendValue(__CFAllSockets, memory);
             sock = memory;
         });
-// CFLog(5, CFSTR("CFSocketCreateWithNative(): created socket %p with callbacks 0x%x"), sock, callBackTypes);
+// CFLog(kCFLogLevelNotice, CFSTR("CFSocketCreateWithNative(): created socket %p with callbacks 0x%x"), sock, callBackTypes);
     if (sock && !CFSocketIsValid(sock)) { // must do this outside lock to avoid deadlock
         CFRelease(sock);
         sock = NULL;
@@ -517,7 +517,7 @@ CFOptionFlags CFSocketGetSocketFlags(CFSocketRef sock) {
 
 void CFSocketSetSocketFlags(CFSocketRef sock, CFOptionFlags flags) {
     CHECK_FOR_FORK();
-// CFLog(5, CFSTR("CFSocketSetSocketFlags(%p, 0x%x) starting"), sock, flags);
+// CFLog(kCFLogLevelNotice, CFSTR("CFSocketSetSocketFlags(%p, 0x%x) starting"), sock, flags);
     __CFGenericValidateType(sock, CFSocketGetTypeID());
     dispatch_sync(__sockQueue(), ^{
             sock->_reenableRead = (sock->_wantReadType && ((flags & 0x3) == sock->_wantReadType)) ? true : false;
@@ -526,19 +526,19 @@ void CFSocketSetSocketFlags(CFSocketRef sock, CFOptionFlags flags) {
             sock->_closeOnInvalidate = (flags & kCFSocketCloseOnInvalidate) ? true : false;
             if (sock->_shared) sock->_shared->_closeFD = sock->_closeOnInvalidate;
         });
-// CFLog(5, CFSTR("CFSocketSetSocketFlags(%p, 0x%x) done"), sock, flags);
+// CFLog(kCFLogLevelNotice, CFSTR("CFSocketSetSocketFlags(%p, 0x%x) done"), sock, flags);
 }
 
 void CFSocketEnableCallBacks(CFSocketRef sock, CFOptionFlags callBackTypes) {
     CHECK_FOR_FORK_RET();
     __CFGenericValidateType(sock, CFSocketGetTypeID());
-// CFLog(5, CFSTR("CFSocketEnableCallBacks(%p, 0x%x) starting"), sock, callBackTypes);
+// CFLog(kCFLogLevelNotice, CFSTR("CFSocketEnableCallBacks(%p, 0x%x) starting"), sock, callBackTypes);
     dispatch_sync(__sockQueue(), ^{
             if (!__CFSocketIsValid(sock)) return;
             if (sock->_wantReadType && (callBackTypes & 0x3) == sock->_wantReadType) {
                 if (sockfd_is_readable(sock->_shared->_socket)) {
                     sock->_readable = true;
-// CFLog(5, CFSTR("CFSocketEnableCallBacks(%p, 0x%x) socket is readable"), sock, callBackTypes);
+// CFLog(kCFLogLevelNotice, CFSTR("CFSocketEnableCallBacks(%p, 0x%x) socket is readable"), sock, callBackTypes);
                     if (!sock->_rsuspended) {
                         dispatch_suspend(sock->_shared->_rdsrc);
                         sock->_rsuspended = true;
@@ -591,13 +591,13 @@ void CFSocketEnableCallBacks(CFSocketRef sock, CFOptionFlags callBackTypes) {
                 sock->_connectDisabled = false;
             }
         });
-// CFLog(5, CFSTR("CFSocketEnableCallBacks(%p, 0x%x) done"), sock, callBackTypes);
+// CFLog(kCFLogLevelNotice, CFSTR("CFSocketEnableCallBacks(%p, 0x%x) done"), sock, callBackTypes);
 }
 
 void CFSocketDisableCallBacks(CFSocketRef sock, CFOptionFlags callBackTypes) {
     CHECK_FOR_FORK_RET();
     __CFGenericValidateType(sock, CFSocketGetTypeID());
-// CFLog(5, CFSTR("CFSocketDisableCallBacks(%p, 0x%x) starting"), sock, callBackTypes);
+// CFLog(kCFLogLevelNotice, CFSTR("CFSocketDisableCallBacks(%p, 0x%x) starting"), sock, callBackTypes);
     dispatch_sync(__sockQueue(), ^{
             if (!__CFSocketIsValid(sock)) return;
             if (sock->_wantReadType && (callBackTypes & 0x3) == sock->_wantReadType) {
@@ -622,14 +622,14 @@ void CFSocketDisableCallBacks(CFSocketRef sock, CFOptionFlags callBackTypes) {
                 sock->_connectDisabled = true;
             }
         });
-// CFLog(5, CFSTR("CFSocketDisableCallBacks(%p, 0x%x) done"), sock, callBackTypes);
+// CFLog(kCFLogLevelNotice, CFSTR("CFSocketDisableCallBacks(%p, 0x%x) done"), sock, callBackTypes);
 }
 
 void CFSocketInvalidate(CFSocketRef sock) {
     CHECK_FOR_FORK_RET();
     __CFGenericValidateType(sock, CFSocketGetTypeID());
     CFRetain(sock);
-// CFLog(5, CFSTR("CFSocketInvalidate(%p) starting"), sock);
+// CFLog(kCFLogLevelNotice, CFSTR("CFSocketInvalidate(%p) starting"), sock);
     __block CFRunLoopSourceRef source = NULL;
     __block Boolean wasReady = false;
     dispatch_sync(__sockQueue(), ^{
@@ -688,7 +688,7 @@ void CFSocketInvalidate(CFSocketRef sock) {
         sock->_state = kCFSocketStateInvalid;
         OSMemoryBarrier();
     }
-// CFLog(5, CFSTR("CFSocketInvalidate(%p) done%s"), sock, wasReady ? " -- done on this thread" : "");
+// CFLog(kCFLogLevelNotice, CFSTR("CFSocketInvalidate(%p) done%s"), sock, wasReady ? " -- done on this thread" : "");
     CFRelease(sock);
 }
 
@@ -709,7 +709,7 @@ static void __CFSocketPerform(void *info) { // CFRunLoop should only call this o
     CHECK_FOR_FORK_RET();
     CFSocketRef sock = (CFSocketRef)info;
 
-// CFLog(5, CFSTR("__CFSocketPerform(%p) starting '%@'"), sock, sock);
+// CFLog(kCFLogLevelNotice, CFSTR("__CFSocketPerform(%p) starting '%@'"), sock, sock);
     __block Boolean doRead = false, doWrite = false, doConnect = false, isValid = false;
     __block int fd = INVALID_SOCKET;
     __block SInt32 errorCode = 0;
@@ -726,7 +726,7 @@ static void __CFSocketPerform(void *info) { // CFRunLoop should only call this o
             if (doRead) {
                 sock->_readable = false;
                 doRead = sockfd_is_readable(fd);
-// if (!doRead) CFLog(5, CFSTR("__CFSocketPerform(%p) socket is not actually readable"), sock);
+// if (!doRead) CFLog(kCFLogLevelNotice, CFSTR("__CFSocketPerform(%p) socket is not actually readable"), sock);
             }
             doWrite = sock->_writeable && sock->_wantWrite && !sock->_writeDisabled;
             doConnect = sock->_writeable && sock->_wantConnect && !sock->_connectDisabled && !sock->_connected;
@@ -742,7 +742,7 @@ static void __CFSocketPerform(void *info) { // CFRunLoop should only call this o
                 sock->_error = errorCode;
             }
             sock->_connected = true;
-// CFLog(5, CFSTR("__CFSocketPerform(%p) doing %d %d %d"), sock, doRead, doWrite, doConnect);
+// CFLog(kCFLogLevelNotice, CFSTR("__CFSocketPerform(%p) doing %d %d %d"), sock, doRead, doWrite, doConnect);
             if (doRead) {
                 switch (sock->_wantReadType) {
                 case kCFSocketReadCallBack:
@@ -790,7 +790,7 @@ static void __CFSocketPerform(void *info) { // CFRunLoop should only call this o
                 }
             }
             if (sock->_reenableRead) {
-// CFLog(5, CFSTR("__CFSocketPerform(%p) reenabling read %d %p"), sock, sock->_rsuspended, sock->_shared->_rdsrc);
+// CFLog(kCFLogLevelNotice, CFSTR("__CFSocketPerform(%p) reenabling read %d %p"), sock, sock->_rsuspended, sock->_shared->_rdsrc);
                 if (sock->_rsuspended && sock->_shared->_rdsrc) {
                     sock->_rsuspended = false;
                     dispatch_resume(sock->_shared->_rdsrc);
@@ -809,7 +809,7 @@ static void __CFSocketPerform(void *info) { // CFRunLoop should only call this o
                 context_info = sock->_context.info;
             }
         });
-// CFLog(5, CFSTR("__CFSocketPerform(%p) isValid:%d, doRead:%d, doWrite:%d, doConnect:%d error:%d"), sock, isValid, doRead, doWrite, doConnect, errorCode);
+// CFLog(kCFLogLevelNotice, CFSTR("__CFSocketPerform(%p) isValid:%d, doRead:%d, doWrite:%d, doConnect:%d error:%d"), sock, isValid, doRead, doWrite, doConnect, errorCode);
     if (!isValid || !(doConnect || doRead || doWrite)) return;
 
     Boolean calledOut = false;
@@ -850,7 +850,7 @@ static void __CFSocketPerform(void *info) { // CFRunLoop should only call this o
     }
 
     CHECK_FOR_FORK_RET();
-// CFLog(5, CFSTR("__CFSocketPerform(%p) done"), sock);
+// CFLog(kCFLogLevelNotice, CFSTR("__CFSocketPerform(%p) done"), sock);
 }
 
 static void __CFSocketSchedule(void *info, CFRunLoopRef rl, CFStringRef mode) {
@@ -930,7 +930,7 @@ CFRunLoopSourceRef CFSocketCreateRunLoopSource(CFAllocatorRef allocator, CFSocke
             }
             result = sock->_shared->_source ? (CFRunLoopSourceRef)CFRetain(sock->_shared->_source) : NULL;
         });
-// CFLog(5, CFSTR("CFSocketCreateRunLoopSource(%p) => %p"), sock, result);
+// CFLog(kCFLogLevelNotice, CFSTR("CFSocketCreateRunLoopSource(%p) => %p"), sock, result);
     return result;
 }
 
@@ -1315,7 +1315,7 @@ CF_INLINE Boolean __CFSocketClearFDForRead(CFSocketRef s) {
 }
 
 CF_INLINE Boolean __CFSocketSetFDForWrite(CFSocketRef s) {
-// CFLog(5, CFSTR("__CFSocketSetFDForWrite(%p)"), s);
+// CFLog(kCFLogLevelNotice, CFSTR("__CFSocketSetFDForWrite(%p)"), s);
     Boolean b = __CFSocketFdSet(s->_socket, __CFWriteSocketsFds);
     if (b && INVALID_SOCKET != __CFWakeupSocketPair[0]) {
         uint8_t c = 'w';
@@ -1325,7 +1325,7 @@ CF_INLINE Boolean __CFSocketSetFDForWrite(CFSocketRef s) {
 }
 
 CF_INLINE Boolean __CFSocketClearFDForWrite(CFSocketRef s) {
-// CFLog(5, CFSTR("__CFSocketClearFDForWrite(%p)"), s);
+// CFLog(kCFLogLevelNotice, CFSTR("__CFSocketClearFDForWrite(%p)"), s);
     Boolean b = __CFSocketFdClr(s->_socket, __CFWriteSocketsFds);
     if (b && INVALID_SOCKET != __CFWakeupSocketPair[0]) {
         uint8_t c = 'x';
@@ -1462,7 +1462,7 @@ static void __CFSocketHandleWrite(CFSocketRef s, Boolean callBackNow) {
     }
     s->_errorCode = errorCode;
     __CFSocketSetWriteSignalled(s);
-// CFLog(5, CFSTR("__CFSocketHandleWrite() signalling write on socket %p"), s);
+// CFLog(kCFLogLevelNotice, CFSTR("__CFSocketHandleWrite() signalling write on socket %p"), s);
 #if defined(LOG_CFSOCKET)
     fprintf(stdout, "write signaling source for socket %d\n", s->_socket);
 #endif
@@ -2140,7 +2140,7 @@ static void __CFSocketManager(void * arg)
                     /* socket is removed from fds here, restored by CFSocketReschedule */
                     if (!tempfds) tempfds = (fd_set *)CFDataGetMutableBytePtr(__CFWriteSocketsFds);
                     FD_CLR(sock, tempfds);
-// CFLog(5, CFSTR("Manager: cleared socket %p from write fds"), s);
+// CFLog(kCFLogLevelNotice, CFSTR("Manager: cleared socket %p from write fds"), s);
                 }
             }
         }
@@ -2361,7 +2361,7 @@ static CFSocketRef _CFSocketCreateWithNative(CFAllocatorRef allocator, CFSocketN
         __CFSocketUnlock(memory);
     }
 #if defined(LOG_CFSOCKET)
-    CFLog(5, CFSTR("CFSocketCreateWithNative(): created socket %p (%d) with callbacks 0x%x"), memory, memory->_socket, callBackTypes);
+    CFLog(kCFLogLevelNotice, CFSTR("CFSocketCreateWithNative(): created socket %p (%d) with callbacks 0x%x"), memory, memory->_socket, callBackTypes);
 #endif
     return memory;
 }
@@ -2371,7 +2371,7 @@ CFSocketRef CFSocketCreateWithNative(CFAllocatorRef allocator, CFSocketNativeHan
 }
 
 void CFSocketInvalidate(CFSocketRef s) {
-// CFLog(5, CFSTR("CFSocketInvalidate(%p) starting"), s);
+// CFLog(kCFLogLevelNotice, CFSTR("CFSocketInvalidate(%p) starting"), s);
     CHECK_FOR_FORK();
     UInt32 previousSocketManagerIteration;
     __CFGenericValidateType(s, CFSocketGetTypeID());
@@ -2446,7 +2446,7 @@ void CFSocketInvalidate(CFSocketRef s) {
     __CFSpinUnlock(&__CFAllSocketsLock);
     CFRelease(s);
 #if defined(LOG_CFSOCKET)
-    CFLog(5, CFSTR("CFSocketInvalidate(%p) done"), s);
+    CFLog(kCFLogLevelNotice, CFSTR("CFSocketInvalidate(%p) done"), s);
 #endif
 }
 
@@ -2473,7 +2473,7 @@ CFDataRef CFSocketCopyAddress(CFSocketRef s) {
     }
     __CFSocketUnlock(s);
 #if defined(LOG_CFSOCKET)
-    CFLog(5, CFSTR("CFSocketCopyAddress(): created socket %p address %@"), s, result);
+    CFLog(kCFLogLevelNotice, CFSTR("CFSocketCopyAddress(): created socket %p address %@"), s, result);
 #endif
     return result;
 }
@@ -2489,7 +2489,7 @@ CFDataRef CFSocketCopyPeerAddress(CFSocketRef s) {
     }
     __CFSocketUnlock(s);
 #if defined(LOG_CFSOCKET)
-    CFLog(5, CFSTR("CFSocketCopyAddress(): created socket %p peer address %@"), s, result);
+    CFLog(kCFLogLevelNotice, CFSTR("CFSocketCopyAddress(): created socket %p peer address %@"), s, result);
 #endif
     return result;
 }
@@ -2516,7 +2516,7 @@ void CFSocketSetSocketFlags(CFSocketRef s, CFOptionFlags flags) {
 #endif
     s->_f.client = flags;
     __CFSocketUnlock(s);
-// CFLog(5, CFSTR("CFSocketSetSocketFlags(%p, 0x%x)"), s, flags);
+// CFLog(kCFLogLevelNotice, CFSTR("CFSocketSetSocketFlags(%p, 0x%x)"), s, flags);
 }
 
 void CFSocketDisableCallBacks(CFSocketRef s, CFOptionFlags callBackTypes) {
@@ -2595,7 +2595,7 @@ void __CFSocketEnableCallBacks(CFSocketRef s, CFOptionFlags callBackTypes, Boole
                 if (force) {
                     SInt32 idx = CFArrayGetFirstIndexOfValue(__CFWriteSockets, CFRangeMake(0, CFArrayGetCount(__CFWriteSockets)), s);
                     if (kCFNotFound == idx) CFArrayAppendValue(__CFWriteSockets, s);
-//                     if (kCFNotFound == idx) CFLog(5, CFSTR("__CFSocketEnableCallBacks: put %p in __CFWriteSockets list due to force and non-presence"), s);
+//                     if (kCFNotFound == idx) CFLog(kCFLogLevelNotice, CFSTR("__CFSocketEnableCallBacks: put %p in __CFWriteSockets list due to force and non-presence"), s);
                 }
                 if (__CFSocketSetFDForWrite(s)) wakeup = true;
             }
@@ -2617,7 +2617,7 @@ void CFSocketEnableCallBacks(CFSocketRef s, CFOptionFlags callBackTypes) {
     __CFGenericValidateType(s, CFSocketGetTypeID());
     __CFSocketLock(s);
     __CFSocketEnableCallBacks(s, callBackTypes, TRUE, 'r');
-// CFLog(5, CFSTR("CFSocketEnableCallBacks(%p, 0x%x) done"), s, callBackTypes);
+// CFLog(kCFLogLevelNotice, CFSTR("CFSocketEnableCallBacks(%p, 0x%x) done"), s, callBackTypes);
 }
 
 static void __CFSocketSchedule(void *info, CFRunLoopRef rl, CFStringRef mode) {
@@ -2638,7 +2638,7 @@ static void __CFSocketSchedule(void *info, CFRunLoopRef rl, CFStringRef mode) {
 #if defined(LOG_CFSOCKET)
             fprintf(stdout, "scheduling socket %d\n", s->_socket);
 #endif
-// CFLog(5, CFSTR("__CFSocketSchedule(%p, %p, %p)"), s, rl, mode);
+// CFLog(kCFLogLevelNotice, CFSTR("__CFSocketSchedule(%p, %p, %p)"), s, rl, mode);
             __CFSocketEnableCallBacks(s, __CFSocketCallBackTypes(s), TRUE, 's');  // unlocks s
         } else
             __CFSocketUnlock(s);
@@ -2655,7 +2655,7 @@ static void __CFSocketCancel(void *info, CFRunLoopRef rl, CFStringRef mode) {
         __CFSpinLock(&__CFActiveSocketsLock);
         idx = CFArrayGetFirstIndexOfValue(__CFWriteSockets, CFRangeMake(0, CFArrayGetCount(__CFWriteSockets)), s);
         if (0 <= idx) {
-// CFLog(5, CFSTR("__CFSocketCancel: removing %p from __CFWriteSockets list"), s);
+// CFLog(kCFLogLevelNotice, CFSTR("__CFSocketCancel: removing %p from __CFWriteSockets list"), s);
             CFArrayRemoveValueAtIndex(__CFWriteSockets, idx);
             __CFSocketClearFDForWrite(s);
         }
@@ -2705,7 +2705,7 @@ static void __CFSocketDoCallback(CFSocketRef s, CFDataRef data, CFDataRef addres
     __CFSocketUnlock(s);
     if ((callBackTypes & kCFSocketConnectCallBack) != 0) {
         if (connectSignalled && (!calledOut || CFSocketIsValid(s))) {
-// CFLog(5, CFSTR("__CFSocketPerformV0(%p) doing connect callback, error: %d"), s, errorCode);
+// CFLog(kCFLogLevelNotice, CFSTR("__CFSocketPerformV0(%p) doing connect callback, error: %d"), s, errorCode);
             if (errorCode) {
 #if defined(LOG_CFSOCKET)
                 fprintf(stdout, "perform calling out error %ld to socket %d\n", (long)errorCode, s->_socket);
@@ -2744,7 +2744,7 @@ static void __CFSocketDoCallback(CFSocketRef s, CFDataRef data, CFDataRef addres
 #if defined(LOG_CFSOCKET)
             fprintf(stdout, "perform calling out read to socket %d\n", s->_socket);
 #endif
-// CFLog(5, CFSTR("__CFSocketPerformV0(%p) doing read callback"), s);
+// CFLog(kCFLogLevelNotice, CFSTR("__CFSocketPerformV0(%p) doing read callback"), s);
             if (callout) callout(s, kCFSocketReadCallBack, NULL, NULL, contextInfo);
             calledOut = true;
         }
@@ -2754,7 +2754,7 @@ static void __CFSocketDoCallback(CFSocketRef s, CFDataRef data, CFDataRef addres
 #if defined(LOG_CFSOCKET)
             fprintf(stdout, "perform calling out write to socket %d\n", s->_socket);
 #endif
-// CFLog(5, CFSTR("__CFSocketPerformV0(%p) doing write callback"), s);
+// CFLog(kCFLogLevelNotice, CFSTR("__CFSocketPerformV0(%p) doing write callback"), s);
             if (callout) callout(s, kCFSocketWriteCallBack, NULL, NULL, contextInfo);
             calledOut = true;
         }
@@ -2768,7 +2768,7 @@ static void __CFSocketPerformV0(void *info) {
     CFSocketNativeHandle sock = INVALID_SOCKET;
     uint8_t readCallBackType, callBackTypes;
     CFRunLoopRef rl = NULL;
-// CFLog(5, CFSTR("__CFSocketPerformV0(%p) starting"), s);
+// CFLog(kCFLogLevelNotice, CFSTR("__CFSocketPerformV0(%p) starting"), s);
 
     __CFSocketLock(s);
     if (!__CFSocketIsValid(s)) {
@@ -2839,7 +2839,7 @@ static void __CFSocketPerformV0(void *info) {
         CFRunLoopWakeUp(rl);
         CFRelease(rl);
     }
-// CFLog(5, CFSTR("__CFSocketPerformV0(%p) done"), s);
+// CFLog(kCFLogLevelNotice, CFSTR("__CFSocketPerformV0(%p) done"), s);
 }
 
 CFRunLoopSourceRef CFSocketCreateRunLoopSource(CFAllocatorRef allocator, CFSocketRef s, CFIndex order) {

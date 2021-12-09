@@ -971,7 +971,9 @@ Boolean __CFSocketGetBytesAvailable(CFSocketRef s, CFIndex* ctBytesAvailable) {
 #elif DEPLOYMENT_TARGET_LINUX
 #include <fcntl.h>
 #include <linux/ioctl.h>
+#include <linux/prctl.h>
 #include <sys/param.h>
+#include <sys/prctl.h>
 #include <asm/ioctls.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -1955,6 +1957,8 @@ static void __CFSocketManager(void * arg)
 #elif (PTHREAD_SETNAME_NP_ARGS == 1)
     pthread_setname_np("com.apple.CFSocket.private");
 #endif // (PTHREAD_SETNAME_NP_ARGS == 2)
+#elif DEPLOYMENT_TARGET_LINUX
+    prctl(PR_SET_NAME, "CFSocket", 0, 0, 0);
 #endif // HAVE_PTHREAD_SETNAME_NP
     if (objc_collectingEnabled()) objc_registerThreadWithCollector();
     SInt32 nrfds, maxnrfds, fdentries = 1;

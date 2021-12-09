@@ -68,7 +68,7 @@
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_WINDOWS
 
-#define CFUserNotificationLog(alertHeader, alertMessage) CFLog(3, CFSTR("%@:  %@"), alertHeader, alertMessage);
+#define CFUserNotificationLog(alertHeader, alertMessage) CFLog(kCFLogLevelError, CFSTR("%@:  %@"), alertHeader, alertMessage);
 
 enum {
     kCFUserNotificationCancelFlag = (1 << 3),

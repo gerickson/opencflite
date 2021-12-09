@@ -585,8 +585,8 @@ enum {
 };
 
 enum {
-    __kWakeupPipeWriterIndex = 0,
-    __kWakeupPipeReaderIndex = 1
+    __kWakeupPipeReaderIndex = 0,
+    __kWakeupPipeWriterIndex = 1
 };
 
 enum {
@@ -1157,7 +1157,14 @@ __CFFileDescriptorManagerAllocateSelectedDescriptorsContainer(struct __CFFileDes
 /* static */ SInt32
 __CFFileDescriptorManagerCreateWakeupPipe(void)
 {
-    return pipe(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe);
+    const SInt32 result = pipe(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe);
+
+    __CFFileDescriptorMaybeLog("file descriptor manager wakeup pipe created with read descriptor %d and write descriptor %d with status %d\n",
+                               __sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeReaderIndex],
+                               __sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeWriterIndex],
+                               result);
+
+    return result;
 }
 
 /* static */ void __CFFileDescriptorManagerDeallocateSelectState(struct __CFFileDescriptorManagerSelectState *state) {
@@ -1745,6 +1752,9 @@ __CFFileDescriptorManagerWakeup(char reason)
 		status = write(__sCFFileDescriptorManager.mWakeupNativeDescriptorPipe[__kWakeupPipeWriterIndex],
 					   &reason,
 					   sizeof(reason));
+        if ((status == -1) && (errno != EAGAIN)) {
+            CFLog(kCFLogLevelError, CFSTR("Failed to write file descriptor manager wake-up reason '%c' with status %d: %d (%s)"), reason, status, errno, strerror(errno));
+        }
 	} while ((status == -1) && (errno == EAGAIN));
     __Verify(status == sizeof(reason));
 

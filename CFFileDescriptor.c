@@ -869,7 +869,7 @@ CF_INLINE Boolean __CFFileDescriptorNativeDescriptorSet(CFFileDescriptorNativeDe
         FD_SET(fd, set);
     }
 #else
-    const CFIndex numFds = NBBY * CFDataGetLength(fdSet);
+    const CFIndex numFds = __CFFileDescriptorNativeDescriptorGetSize(fdSet);
     fd_mask *fds_bits;
     if (fd >= numFds) {
         const CFIndex oldSize       = numFds / NFDBITS;
@@ -920,7 +920,7 @@ CF_INLINE Boolean __CFFileDescriptorNativeDescriptorClear(CFFileDescriptorNative
         FD_CLR(fd, set);
     }
 #else
-    const CFIndex numFds = NBBY * CFDataGetLength(fdSet);
+    const CFIndex numFds = __CFFileDescriptorNativeDescriptorGetSize(fdSet);
     fd_mask *fds_bits;
     if (fd < numFds) {
         fds_bits = (fd_mask *)CFDataGetMutableBytePtr(fdSet);

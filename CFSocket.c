@@ -1270,7 +1270,7 @@ static SInt32 __CFSocketCreateWakeupSocketPair(void) {
     UInt32 i;
     SInt32 error = 0;
     struct sockaddr_in address[2];
-    int namelen = sizeof(struct sockaddr_in);
+    socklen_t namelen = sizeof(struct sockaddr_in);
     for (i = 0; i < 2; i++) {
         __CFWakeupSocketPair[i] = socket(PF_INET, SOCK_DGRAM, 0);
         memset(&(address[i]), 0, sizeof(struct sockaddr_in));

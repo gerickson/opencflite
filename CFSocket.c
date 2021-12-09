@@ -975,7 +975,6 @@ Boolean __CFSocketGetBytesAvailable(CFSocketRef s, CFIndex* ctBytesAvailable) {
 #include <asm/ioctls.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <sys/sysctl.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>

@@ -212,13 +212,13 @@ static void foo() {
 CFOptionFlags responseFlags = 0;
 SInt32 result = CFUserNotificationDisplayAlert(0.0, kCFUserNotificationCautionAlertLevel, NULL, NULL, NULL, CFSTR("High Mach Port Usage"), CFSTR("This application is using a lot of Mach ports."), CFSTR("Default"), CFSTR("Altern"), CFSTR("Other b"), &responseFlags);
 if (0 != result) {
-    CFLog(3, CFSTR("ERROR"));
+    CFLog(kCFLogLevelError, CFSTR("ERROR"));
 } else {
     switch (responseFlags) {
-    case kCFUserNotificationDefaultResponse: CFLog(3, CFSTR("DefaultR")); break;
-    case kCFUserNotificationAlternateResponse: CFLog(3, CFSTR("AltR")); break;
-    case kCFUserNotificationOtherResponse: CFLog(3, CFSTR("OtherR")); break;
-    case kCFUserNotificationCancelResponse: CFLog(3, CFSTR("CancelR")); break;
+    case kCFUserNotificationDefaultResponse: CFLog(kCFLogLevelError, CFSTR("DefaultR")); break;
+    case kCFUserNotificationAlternateResponse: CFLog(kCFLogLevelError, CFSTR("AltR")); break;
+    case kCFUserNotificationOtherResponse: CFLog(kCFLogLevelError, CFSTR("OtherR")); break;
+    case kCFUserNotificationCancelResponse: CFLog(kCFLogLevelError, CFSTR("CancelR")); break;
     }
 }
 
@@ -1312,11 +1312,11 @@ struct __CFRunLoopMode {
 
 CF_INLINE void __CFRunLoopModeLock(CFRunLoopModeRef rlm) {
     pthread_mutex_lock(&(rlm->_lock));
-//    CFLog(6, CFSTR("__CFRunLoopModeLock locked %p"), rlm);
+//    CFLog(kCFLogLevelInfo, CFSTR("__CFRunLoopModeLock locked %p"), rlm);
 }
 
 CF_INLINE void __CFRunLoopModeUnlock(CFRunLoopModeRef rlm) {
-//    CFLog(6, CFSTR("__CFRunLoopModeLock unlocking %p"), rlm);
+//    CFLog(kCFLogLevelInfo, CFSTR("__CFRunLoopModeLock unlocking %p"), rlm);
     pthread_mutex_unlock(&(rlm->_lock));
 }
 
@@ -1453,11 +1453,11 @@ CF_INLINE void __CFRunLoopSetDeallocating(CFRunLoopRef rl) {
 
 CF_INLINE void __CFRunLoopLock(CFRunLoopRef rl) {
     pthread_mutex_lock(&(((CFRunLoopRef)rl)->_lock));
-//    CFLog(6, CFSTR("__CFRunLoopLock locked %p"), rl);
+//    CFLog(kCFLogLevelInfo, CFSTR("__CFRunLoopLock locked %p"), rl);
 }
 
 CF_INLINE void __CFRunLoopUnlock(CFRunLoopRef rl) {
-//    CFLog(6, CFSTR("__CFRunLoopLock unlocking %p"), rl);
+//    CFLog(kCFLogLevelInfo, CFSTR("__CFRunLoopLock unlocking %p"), rl);
     pthread_mutex_unlock(&(((CFRunLoopRef)rl)->_lock));
 }
 
@@ -1710,11 +1710,11 @@ CF_INLINE void __CFRunLoopSourceUnsetSignaled(CFRunLoopSourceRef rls) {
 
 CF_INLINE void __CFRunLoopSourceLock(CFRunLoopSourceRef rls) {
     pthread_mutex_lock(&(rls->_lock));
-//    CFLog(6, CFSTR("__CFRunLoopSourceLock locked %p"), rls);
+//    CFLog(kCFLogLevelInfo, CFSTR("__CFRunLoopSourceLock locked %p"), rls);
 }
 
 CF_INLINE void __CFRunLoopSourceUnlock(CFRunLoopSourceRef rls) {
-//    CFLog(6, CFSTR("__CFRunLoopSourceLock unlocking %p"), rls);
+//    CFLog(kCFLogLevelInfo, CFSTR("__CFRunLoopSourceLock unlocking %p"), rls);
     pthread_mutex_unlock(&(rls->_lock));
 }
 
@@ -1759,11 +1759,11 @@ CF_INLINE void __CFRunLoopObserverUnsetRepeats(CFRunLoopObserverRef rlo) {
 
 CF_INLINE void __CFRunLoopObserverLock(CFRunLoopObserverRef rlo) {
     pthread_mutex_lock(&(rlo->_lock));
-//    CFLog(6, CFSTR("__CFRunLoopObserverLock locked %p"), rlo);
+//    CFLog(kCFLogLevelInfo, CFSTR("__CFRunLoopObserverLock locked %p"), rlo);
 }
 
 CF_INLINE void __CFRunLoopObserverUnlock(CFRunLoopObserverRef rlo) {
-//    CFLog(6, CFSTR("__CFRunLoopObserverLock unlocking %p"), rlo);
+//    CFLog(kCFLogLevelInfo, CFSTR("__CFRunLoopObserverLock unlocking %p"), rlo);
     pthread_mutex_unlock(&(rlo->_lock));
 }
 
@@ -1824,11 +1824,11 @@ CF_INLINE void __CFRunLoopTimerSetDeallocating(CFRunLoopTimerRef rlt) {
 
 CF_INLINE void __CFRunLoopTimerLock(CFRunLoopTimerRef rlt) {
     pthread_mutex_lock(&(rlt->_lock));
-//    CFLog(6, CFSTR("__CFRunLoopTimerLock locked %p"), rlt);
+//    CFLog(kCFLogLevelInfo, CFSTR("__CFRunLoopTimerLock locked %p"), rlt);
 }
 
 CF_INLINE void __CFRunLoopTimerUnlock(CFRunLoopTimerRef rlt) {
-//    CFLog(6, CFSTR("__CFRunLoopTimerLock unlocking %p"), rlt);
+//    CFLog(kCFLogLevelInfo, CFSTR("__CFRunLoopTimerLock unlocking %p"), rlt);
     pthread_mutex_unlock(&(rlt->_lock));
 }
 
@@ -4839,7 +4839,7 @@ static CFStringRef __CFRunLoopTimerCopyDescription(CFTypeRef cf) {	/* DOES CALLO
 }
 
 static void __CFRunLoopTimerDeallocate(CFTypeRef cf) {	/* DOES CALLOUT */
-//CFLog(6, CFSTR("__CFRunLoopTimerDeallocate(%p)"), cf);
+//CFLog(kCFLogLevelInfo, CFSTR("__CFRunLoopTimerDeallocate(%p)"), cf);
     CFRunLoopTimerRef rlt = (CFRunLoopTimerRef)cf;
     __CFRunLoopTimerSetDeallocating(rlt);
     CFRunLoopTimerInvalidate(rlt);	/* DOES CALLOUT */

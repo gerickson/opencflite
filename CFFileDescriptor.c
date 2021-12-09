@@ -457,6 +457,11 @@ CFRunLoopSourceRef CFFileDescriptorCreateRunLoopSource(CFAllocatorRef allocator,
 #include <sys/param.h>
 #endif
 
+#if DEPLOYMENT_TARGET_LINUX
+#include <linux/prctl.h>
+#include <sys/prctl.h>
+#endif
+
 /* Preprocessor Definitions */
 
 #if !defined(LOG_CFFILEDESCRIPTOR)
@@ -1038,6 +1043,8 @@ __CFFileDescriptorManager(void * arg) {
 #elif (PTHREAD_SETNAME_NP_ARGS == 1)
     pthread_setname_np("com.apple.CFFileDescriptor.private");
 #endif // (PTHREAD_SETNAME_NP_ARGS == 2)
+#elif DEPLOYMENT_TARGET_LINUX
+    prctl(PR_SET_NAME, "CFFileDescriptor", 0, 0, 0);
 #endif // HAVE_PTHREAD_SETNAME_NP
 
     if (objc_collectingEnabled()) {

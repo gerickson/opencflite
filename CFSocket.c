@@ -971,6 +971,7 @@ Boolean __CFSocketGetBytesAvailable(CFSocketRef s, CFIndex* ctBytesAvailable) {
 #elif DEPLOYMENT_TARGET_LINUX
 #include <fcntl.h>
 #include <linux/ioctl.h>
+#include <sys/param.h>
 #include <asm/ioctls.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -1024,11 +1025,6 @@ void gettimeofday(struct timeval *tp, void *tzp) {
 
 
 #endif // DEPLOYMENT_TARGET_WINDOWS
-
-#if DEPLOYMENT_TARGET_LINUX
-#define NBBY 8
-#define INVALID_SOCKET -1
-#endif
 
 // On Mach we use a v0 RunLoopSource to make client callbacks.  That source is signalled by a
 // separate SocketManager thread who uses select() to watch the sockets' fds.

@@ -39,7 +39,7 @@ AC_PREREQ([2.61])
 # release thereof.
 #
 AC_INIT([CoreFoundation],
-        [635.21.6],
+        [635.21.7],
         [gerickson@nuovations.com],
         [opencflite],
         [https://github.com/gerickson/opencflite/])

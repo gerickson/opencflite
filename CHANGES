@@ -1,6 +1,16 @@
                       Changes and What's New in OpenCFLite
                       ------------------------------------
 
+2021-12-09 v635.21.7
+
+  * Addressed an issue in which processes that use CFFileDescriptor
+    objects could result in high (90-100%) CPU utilization when idle
+    when all such objects are invalidated and released before the
+    process terminates.
+
+  * Addressed a resource leak in the BundleExample example
+    application.
+
 2021-11-02 v635.21.6
 
   * Addressed resource leaks on Linux and FreeBSD identified by the

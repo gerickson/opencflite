@@ -287,6 +287,10 @@ int main (int argc, const char *argv[]) {
         CFRelease(cfLiteBundlePath);
     }
 
+    if (cfLiteURLRef != 0) {
+        CFRelease(cfLiteURLRef);
+    }
+
     return retval;
 }
 

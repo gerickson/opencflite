@@ -1402,7 +1402,7 @@ int main (int argc, const char * argv[])
        err = WSAStartup(versionRequested, &wsaData);
        if (err != 0 || LOBYTE(wsaData.wVersion) != LOBYTE(versionRequested) || HIBYTE(wsaData.wVersion) != HIBYTE(versionRequested)) {
            WSACleanup();
-           CFLog(0, CFSTR("*** Could not initialize WinSock subsystem!!!"));
+           CFLog(kCFLogLevelEmergency, CFSTR("*** Could not initialize WinSock subsystem!!!"));
        }
     }
 #endif

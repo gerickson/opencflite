@@ -807,7 +807,7 @@ void CFSetAddValue(CFMutableHashRef hc, const_any_pointer_t key) {
     __CFGenericValidateType(hc, __kCFSetTypeID);
     CFAssert2(CFBasicHashIsMutable((CFBasicHashRef)hc), __kCFLogAssertion, "%s(): immutable collection %p passed to mutating operation", __PRETTY_FUNCTION__, hc);
     if (!CFBasicHashIsMutable((CFBasicHashRef)hc)) {
-        CFLog(3, CFSTR("%s(): immutable collection %p given to mutating function"), __PRETTY_FUNCTION__, hc);
+        CFLog(kCFLogLevelError, CFSTR("%s(): immutable collection %p given to mutating function"), __PRETTY_FUNCTION__, hc);
     }
     CF_OBJC_KVO_WILLCHANGE(hc, key);
     CFBasicHashAddValue((CFBasicHashRef)hc, (uintptr_t)key, (uintptr_t)value);
@@ -826,7 +826,7 @@ void CFSetReplaceValue(CFMutableHashRef hc, const_any_pointer_t key) {
     __CFGenericValidateType(hc, __kCFSetTypeID);
     CFAssert2(CFBasicHashIsMutable((CFBasicHashRef)hc), __kCFLogAssertion, "%s(): immutable collection %p passed to mutating operation", __PRETTY_FUNCTION__, hc);
     if (!CFBasicHashIsMutable((CFBasicHashRef)hc)) {
-        CFLog(3, CFSTR("%s(): immutable collection %p given to mutating function"), __PRETTY_FUNCTION__, hc);
+        CFLog(kCFLogLevelError, CFSTR("%s(): immutable collection %p given to mutating function"), __PRETTY_FUNCTION__, hc);
     }
     CF_OBJC_KVO_WILLCHANGE(hc, key);
     CFBasicHashReplaceValue((CFBasicHashRef)hc, (uintptr_t)key, (uintptr_t)value);
@@ -845,7 +845,7 @@ void CFSetSetValue(CFMutableHashRef hc, const_any_pointer_t key) {
     __CFGenericValidateType(hc, __kCFSetTypeID);
     CFAssert2(CFBasicHashIsMutable((CFBasicHashRef)hc), __kCFLogAssertion, "%s(): immutable collection %p passed to mutating operation", __PRETTY_FUNCTION__, hc);
     if (!CFBasicHashIsMutable((CFBasicHashRef)hc)) {
-        CFLog(3, CFSTR("%s(): immutable collection %p given to mutating function"), __PRETTY_FUNCTION__, hc);
+        CFLog(kCFLogLevelError, CFSTR("%s(): immutable collection %p given to mutating function"), __PRETTY_FUNCTION__, hc);
     }
     CF_OBJC_KVO_WILLCHANGE(hc, key);
 //#warning this for a dictionary used to not replace the key
@@ -859,7 +859,7 @@ void CFSetRemoveValue(CFMutableHashRef hc, const_any_pointer_t key) {
     __CFGenericValidateType(hc, __kCFSetTypeID);
     CFAssert2(CFBasicHashIsMutable((CFBasicHashRef)hc), __kCFLogAssertion, "%s(): immutable collection %p passed to mutating operation", __PRETTY_FUNCTION__, hc);
     if (!CFBasicHashIsMutable((CFBasicHashRef)hc)) {
-        CFLog(3, CFSTR("%s(): immutable collection %p given to mutating function"), __PRETTY_FUNCTION__, hc);
+        CFLog(kCFLogLevelError, CFSTR("%s(): immutable collection %p given to mutating function"), __PRETTY_FUNCTION__, hc);
     }
     CF_OBJC_KVO_WILLCHANGE(hc, key);
     CFBasicHashRemoveValue((CFBasicHashRef)hc, (uintptr_t)key);
@@ -872,7 +872,7 @@ void CFSetRemoveAllValues(CFMutableHashRef hc) {
     __CFGenericValidateType(hc, __kCFSetTypeID);
     CFAssert2(CFBasicHashIsMutable((CFBasicHashRef)hc), __kCFLogAssertion, "%s(): immutable collection %p passed to mutating operation", __PRETTY_FUNCTION__, hc);
     if (!CFBasicHashIsMutable((CFBasicHashRef)hc)) {
-        CFLog(3, CFSTR("%s(): immutable collection %p given to mutating function"), __PRETTY_FUNCTION__, hc);
+        CFLog(kCFLogLevelError, CFSTR("%s(): immutable collection %p given to mutating function"), __PRETTY_FUNCTION__, hc);
     }
     CF_OBJC_KVO_WILLCHANGEALL(hc);
     CFBasicHashRemoveAllValues((CFBasicHashRef)hc);

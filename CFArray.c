@@ -189,7 +189,7 @@ CF_INLINE bool __CFArrayCallBacksMatchCFType(const CFArrayCallBacks *c) {
 }
 
 #if 0
-#define CHECK_FOR_MUTATION(A) do { if ((A)->_mutInProgress) CFLog(3, CFSTR("*** %s: function called while the array (%p) is being mutated in this or another thread"), __PRETTY_FUNCTION__, (A)); } while (0)
+#define CHECK_FOR_MUTATION(A) do { if ((A)->_mutInProgress) CFLog(kCFLogLevelError, CFSTR("*** %s: function called while the array (%p) is being mutated in this or another thread"), __PRETTY_FUNCTION__, (A)); } while (0)
 #define BEGIN_MUTATION(A) do { OSAtomicAdd32Barrier(1, &((struct __CFArray *)(A))->_mutInProgress); } while (0)
 #define END_MUTATION(A) do { OSAtomicAdd32Barrier(-1, &((struct __CFArray *)(A))->_mutInProgress); } while (0)
 #else

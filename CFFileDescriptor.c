@@ -1887,7 +1887,7 @@ __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
                                       &kCFTypeDictionaryValueCallBacks);
     }
 
-    __CFFileDescriptorMaybeLog("Manager initialized.\n");
+    __CFFileDescriptorMaybeLog("File descriptor manager initialized.\n");
 
     // The file descriptor manager is running and we have a map for
     // all file descriptor objects under management; start the work of
@@ -1976,7 +1976,7 @@ __CFFileDescriptorCreateWithNative(CFAllocatorRef                   allocator,
         // Start the manager thread if it is not already running.
 
         if (__sCFFileDescriptorManager.mThread == NULL) {
-            __CFFileDescriptorMaybeLog("Starting manager thread...\n");
+            __CFFileDescriptorMaybeLog("Starting file descriptor manager thread...\n");
             __sCFFileDescriptorManager.mRun    = TRUE;
             __sCFFileDescriptorManager.mThread = __CFStartSimpleThread((void*)__CFFileDescriptorManager, &__sCFFileDescriptorManager.mRun);
         }

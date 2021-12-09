@@ -640,7 +640,7 @@ static Boolean  		   __CFFileDescriptorManagerMaybeAdd_Locked(CFFileDescriptorRe
 																	Boolean forRead,
 																	Boolean forWrite,
 																	Boolean force);
-static CFIndex             __CFFileDescriptorManagerPrepareWatches(struct __CFFileDescriptorManagerWatchedDescriptors *watches, struct timeval *timeout);
+static CFIndex             __CFFileDescriptorManagerPrepareWatches(struct __CFFileDescriptorManagerWatchedDescriptors *watches, struct timeval *timeout, struct timeval **timeoutp);
 #if LOG_CFFILEDESCRIPTOR
 static void                __CFFileDescriptorManagerPrepareWatchesMaybeLog(void);
 #endif
@@ -1032,10 +1032,11 @@ __CFFileDescriptorManager(void * arg) {
 	struct __CFFileDescriptorManagerSelectState state;
 	void *result;
     CFIndex nrfds, maxnrfds, fdentries = 1;
-    struct timeval timeout;
-    struct timeval timeBeforeSelect;
-    struct timeval timeAfterSelect;
-	struct timeval timeElapsed;
+    struct timeval  tv;
+    struct timeval *timeoutp = NULL;
+    struct timeval  timeBeforeSelect;
+    struct timeval  timeAfterSelect;
+	struct timeval  timeElapsed;
 
     __CFFileDescriptorTraceEnter();
 
@@ -1057,15 +1058,19 @@ __CFFileDescriptorManager(void * arg) {
 	__Verify_Action(result != NULL, abort());
 
     while ((run != NULL) && (*run != FALSE)) {
-		maxnrfds = __CFFileDescriptorManagerPrepareWatches(&state._watches, &timeout);
+		maxnrfds = __CFFileDescriptorManagerPrepareWatches(&state._watches, &tv, &timeoutp);
 
 		gettimeofday(&timeBeforeSelect, NULL);
+
+        // The distinction between a zero and a NULL timeout is
+        // important. A zero timeout will poll; a null timeout may
+        // block indefinitely if no watches become ready.
 
         nrfds = select(maxnrfds,
 					   state._watches._read,
 					   state._watches._write,
 					   state._watches._except,
-					   &timeout);
+					   timeoutp);
 
 		gettimeofday(&timeAfterSelect, NULL);
 
@@ -1360,7 +1365,7 @@ __CFFileDescriptorManagerHandleTimeout(struct __CFFileDescriptorManagerSelectSta
 	CFIndex    index;
 
 	__CFFileDescriptorMaybeLog("file descriptor manager received timeout - "
-							   "(expired delta %ld, %ld)\n",
+							   "(expired delta %ld.%06ld)\n",
 							   elapsed->tv_sec, elapsed->tv_usec);
 
 	__CFSpinLock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);
@@ -1516,7 +1521,7 @@ __CFFileDescriptorManagerPrepareWatchesMaybeLog(void)
 }
 
 /* static */ CFIndex
-__CFFileDescriptorManagerPrepareWatches(struct __CFFileDescriptorManagerWatchedDescriptors * watches, struct timeval *timeout) {
+__CFFileDescriptorManagerPrepareWatches(struct __CFFileDescriptorManagerWatchedDescriptors * watches, struct timeval *timeout, struct timeval **timeoutp) {
 	void *result = NULL;
 	CFIndex maxnrfds = 0;
 
@@ -1531,7 +1536,7 @@ __CFFileDescriptorManagerPrepareWatches(struct __CFFileDescriptorManagerWatchedD
 	result = __CFFileDescriptorManagerMaybeReallocateAndClearWatchedDescriptors_Locked(watches, maxnrfds);
 	__Verify_Action(result != NULL, abort());
 
-	if (timeout != NULL) {
+	if ((timeout != NULL) && (timeoutp != NULL)) {
 		if (__sCFFileDescriptorManager.mReadFileDescriptorsTimeoutInvalid) {
 			struct timeval* minTimeout = NULL;
 
@@ -1543,23 +1548,30 @@ __CFFileDescriptorManagerPrepareWatches(struct __CFFileDescriptorManagerWatchedD
 								 (void *)&minTimeout);
 
 			if (minTimeout != NULL) {
-				__CFFileDescriptorMaybeLog("timeout will be %ld, %ld!\n",
+				__CFFileDescriptorMaybeLog("timeout will be %ld.%06ld!\n",
 										   minTimeout->tv_sec,
 										   minTimeout->tv_usec);
 
-				*timeout = *minTimeout;
+				*timeout  = *minTimeout;
+                *timeoutp = timeout;
 			} else {
 				__CFFileDescriptorMaybeLog("No one wants a timeout!\n");
 
-				memset(timeout, 0, sizeof(struct timeval));
+                memset(timeout, 0, sizeof(struct timeval));
+                *timeoutp = NULL;
 			}
 		} else {
 			memset(timeout, 0, sizeof(struct timeval));
+            *timeoutp = NULL;
 		}
 
-		__CFFileDescriptorMaybeLog("select will have a %ld, %ld timeout\n",
-								   timeout->tv_sec,
-								   timeout->tv_usec);
+        if (*timeoutp != NULL) {
+            __CFFileDescriptorMaybeLog("select will have a %ld.%06ld timeout\n",
+                                       (*timeoutp)->tv_sec,
+                                       (*timeoutp)->tv_usec);
+        } else {
+            __CFFileDescriptorMaybeLog("select will have an indefinite timeout\n");
+        }
 	}
 
     __CFSpinUnlock(&__sCFFileDescriptorManager.mActiveFileDescriptorsLock);

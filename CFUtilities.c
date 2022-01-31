@@ -97,6 +97,7 @@
     #if HAVE_SYS_AUXV_H
         #include <sys/auxv.h>
     #endif
+    #include <sys/stat.h>
 #endif
 #endif
 
@@ -574,7 +575,7 @@ void CFShow(const void *obj) {
 typedef void (*CFLogFunc)(int32_t lev, const char *message, size_t length, char withBanner);
 
 static Boolean also_do_stderr() {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX
     if (!__CFIsCurrentProcessTainted() && __CFgetenv("CFLOG_FORCE_STDERR")) {
 	    return true;
     }
@@ -584,12 +585,14 @@ static Boolean also_do_stderr() {
     mode_t m = sb.st_mode & S_IFMT;
     if (S_IFREG == m || S_IFSOCK == m) return true;
     if (!(S_IFIFO == m || S_IFCHR == m)) return false; // disallow any whacky stuff
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
     // if it could be a pipe back to launchd, fail
     int64_t val = 0;
     // assumes val is not written to on error
     vproc_swap_integer(NULL, VPROC_GSK_IS_MANAGED, NULL, &val);
     if (val) return false;
-#endif
+#endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX
     return true;
 }
 

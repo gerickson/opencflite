@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  *
- * Copyright (c) 2013 Apple Inc. All rights reserved.
+ * Copyright (c) 2014 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -32,7 +32,7 @@
  */
 
 /*	CFSocket.c
-	Copyright (c) 1999-2013, Apple Inc.  All rights reserved.
+	Copyright (c) 1999-2014, Apple Inc.  All rights reserved.
 	Responsibility: Christopher Kane
 */
 
@@ -964,6 +964,7 @@ Boolean __CFSocketGetBytesAvailable(CFSocketRef s, CFIndex* ctBytesAvailable) {
 #include <sys/types.h>
 #include <math.h>
 #include <limits.h>
+#include <arpa/inet.h>
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_EMBEDDED_MINI
 #include <sys/sysctl.h>
 #include <sys/un.h>
@@ -1156,6 +1157,13 @@ struct __CFSocket {
     int _bufferedReadError;
 
 	CFMutableDataRef _leftoverBytes;
+
+    // <rdar://problem/17849895>
+    // If the timeout is set on the CFSocketRef but we never get select() timeout
+    // because we always have some network events so select never times out (e.g. while having a large download).
+    // We need to notify any waiting buffered read clients if there is data available without relying on select timing out.
+    struct timeval _readBufferTimeoutNotificationTime;
+    Boolean _hitTheTimeout;
 };
 
 /* Bit 6 in the base reserved bits is used for write-signalled state (mutable) */
@@ -1516,6 +1524,59 @@ static void __CFSocketHandleWrite(CFSocketRef s, Boolean callBackNow) {
     }
 }
 
+#if LOG_CFSOCKET
+static CFStringRef someAddrToString(CFAllocatorRef alloc, int (*fun) (int, struct sockaddr*, socklen_t*), const char* name, CFSocketNativeHandle s)
+{
+    CFStringRef resultString = NULL;
+    union {
+        struct sockaddr		sa;
+        struct sockaddr_in  sa4b;
+        struct sockaddr_in6 sa6b;
+        UInt8			static_buffer[SOCK_MAXADDRLEN];
+    } u;
+    socklen_t addrlen = sizeof(u.static_buffer);
+
+    uint16_t* pPort = NULL;
+    char buffer[1024];
+
+    if ((*fun) (s, &u.sa, &addrlen) != 0)
+        snprintf(buffer, sizeof(buffer), "error %d resolving %s address for socket %d", errno, name, s);
+    else {
+        void* pAddr = NULL;
+
+        switch (u.sa.sa_family) {
+            case AF_INET:
+                pAddr = &u.sa4b.sin_addr;
+                pPort = &u.sa4b.sin_port;
+                break;
+            case AF_INET6:
+                pAddr = &u.sa6b.sin6_addr;
+                pPort = &u.sa6b.sin6_port;
+                break;
+        }
+
+        if (pAddr == NULL || inet_ntop(u.sa.sa_family, pAddr, buffer, sizeof(buffer)) == NULL)
+            snprintf(buffer, sizeof(buffer), "[error %d converting %s address for socket %d]", pAddr != NULL? errno : EBADF, name, s);
+    }
+    if (pPort) {
+        resultString = CFStringCreateWithFormat(alloc, NULL, CFSTR("%s:%d"), buffer, htons(*pPort));
+    } else {
+        resultString = CFStringCreateWithFormat(alloc, NULL, CFSTR("%s"), buffer);
+    }
+    return resultString;
+}
+
+CFStringRef copyPeerAddress(CFAllocatorRef alloc, CFSocketNativeHandle s)
+{
+    return someAddrToString(alloc, getpeername, "peer", s);
+}
+
+CFStringRef copyLocalAddress(CFAllocatorRef alloc, CFSocketNativeHandle s)
+{
+    return someAddrToString(alloc, getsockname, "local", s);
+}
+#endif // LOG_CFSOCKET
+
 static void __CFSocketHandleRead(CFSocketRef s, Boolean causedByTimeout)
 {
     CFDataRef data = NULL, address = NULL;
@@ -1628,6 +1689,8 @@ static void __CFSocketHandleRead(CFSocketRef s, Boolean causedByTimeout)
             /* we've got a timeout, but no bytes read, and we don't have any bytes to send.  Ignore the timeout. */
             if (s->_bytesToBufferPos == 0 && s->_leftoverBytes == NULL) {
                 __CFSocketMaybeLog("TIMEOUT - but no bytes, restoring to active set\n");
+                // Clear the timeout notification time if there is no prefetched data left
+                timerclear(&s->_readBufferTimeoutNotificationTime);
 
                 __CFSpinLock(&__CFActiveSocketsLock);
                 /* restore socket to fds */
@@ -1645,9 +1708,41 @@ static void __CFSocketHandleRead(CFSocketRef s, Boolean causedByTimeout)
 			if (ctRemaining > 0) {
 				base = CFDataGetMutableBytePtr(s->_readBuffer);
 
-				do {
-					ctRead = read(CFSocketGetNative(s), &base[s->_bytesToBufferPos], ctRemaining);
-				} while (ctRead == -1 && errno == EAGAIN);
+                struct timeval timeBeforeRead = { 0 };
+                gettimeofday(&timeBeforeRead, NULL);
+
+                struct timeval deadlineTime = { 0 };
+                timeradd(&timeBeforeRead, &s->_readBufferTimeout, &deadlineTime);
+
+                struct timeval timeAfterRead = { 0 };
+
+                while (1) {
+                    ctRead = read(CFSocketGetNative(s), &base[s->_bytesToBufferPos], ctRemaining);
+
+                    if (ctRead >= 0) {
+                        break;
+                    }
+
+                    if (errno != EAGAIN) {
+                        break;
+                    }
+
+                    gettimeofday(&timeAfterRead, NULL);
+
+                    if (timercmp(&timeAfterRead, &deadlineTime, >)) {
+#if LOG_CFSOCKET
+                        CFSocketNativeHandle fd = CFSocketGetNative(s);
+                        CFStringRef peerName = copyPeerAddress(kCFAllocatorDefault, fd);
+                        CFStringRef localName = copyLocalAddress(kCFAllocatorDefault, fd);
+                        CFLog(kCFLogLevelCritical, CFSTR("ERROR: Buffered read of %llu bytes failed for fd %d (socket valid? %d fd valid? %d %@ => %@)"), ctRemaining, fd, __CFSocketIsValid(s), __CFNativeSocketIsValid(fd), localName, peerName);
+                        if (peerName)
+                            CFRelease(peerName);
+                        if (localName)
+                            CFRelease(localName);
+#endif // LOG_CFSOCKET
+                        break;
+                    }
+                }
 
 				switch (ctRead) {
 				case -1:
@@ -1664,6 +1759,11 @@ static void __CFSocketHandleRead(CFSocketRef s, Boolean causedByTimeout)
 				default:
 					s->_bytesToBufferPos += ctRead;
 					if (s->_bytesToBuffer != s->_bytesToBufferPos) {
+
+					    // Update the timeout notification time
+					    struct timeval timeNow = { 0 };
+					    gettimeofday(&timeNow, NULL);
+					    timeradd(&timeNow, &s->_readBufferTimeout, &s->_readBufferTimeoutNotificationTime);
 						__CFSocketMaybeLog("READ %ld - need %ld MORE - GOING BACK FOR MORE\n", ctRead, s->_bytesToBuffer - s->_bytesToBufferPos);
 						__CFSpinLock(&__CFActiveSocketsLock);
 						/* restore socket to fds */
@@ -1672,6 +1772,8 @@ static void __CFSocketHandleRead(CFSocketRef s, Boolean causedByTimeout)
 						__CFSocketUnlock(s);
 						return;
 					} else {
+					    // Clear the timeout notification time if the buffer is full
+					    timerclear(&s->_readBufferTimeoutNotificationTime);
                         __CFSocketMaybeLog("DONE READING (read %ld bytes) - GOING TO SIGNAL\n", ctRead);
 					}
 				}
@@ -2173,6 +2275,12 @@ static void __CFSocketManager(void * arg)
         }
         tempfds = NULL;
         cnt = CFArrayGetCount(__CFReadSockets);
+
+        struct timeval timeNow = { 0 };
+        if (pTimeout) {
+            gettimeofday(&timeNow, NULL);
+        }
+
         for (idx = 0; idx < cnt; idx++) {
             CFSocketRef s = (CFSocketRef)CFArrayGetValueAtIndex(__CFReadSockets, idx);
             CFSocketNativeHandle sock = s->_socket;
@@ -2180,7 +2288,17 @@ static void __CFSocketManager(void * arg)
             // in which case we must be sure not to test a bit in the fdset that is
             // outside our mask size.
             Boolean sockInBounds = (0 <= sock && sock < maxnrfds);
-            if (INVALID_SOCKET != sock && sockInBounds && FD_ISSET(sock, readfds)) {
+
+            // Check if we hit the timeout
+            s->_hitTheTimeout = false;
+            if (pTimeout && sockInBounds && 0 != nrfds && !FD_ISSET(sock, readfds) &&
+                timerisset(&s->_readBufferTimeoutNotificationTime) &&
+                timercmp(&timeNow, &s->_readBufferTimeoutNotificationTime, >))
+            {
+                s->_hitTheTimeout = true;
+            }
+
+            if (INVALID_SOCKET != sock && sockInBounds && (FD_ISSET(sock, readfds) || s->_hitTheTimeout)) {
                 CFArraySetValueAtIndex(selectedReadSockets, selectedReadSocketsIndex, s);
                 selectedReadSocketsIndex++;
                 /* socket is removed from fds here, will be restored in read handling or in perform function */
@@ -2203,7 +2321,7 @@ static void __CFSocketManager(void * arg)
             CFSocketRef s = (CFSocketRef)CFArrayGetValueAtIndex(selectedReadSockets, idx);
             if (kCFNull == (CFNullRef)s) continue;
             __CFSocketMaybeLog("socket manager signaling socket %d for read\n", s->_socket);
-            __CFSocketHandleRead(s, nrfds == 0);
+            __CFSocketHandleRead(s, nrfds == 0 || s->_hitTheTimeout);
             CFArraySetValueAtIndex(selectedReadSockets, idx, kCFNull);
         }
         selectedReadSocketsIndex = 0;
@@ -2361,6 +2479,8 @@ static CFSocketRef _CFSocketCreateWithNative(CFAllocatorRef allocator, CFSocketN
     memory->_context.release = 0;
     memory->_context.copyDescription = 0;
     timerclear(&memory->_readBufferTimeout);
+    timerclear(&memory->_readBufferTimeoutNotificationTime);
+    memory->_hitTheTimeout = false;
     memory->_readBuffer = NULL;
     memory->_bytesToBuffer = 0;
     memory->_bytesToBufferPos = 0;

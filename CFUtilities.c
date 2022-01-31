@@ -389,7 +389,7 @@ __private_extern__ void *__CFLookupCoreServicesInternalFunction(const char *name
 #endif
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX
-static Boolean
+__private_extern__ Boolean
 __CFIsCurrentProcessTainted(void) {
 	Boolean ret = true;
 #if DEPLOYMENT_TARGET_MACOSX
@@ -402,6 +402,8 @@ __CFIsCurrentProcessTainted(void) {
 # else
 #  warning "Linux portability issue!"
 # endif /* HAVE_GETAUXVAL */
+#elif DEPLOYMENT_TARGET_WINDOWS
+    ret = false;
 #else
 # warning "Platform portability issue!"
 #endif
@@ -573,8 +575,8 @@ typedef void (*CFLogFunc)(int32_t lev, const char *message, size_t length, char 
 
 static Boolean also_do_stderr() {
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-    if (!issetugid() && __CFgetenv("CFLOG_FORCE_STDERR")) {
-	return true;
+    if (!__CFIsCurrentProcessTainted() && __CFgetenv("CFLOG_FORCE_STDERR")) {
+	    return true;
     }
     struct stat sb;
     int ret = fstat(STDERR_FILENO, &sb);

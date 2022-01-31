@@ -9,7 +9,7 @@
  *
  * The original license information is as follows:
  *
- * Copyright (c) 2012 Apple Inc. All rights reserved.
+ * Copyright (c) 2013 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
  *
@@ -32,7 +32,7 @@
  */
 
 /*	CFSocket.c
-	Copyright (c) 1999-2012, Apple Inc.  All rights reserved.
+	Copyright (c) 1999-2013, Apple Inc.  All rights reserved.
 	Responsibility: Christopher Kane
 */
 
@@ -1625,8 +1625,8 @@ static void __CFSocketHandleRead(CFSocketRef s, Boolean causedByTimeout)
 
 		if (causedByTimeout) {
 			__CFSocketMaybeLog("TIMEOUT RECEIVED - WILL SIGNAL IMMEDIATELY TO FLUSH (%ld buffered)\n", s->_bytesToBufferPos);
-            /* we've got a timeout, but no bytes read.  Ignore the timeout. */
-            if (s->_bytesToBufferPos == 0) {
+            /* we've got a timeout, but no bytes read, and we don't have any bytes to send.  Ignore the timeout. */
+            if (s->_bytesToBufferPos == 0 && s->_leftoverBytes == NULL) {
                 __CFSocketMaybeLog("TIMEOUT - but no bytes, restoring to active set\n");
 
                 __CFSpinLock(&__CFActiveSocketsLock);
@@ -1947,6 +1947,73 @@ static void __CFSocketWriteSocketList(CFArrayRef sockets, CFDataRef fdSet, Boole
 }
 #endif
 
+static void
+clearInvalidFileDescriptors(CFMutableDataRef d)
+{
+    if (d) {
+        SInt32 count = __CFSocketFdGetSize(d);
+        fd_set* s = (fd_set*) CFDataGetMutableBytePtr(d);
+        for (SInt32 idx = 0;  idx < count;  idx++) {
+            if (FD_ISSET(idx, s))
+                if (! __CFNativeSocketIsValid(idx)) {
+                    FD_CLR(idx, s);
+                }
+        }
+    }
+}
+
+static void
+manageSelectError()
+{
+    SInt32 selectError = __CFSocketLastError();
+    __CFSocketMaybeLog("socket manager received error %ld from select\n", (long)selectError);
+    if (EBADF == selectError) {
+        CFMutableArrayRef invalidSockets = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, &kCFTypeArrayCallBacks);
+
+        __CFSpinLock(&__CFActiveSocketsLock);
+        CFIndex cnt = CFArrayGetCount(__CFWriteSockets);
+        CFIndex idx;
+        for (idx = 0; idx < cnt; idx++) {
+            CFSocketRef s = (CFSocketRef)CFArrayGetValueAtIndex(__CFWriteSockets, idx);
+            if (!__CFNativeSocketIsValid(s->_socket)) {
+                __CFSocketMaybeLog("socket manager found write socket %d invalid\n", s->_socket);
+                CFArrayAppendValue(invalidSockets, s);
+            }
+        }
+        cnt = CFArrayGetCount(__CFReadSockets);
+        for (idx = 0; idx < cnt; idx++) {
+            CFSocketRef s = (CFSocketRef)CFArrayGetValueAtIndex(__CFReadSockets, idx);
+            if (!__CFNativeSocketIsValid(s->_socket)) {
+                __CFSocketMaybeLog("socket manager found read socket %d invalid\n", s->_socket);
+                CFArrayAppendValue(invalidSockets, s);
+            }
+        }
+
+
+        cnt = CFArrayGetCount(invalidSockets);
+
+        /* Note that we're doing this only when we got EBADF but otherwise
+         * don't have an explicit bad descriptor.  Note that the lock is held now.
+         * Finally, note that cnt == 0 doesn't necessarily mean
+         * that this loop will do anything, since fd's may have been invalidated
+         * while we were in select.
+         */
+        if (cnt == 0) {
+            __CFSocketMaybeLog("socket manager received EBADF(1): No sockets were marked as invalid, cleaning out fdsets\n");
+
+            clearInvalidFileDescriptors(__CFReadSocketsFds);
+            clearInvalidFileDescriptors(__CFWriteSocketsFds);
+        }
+
+        __CFSpinUnlock(&__CFActiveSocketsLock);
+
+        for (idx = 0; idx < cnt; idx++) {
+            CFSocketInvalidate(((CFSocketRef)CFArrayGetValueAtIndex(invalidSockets, idx)));
+        }
+        CFRelease(invalidSockets);
+    }
+}
+
 #ifdef __GNUC__
 __attribute__ ((noreturn))	// mostly interesting for shutting up a warning
 #endif /* __GNUC__ */
@@ -2076,35 +2143,7 @@ static void __CFSocketManager(void * arg)
 		}
 
 		if (0 > nrfds) {
-            SInt32 selectError = __CFSocketLastError();
-            __CFSocketMaybeLog("socket manager received error %ld from select\n", (long)selectError);
-            if (EBADF == selectError) {
-                CFMutableArrayRef invalidSockets = CFArrayCreateMutable(kCFAllocatorSystemDefault, 0, &kCFTypeArrayCallBacks);
-                __CFSpinLock(&__CFActiveSocketsLock);
-                cnt = CFArrayGetCount(__CFWriteSockets);
-                for (idx = 0; idx < cnt; idx++) {
-                    CFSocketRef s = (CFSocketRef)CFArrayGetValueAtIndex(__CFWriteSockets, idx);
-                    if (!__CFNativeSocketIsValid(s->_socket)) {
-                        __CFSocketMaybeLog("socket manager found write socket %d invalid\n", s->_socket);
-                        CFArrayAppendValue(invalidSockets, s);
-                    }
-                }
-                cnt = CFArrayGetCount(__CFReadSockets);
-                for (idx = 0; idx < cnt; idx++) {
-                    CFSocketRef s = (CFSocketRef)CFArrayGetValueAtIndex(__CFReadSockets, idx);
-                    if (!__CFNativeSocketIsValid(s->_socket)) {
-                        __CFSocketMaybeLog("socket manager found read socket %d invalid\n", s->_socket);
-                        CFArrayAppendValue(invalidSockets, s);
-                    }
-                }
-                __CFSpinUnlock(&__CFActiveSocketsLock);
-
-                cnt = CFArrayGetCount(invalidSockets);
-                for (idx = 0; idx < cnt; idx++) {
-                    CFSocketInvalidate(((CFSocketRef)CFArrayGetValueAtIndex(invalidSockets, idx)));
-                }
-                CFRelease(invalidSockets);
-            }
+            manageSelectError();
             continue;
         }
         if (FD_ISSET(__CFWakeupSocketPair[1], readfds)) {
@@ -2243,7 +2282,7 @@ static const CFRuntimeClass __CFSocketClass = {
 CFTypeID CFSocketGetTypeID(void) {
     if (_kCFRuntimeNotATypeID == __kCFSocketTypeID) {
 	__kCFSocketTypeID = _CFRuntimeRegisterClass(&__CFSocketClass);
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_EMBEDDED_MINI
         struct rlimit lim1;
         int ret1 = getrlimit(RLIMIT_NOFILE, &lim1);
         int mib[] = {CTL_KERN, KERN_MAXFILESPERPROC};

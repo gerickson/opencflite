@@ -264,7 +264,7 @@ static uint32_t __CFUID = -1;
 
 static CFURLRef _CFCopyHomeDirURLForUser(struct passwd *upwd) { // __CFPlatformCacheLock must be locked on entry and will be on exit
     CFURLRef home = NULL;
-    if (!issetugid()) {
+    if (!__CFIsCurrentProcessTainted()) {
 	const char *path = __CFgetenv("CFFIXED_USER_HOME");
 	if (path) {
 	    home = CFURLCreateFromFileSystemRepresentation(kCFAllocatorSystemDefault, (uint8_t *)path, strlen(path), true);

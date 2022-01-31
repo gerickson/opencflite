@@ -143,8 +143,6 @@ typedef int		boolean_t;
 #define strlcpy(a,b,c) strncpy(a,b,c)
 #endif
 
-#define issetugid() 0
-    
 // Implemented in CFPlatform.c 
 bool OSAtomicCompareAndSwapPtr(void *oldp, void *newp, void *volatile *dst);
 bool OSAtomicCompareAndSwapLong(long oldl, long newl, long volatile *dst);
@@ -300,8 +298,6 @@ CF_INLINE size_t malloc_size(void *memblock) {
 #define strlcpy(a,b,c) strncpy(a,b,c)
     
 #define sleep(x) Sleep(1000*x)
-
-#define issetugid() 0
 
 // CF exports these useful atomic operation functions on Windows
 CF_EXPORT bool OSAtomicCompareAndSwapPtr(void *oldp, void *newp, void *volatile *dst);

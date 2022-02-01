@@ -964,7 +964,6 @@ Boolean __CFSocketGetBytesAvailable(CFSocketRef s, CFIndex* ctBytesAvailable) {
 #include <sys/types.h>
 #include <math.h>
 #include <limits.h>
-#include <arpa/inet.h>
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_EMBEDDED_MINI
 #include <sys/sysctl.h>
 #include <sys/un.h>
@@ -1524,59 +1523,6 @@ static void __CFSocketHandleWrite(CFSocketRef s, Boolean callBackNow) {
     }
 }
 
-#if LOG_CFSOCKET
-static CFStringRef someAddrToString(CFAllocatorRef alloc, int (*fun) (int, struct sockaddr*, socklen_t*), const char* name, CFSocketNativeHandle s)
-{
-    CFStringRef resultString = NULL;
-    union {
-        struct sockaddr		sa;
-        struct sockaddr_in  sa4b;
-        struct sockaddr_in6 sa6b;
-        UInt8			static_buffer[SOCK_MAXADDRLEN];
-    } u;
-    socklen_t addrlen = sizeof(u.static_buffer);
-
-    uint16_t* pPort = NULL;
-    char buffer[1024];
-
-    if ((*fun) (s, &u.sa, &addrlen) != 0)
-        snprintf(buffer, sizeof(buffer), "error %d resolving %s address for socket %d", errno, name, s);
-    else {
-        void* pAddr = NULL;
-
-        switch (u.sa.sa_family) {
-            case AF_INET:
-                pAddr = &u.sa4b.sin_addr;
-                pPort = &u.sa4b.sin_port;
-                break;
-            case AF_INET6:
-                pAddr = &u.sa6b.sin6_addr;
-                pPort = &u.sa6b.sin6_port;
-                break;
-        }
-
-        if (pAddr == NULL || inet_ntop(u.sa.sa_family, pAddr, buffer, sizeof(buffer)) == NULL)
-            snprintf(buffer, sizeof(buffer), "[error %d converting %s address for socket %d]", pAddr != NULL? errno : EBADF, name, s);
-    }
-    if (pPort) {
-        resultString = CFStringCreateWithFormat(alloc, NULL, CFSTR("%s:%d"), buffer, htons(*pPort));
-    } else {
-        resultString = CFStringCreateWithFormat(alloc, NULL, CFSTR("%s"), buffer);
-    }
-    return resultString;
-}
-
-CFStringRef copyPeerAddress(CFAllocatorRef alloc, CFSocketNativeHandle s)
-{
-    return someAddrToString(alloc, getpeername, "peer", s);
-}
-
-CFStringRef copyLocalAddress(CFAllocatorRef alloc, CFSocketNativeHandle s)
-{
-    return someAddrToString(alloc, getsockname, "local", s);
-}
-#endif // LOG_CFSOCKET
-
 static void __CFSocketHandleRead(CFSocketRef s, Boolean causedByTimeout)
 {
     CFDataRef data = NULL, address = NULL;
@@ -1708,46 +1654,21 @@ static void __CFSocketHandleRead(CFSocketRef s, Boolean causedByTimeout)
 			if (ctRemaining > 0) {
 				base = CFDataGetMutableBytePtr(s->_readBuffer);
 
-                struct timeval timeBeforeRead = { 0 };
-                gettimeofday(&timeBeforeRead, NULL);
-
-                struct timeval deadlineTime = { 0 };
-                timeradd(&timeBeforeRead, &s->_readBufferTimeout, &deadlineTime);
-
-                struct timeval timeAfterRead = { 0 };
-
-                while (1) {
-                    ctRead = read(CFSocketGetNative(s), &base[s->_bytesToBufferPos], ctRemaining);
-
-                    if (ctRead >= 0) {
-                        break;
-                    }
-
-                    if (errno != EAGAIN) {
-                        break;
-                    }
-
-                    gettimeofday(&timeAfterRead, NULL);
-
-                    if (timercmp(&timeAfterRead, &deadlineTime, >)) {
-#if LOG_CFSOCKET
-                        CFSocketNativeHandle fd = CFSocketGetNative(s);
-                        CFStringRef peerName = copyPeerAddress(kCFAllocatorDefault, fd);
-                        CFStringRef localName = copyLocalAddress(kCFAllocatorDefault, fd);
-                        CFLog(kCFLogLevelCritical, CFSTR("ERROR: Buffered read of %llu bytes failed for fd %d (socket valid? %d fd valid? %d %@ => %@)"), ctRemaining, fd, __CFSocketIsValid(s), __CFNativeSocketIsValid(fd), localName, peerName);
-                        if (peerName)
-                            CFRelease(peerName);
-                        if (localName)
-                            CFRelease(localName);
-#endif // LOG_CFSOCKET
-                        break;
-                    }
-                }
+				ctRead = read(CFSocketGetNative(s), &base[s->_bytesToBufferPos], ctRemaining);
 
 				switch (ctRead) {
 				case -1:
-					s->_bufferedReadError = errno;
-					s->_atEOF = true;
+					if (errno == EAGAIN) { // no error
+					    __CFSpinLock(&__CFActiveSocketsLock);
+					    /* restore socket to fds */
+					    __CFSocketSetFDForRead(s);
+					    __CFSpinUnlock(&__CFActiveSocketsLock);
+					    __CFSocketUnlock(s);
+					    return;
+					} else {
+					    s->_bufferedReadError = errno;
+					    s->_atEOF = true;
+					}
 					__CFSocketMaybeLog("BUFFERED READ GOT ERROR %d\n", errno);
 					break;
 

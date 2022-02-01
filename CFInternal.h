@@ -794,6 +794,8 @@ struct __objcFastEnumerationStateEquivalent {
     unsigned long extra[5];
 };
 
+__private_extern__ Boolean __CFIsCurrentProcessTainted(void);
+
 CF_EXTERN_C_END
 
 #endif /* ! __COREFOUNDATION_CFINTERNAL__ */

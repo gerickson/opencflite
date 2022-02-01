@@ -97,6 +97,7 @@
     #if HAVE_SYS_AUXV_H
         #include <sys/auxv.h>
     #endif
+    #include <sys/stat.h>
 #endif
 #endif
 
@@ -389,7 +390,7 @@ __private_extern__ void *__CFLookupCoreServicesInternalFunction(const char *name
 #endif
 
 #if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX
-static Boolean
+__private_extern__ Boolean
 __CFIsCurrentProcessTainted(void) {
 	Boolean ret = true;
 #if DEPLOYMENT_TARGET_MACOSX
@@ -402,6 +403,8 @@ __CFIsCurrentProcessTainted(void) {
 # else
 #  warning "Linux portability issue!"
 # endif /* HAVE_GETAUXVAL */
+#elif DEPLOYMENT_TARGET_WINDOWS
+    ret = false;
 #else
 # warning "Platform portability issue!"
 #endif
@@ -572,9 +575,9 @@ void CFShow(const void *obj) {
 typedef void (*CFLogFunc)(int32_t lev, const char *message, size_t length, char withBanner);
 
 static Boolean also_do_stderr() {
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
-    if (!issetugid() && __CFgetenv("CFLOG_FORCE_STDERR")) {
-	return true;
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX
+    if (!__CFIsCurrentProcessTainted() && __CFgetenv("CFLOG_FORCE_STDERR")) {
+	    return true;
     }
     struct stat sb;
     int ret = fstat(STDERR_FILENO, &sb);
@@ -582,12 +585,14 @@ static Boolean also_do_stderr() {
     mode_t m = sb.st_mode & S_IFMT;
     if (S_IFREG == m || S_IFSOCK == m) return true;
     if (!(S_IFIFO == m || S_IFCHR == m)) return false; // disallow any whacky stuff
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
     // if it could be a pipe back to launchd, fail
     int64_t val = 0;
     // assumes val is not written to on error
     vproc_swap_integer(NULL, VPROC_GSK_IS_MANAGED, NULL, &val);
     if (val) return false;
-#endif
+#endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED
+#endif // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_LINUX
     return true;
 }
 

@@ -1,6 +1,21 @@
                       Changes and What's New in OpenCFLite
                       ------------------------------------
 
+2021-01-31 v635.21.8
+
+  * Addressed an issue, when LOG_CFRUNLOOP is asserted, in which log /
+    console output is tainted by a null character that makes the
+    output, when saved to a file, appear to be binary.
+
+  * Backport CFSocket.c changes from upstream CF-744.19, CF-855.11,
+    CF-1151.16, and CF-1153.18.
+
+  * Added Linux support for internal 'also_do_sterr' function.
+
+  * Prefer and use everywhere the internal portability
+    '__CFIsCurrentProcessTainted' function to the non-portable
+    'issetugid'.
+
 2021-12-09 v635.21.7
 
   * Addressed an issue in which processes that use CFFileDescriptor

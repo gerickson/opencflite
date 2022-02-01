@@ -103,8 +103,10 @@ static int _LogCFRunLoop = 0;
 #define LOG_CFRUNLOOP 0
 #endif
 
+#define __CFRunLoopLog(format, ...)       do { fprintf(stderr, format, ##__VA_ARGS__); fflush(stderr); } while (0)
+
 #if LOG_CFRUNLOOP
-#define __CFRunLoopMaybeLog(format, ...)  do { fprintf(stderr, format, ##__VA_ARGS__); fflush(stderr); } while (0)
+#define __CFRunLoopMaybeLog(format, ...)  __CFRunLoopLog(format, ##__VA_ARGS__)
 #else
 #define __CFRunLoopMaybeLog(format, ...)
 #endif
@@ -3348,10 +3350,10 @@ static Boolean __CFRunLoopWait(CFRunLoopRef rl, CFRunLoopModeRef rlm, __CFPortSe
         __CFPortMaybeLog(inputEvents,      inputEventsUsed);
         __CFPortMaybeLog(&outputEvents[0], outputEventsAvailable);
 
-        __CFRunLoopMaybeLog("waiting on queue %d with %hu events w/%c timeout",
+        __CFRunLoopMaybeLog("waiting on queue %d with %hu events w/%s timeout",
                             rl->_waitQueue,
                             inputEventsUsed,
-                            ((timeout == NULL) ? 'o' : '\0'));
+                            ((timeout == NULL) ? "o" : ""));
         if (timeout != NULL) {
             __CFRunLoopMaybeLog(" %ld.%09ld", timeout->tv_sec, timeout->tv_nsec);
         }

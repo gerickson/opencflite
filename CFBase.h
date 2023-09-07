@@ -53,6 +53,10 @@
 #define __LITTLE_ENDIAN__ 1
 #endif
 
+#if (defined(__arm__) && defined(__ARMEL__)) && !defined(__LITTLE_ENDIAN__)
+#define __LITTLE_ENDIAN__ 1
+#endif
+
 #if !defined(__BIG_ENDIAN__) && !defined(__LITTLE_ENDIAN__)
 #error Do not know the endianess of this architecture
 #endif

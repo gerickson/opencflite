@@ -52,7 +52,6 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <zlib.h>
 #elif DEPLOYMENT_TARGET_WINDOWS
 #include <windows.h>
 #endif
